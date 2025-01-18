@@ -9,24 +9,89 @@
 </head>
 <body>
     <h1>Meus Alvos de Oração</h1>
-
+    <!-- Definição de Login -->
+    <div class="login-section" id="loginSection">
+        <div class="login-container">
+            <button id="setLoginButton" class="btn">Definir Login</button>
+            <input type="text" id="loginInput" placeholder="Ex.: file1">
+        </div>
+    </div>
+    <!-- Exibição de Alvos Aleatórios do Dia -->
+    <div class="daily-section" id="dailySection" style="display: none;">
+        <h2>Alvos de oração do dia</h2>
+        <div id="dailyTargets"></div>
+        <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
+        <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
+        <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
+    </div>
+    <!-- Botões para alternar entre painéis e exportar/importar -->
+    <div class="buttons" style="display: none;">
+        <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
+        <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
+        <button id="backToMainButton" class="btn" style="display: none;">Voltar aos Alvos</button>
+        <button id="exportData" class="btn">Exportar Alvos</button>
+        <input type="file" id="importData" style="display: none;">
+        <label for="importData" class="btn">Importar Alvos</label>
+        <button id="resetData" class="btn">Resetar Alvos</button>
+        <button id="generateViewButton" class="btn generate-view">Gerar Visualização Geral</button>
+        <button id="viewResolvedViewButton" class="btn generate-view">Visualizar Respondidos</button>
+    </div>
     <!-- Formulário para Cadastrar Novo Alvo -->
-    <div class="form-section">
+    <div class="form-section" style="display: none;">
         <h2>Cadastrar Novo Alvo de Oração</h2>
         <form id="prayerForm">
-            <input type="text" id="title" placeholder="Título do alvo de oração" required>
-            <textarea id="details" placeholder="Detalhes do pedido..."></textarea>
+            <label for="title">Título:</label>
+            <input type="text" id="title" placeholder="Ex.: Saúde da Família" required>
+            <label for="details">Observações:</label>
+            <textarea id="details" placeholder="Escreva aqui os detalhes do pedido..."></textarea>
+            <label for="date">Data:</label>
             <input type="date" id="date" required>
             <button type="submit" class="btn">Adicionar Alvo</button>
         </form>
     </div>
-
-    <!-- Lista de Alvos -->
-    <div class="targets-section">
-        <h2>Meus Alvos</h2>
+    <!-- Painel Principal com Alvos Ativos -->
+    <div class="targets-section" id="mainPanel" style="display: none;">
+        <h2>Alvos de Oração</h2>
+          <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
         <div id="targetList"></div>
     </div>
+    <!-- Painel para Alvos Arquivados -->
+    <div class="targets-section" id="archivedPanel" style="display: none;">
+        <h2>Alvos Arquivados</h2>
+         <input type="text" id="searchArchived" placeholder="Pesquisar alvos..."  class="search-input">
+        <div id="archivedList"></div>
+    </div>
+    <!-- Painel para Alvos Respondidos -->
+    <div class="targets-section" id="resolvedPanel" style="display: none;">
+        <h2>Alvos Respondidos</h2>
+        <input type="text" id="searchResolved" placeholder="Pesquisar alvos..."  class="search-input">
+        <div id="resolvedList"></div>
+    </div>
 
-    <script src="script.js"></script>
+    <!-- Modal para Atualizar Observações -->
+    <div id="observationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeModal">×</span>
+            <h2>Atualizar Observações</h2>
+             <div id="observationHistory"></div>
+            <textarea id="newObservation" placeholder="Escreva aqui a nova observação"></textarea>
+            <button class="btn" id="saveObservation">Salvar Observação</button>
+        </div>
+    </div>
+
+    <!-- Modal para Seleção de Período -->
+    <div id="dateRangeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeDateRangeModal">×</span>
+            <h2>Selecionar Período</h2>
+            <label for="startDate">Data de Início:</label>
+            <input type="date" id="startDate">
+            <label for="endDate">Data de Fim:</label>
+            <input type="date" id="endDate">
+            <button id="generateResolvedView" class="btn">Gerar</button>
+            <button id="cancelDateRange" class="btn">Cancelar</button>
+        </div>
+    </div>
+<script src="script.js"></script>
 </body>
 </html>
