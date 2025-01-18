@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
+body {
+    font-family: 'Playfair Display', serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2.5em;
+}
+
+h2 {
+    color: #555;
+    text-align: center;
+    font-size: 1.75em;
+    margin-bottom: 10px;
+}
+
+.form-section, .targets-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 20px auto;
+}
+
+input, textarea {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+    max-width: 400px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: 'Playfair Display', serif;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.btn {
+    background-color: #e29420;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: block;
+    margin: 10px auto;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #ca7d1b;
+}
+
+.target {
+    border-bottom: 1px solid #ddd;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+.target:last-child {
+    border-bottom: none;
+}
+
+.target h3 {
+    margin: 0 0 10px 0;
+    color: #444;
+}
+
+.target p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.delete-btn {
+    background-color: #ff4444;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.delete-btn:hover {
+    background-color: #cc0000;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    input, textarea {
+        width: 90%;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+}
