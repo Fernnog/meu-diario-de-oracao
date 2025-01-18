@@ -1,6 +1,19 @@
 /* Importando a fonte Playfair Display do Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
+/* Estilos para a logo */
+.logo-container {
+    text-align: center; /* Centraliza a imagem */
+    margin-bottom: 20px; /* Espaçamento entre a logo e o título */
+}
+
+.logo {
+    max-width: 100%; /* Garante que a logo não ultrapasse a largura do contêiner */
+    height: auto;     /* Mantém a proporção da imagem */
+    /* Ajuste a largura máxima conforme necessário */
+    max-height: 150px;
+}
+
 /* Estilo Geral */
 body {
     font-family: 'Playfair Display', serif;
