@@ -1,5 +1,7 @@
+/* Importando a fonte Playfair Display do Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
+/* Estilo Geral */
 body {
     font-family: 'Playfair Display', serif;
     margin: 0;
@@ -22,15 +24,36 @@ h2 {
     margin-bottom: 10px;
 }
 
-.form-section, .targets-section {
+.buttons {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+button, .btn {
+    margin: 10px 5px;
+    padding: 10px 20px;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    background-color: #f9a825; /* Primary orange color */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+button:hover, .btn:hover {
+    background-color: #d48c1a; /* Darker orange on hover */
+    color: #fff;
+}
+
+.form-section, .targets-section, .daily-section {
     margin-bottom: 20px;
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid #ddd; /* Light gray border */
     border-radius: 5px;
-    background-color: #fff;
+    background-color: #fff; /* White background */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 800px;
-    margin: 20px auto;
+    text-align: center;
 }
 
 input, textarea {
@@ -46,70 +69,265 @@ input, textarea {
 
 textarea {
     resize: vertical;
-    min-height: 100px;
-}
-
-.btn {
-    background-color: #e29420;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    display: block;
-    margin: 10px auto;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.btn:hover {
-    background-color: #ca7d1b;
 }
 
 .target {
     border-bottom: 1px solid #ddd;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 10px 0;
+    text-align: left;
 }
 
 .target:last-child {
     border-bottom: none;
 }
 
-.target h3 {
-    margin: 0 0 10px 0;
-    color: #444;
+/* Resolved Button style*/
+.target .resolved {
+  background-color: #9cbe4a; /* New color for resolved button */
+}
+.target .resolved:hover {
+  background-color: #85a739; /* New color for resolved button hover*/
+}
+.resolved {
+    background-color: #eaffea; /* Background when it is in the Resolved tab */
 }
 
-.target p {
-    margin: 5px 0;
-    color: #666;
+/* Centralizar a seção diária */
+.daily-section {
+    text-align: center;
+    margin: 0 auto 20px;
 }
 
-.delete-btn {
-    background-color: #ff4444;
-    color: white;
-    padding: 5px 10px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-.delete-btn:hover {
-    background-color: #cc0000;
-}
-
+/* Responsividade para Telas Menores */
 @media (max-width: 768px) {
+    input, textarea, button, .btn {
+        width: 100%;
+    }
     body {
-        padding: 10px;
+        font-size: 14px; /* Reduz o tamanho da fonte em telas menores */
     }
-
-    input, textarea {
-        width: 90%;
-    }
-
     h1 {
         font-size: 2em;
     }
+    h2 {
+        font-size: 1.5em;
+    }
+}
+/* Estilos para o Container de Login */
+.login-container {
+    display: flex;        /* Ativa o Flexbox */
+    justify-content: center;/* Alinha horizontalmente ao centro */
+    align-items: center;  /* Alinha verticalmente ao centro */
+    margin-bottom: 20px; /* Espaçamento abaixo do container */
+}
+
+.login-container input {
+    margin: 0 5px 0 10px; /* Ajusta margens do input */
+    display: inline-block;
+    width: 200px;
+    max-width: none;
+}
+
+.login-container button {
+    margin: 0 5px 0 0; /* Ajusta margens do botão */
+    display: inline-block;
+}
+
+/* Separador de alvo */
+.target {
+    border-bottom: 1px solid #ddd; /* Light gray border */
+    padding: 10px 0;
+    text-align: left;
+}
+.target:last-child {
+    border-bottom: none;
+}
+
+/* Quote Style for Daily Targets */
+#dailyTargets .target:nth-child(odd) {
+  background-color: rgba(249, 168, 37, 0.1); /* Light orange background for odd targets */
+}
+
+#dailyTargets .target:nth-child(even) {
+  background-color: white; /* Light gray background for even targets */
+}
+
+/* New main buttons darker tone */
+button, .btn {
+  background-color: #e29420;
+}
+button:hover, .btn:hover {
+    background-color: #ca7d1b; /* Darker orange on hover */
+}
+
+/* Styles for the modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 5px;
+    position: relative; /* Make it relative for the close button */
+}
+/* Close button style */
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+ .close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+#observationHistory {
+    margin-bottom: 15px;
+     max-height: 150px; /* Ajuste a altura conforme necessário */
+     overflow-y: auto; /* Permite rolagem quando o conteúdo excede a altura */
+}
+#observationHistory div {
+  margin-bottom: 10px; /* Espaçamento entre as observações */
+  border-bottom: 1px solid #ddd; /* Linha separadora entre observações */
+  padding-bottom: 5px;
+}
+#observationHistory div:last-child {
+    border-bottom: none; /* Remove a linha separadora do último elemento */
+}
+
+   .page-link {
+        display: inline-block;
+        padding: 8px 12px;
+        margin: 0 3px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    .page-link:hover {
+       background-color: #eee;
+    }
+  .page-link.active {
+      background-color: #f9a825;
+       color: white;
+       border-color: #f9a825;
+    }
+    .search-input {
+        margin: 10px auto;
+        padding: 8px;
+        width: 80%;
+        max-width: 300px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+         display: block;
+    }
+
+/* CSS para o HTML gerado pela função generateViewHTML */
+.view-html-container {
+    margin: 10px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+.view-html-container h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2.5em;
+}
+
+.view-html-container h2 {
+    color: #555;
+    font-size: 1.75em;
+    margin-bottom: 10px;
+}
+
+.view-html-container div {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.view-html-container p {
+    margin: 5px 0;
+}
+
+.view-html-container hr {
+    margin-top: 30px;
+    margin-bottom: 30px;
+    border: 0;
+    border-top: 1px solid #ddd;
+}
+
+/* Media query para telas menores */
+@media (max-width: 768px) {
+    .view-html-container {
+        font-size: 14px;
+    }
+
+    .view-html-container h1 {
+        font-size: 2em;
+    }
+
+    .view-html-container h2 {
+        font-size: 1.5em;
+    }
+}
+
+/* Botões de visualização */
+.generate-view, .daily-view {
+  background-color: #9b681d;
+}
+
+.generate-view:hover, .daily-view:hover {
+  background-color: #7a5217; /* Um tom mais escuro para o hover */
+}
+
+/* Botões de Arquivados e Respondidos */
+.archived-resolved {
+  background-color: #948484;
+}
+
+.archived-resolved:hover {
+  background-color: #756b6b; /* Um tom mais escuro para o hover */
+}
+
+/* Estilos para o modal de seleção de data */
+#dateRangeModal .modal-content {
+    width: 400px; /* Ajuste a largura conforme necessário */
+}
+
+#dateRangeModal label {
+    display: block;
+    margin-top: 10px;
+}
+
+#dateRangeModal input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
 }
