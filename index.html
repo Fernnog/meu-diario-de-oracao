@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alvos de Oração</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Meus Alvos de Oração</h1>
+
+    <!-- Formulário para Cadastrar Novo Alvo -->
+    <div class="form-section">
+        <h2>Cadastrar Novo Alvo de Oração</h2>
+        <form id="prayerForm">
+            <input type="text" id="title" placeholder="Título do alvo de oração" required>
+            <textarea id="details" placeholder="Detalhes do pedido..."></textarea>
+            <input type="date" id="date" required>
+            <button type="submit" class="btn">Adicionar Alvo</button>
+        </form>
+    </div>
+
+    <!-- Lista de Alvos -->
+    <div class="targets-section">
+        <h2>Meus Alvos</h2>
+        <div id="targetList"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
