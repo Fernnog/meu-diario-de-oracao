@@ -1,20 +1,21 @@
-/* Importando a fonte Playfair Display do Google Fonts */
+/* ==== INÍCIO SEÇÃO - GOOGLE FONTS ==== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+/* ==== FIM SEÇÃO - GOOGLE FONTS ==== */
 
-/* Estilos para a logo */
+/* ==== INÍCIO SEÇÃO - ESTILOS DA LOGO ==== */
 .logo-container {
-    text-align: center; /* Centraliza a imagem */
-    margin-bottom: 20px; /* Espaçamento entre a logo e o título */
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 .logo {
-    max-width: 100%; /* Garante que a logo não ultrapasse a largura do contêiner */
-    height: auto;     /* Mantém a proporção da imagem */
-    /* Ajuste a largura máxima conforme necessário */
+    max-width: 100%;
+    height: auto;
     max-height: 150px;
 }
+/* ==== FIM SEÇÃO - ESTILOS DA LOGO ==== */
 
-/* Estilo Geral */
+/* ==== INÍCIO SEÇÃO - ESTILOS GERAIS ==== */
 body {
     font-family: 'Playfair Display', serif;
     margin: 0;
@@ -36,7 +37,9 @@ h2 {
     font-size: 1.75em;
     margin-bottom: 10px;
 }
+/* ==== FIM SEÇÃO - ESTILOS GERAIS ==== */
 
+/* ==== INÍCIO SEÇÃO - ESTILOS DOS BOTÕES ==== */
 .buttons {
     text-align: center;
     margin-bottom: 20px;
@@ -50,25 +53,55 @@ button, .btn {
     cursor: pointer;
     border-radius: 5px;
     font-size: 14px;
-    background-color: #f9a825; /* Primary orange color */
+    background-color: #f9a825;
     transition: background-color 0.3s, color 0.3s;
 }
 
 button:hover, .btn:hover {
-    background-color: #d48c1a; /* Darker orange on hover */
+    background-color: #d48c1a;
     color: #fff;
 }
 
+/* Novos botões principais em tom mais escuro */
+button, .btn {
+  background-color: #e29420;
+}
+button:hover, .btn:hover {
+    background-color: #ca7d1b; /* Tom mais escuro no hover */
+}
+
+/* Botões de visualização */
+.generate-view, .daily-view {
+  background-color: #9b681d;
+}
+
+.generate-view:hover, .daily-view:hover {
+  background-color: #7a5217; /* Tom mais escuro no hover */
+}
+
+/* Botões de Arquivados e Respondidos */
+.archived-resolved {
+  background-color: #948484;
+}
+
+.archived-resolved:hover {
+  background-color: #756b6b; /* Tom mais escuro no hover */
+}
+/* ==== FIM SEÇÃO - ESTILOS DOS BOTÕES ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DAS SEÇÕES ==== */
 .form-section, .targets-section, .daily-section {
     margin-bottom: 20px;
     padding: 15px;
-    border: 1px solid #ddd; /* Light gray border */
+    border: 1px solid #ddd;
     border-radius: 5px;
-    background-color: #fff; /* White background */
+    background-color: #fff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
+/* ==== FIM SEÇÃO - ESTILOS DAS SEÇÕES ==== */
 
+/* ==== INÍCIO SEÇÃO - ESTILOS DOS INPUTS ==== */
 input, textarea {
     display: block;
     margin: 10px auto;
@@ -84,6 +117,18 @@ textarea {
     resize: vertical;
 }
 
+.search-input {
+    margin: 10px auto;
+    padding: 8px;
+    width: 80%;
+    max-width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    display: block;
+}
+/* ==== FIM SEÇÃO - ESTILOS DOS INPUTS ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DOS ALVOS ==== */
 .target {
     border-bottom: 1px solid #ddd;
     padding: 10px 0;
@@ -94,61 +139,20 @@ textarea {
     border-bottom: none;
 }
 
-/* Resolved Button style*/
+/* Estilo do botão Resolved */
 .target .resolved {
-  background-color: #9cbe4a; /* New color for resolved button */
+  background-color: #9cbe4a; /* Nova cor para o botão resolvido */
 }
 .target .resolved:hover {
-  background-color: #85a739; /* New color for resolved button hover*/
+  background-color: #85a739; /* Nova cor para o hover do botão resolvido */
 }
 .resolved {
-    background-color: #eaffea; /* Background when it is in the Resolved tab */
-}
-
-/* Centralizar a seção diária */
-.daily-section {
-    text-align: center;
-    margin: 0 auto 20px;
-}
-
-/* Responsividade para Telas Menores */
-@media (max-width: 768px) {
-    input, textarea, button, .btn {
-        width: 100%;
-    }
-    body {
-        font-size: 14px; /* Reduz o tamanho da fonte em telas menores */
-    }
-    h1 {
-        font-size: 2em;
-    }
-    h2 {
-        font-size: 1.5em;
-    }
-}
-/* Estilos para o Container de Login */
-.login-container {
-    display: flex;        /* Ativa o Flexbox */
-    justify-content: center;/* Alinha horizontalmente ao centro */
-    align-items: center;  /* Alinha verticalmente ao centro */
-    margin-bottom: 20px; /* Espaçamento abaixo do container */
-}
-
-.login-container input {
-    margin: 0 5px 0 10px; /* Ajusta margens do input */
-    display: inline-block;
-    width: 200px;
-    max-width: none;
-}
-
-.login-container button {
-    margin: 0 5px 0 0; /* Ajusta margens do botão */
-    display: inline-block;
+    background-color: #eaffea; /* Fundo quando está na aba Resolvido */
 }
 
 /* Separador de alvo */
 .target {
-    border-bottom: 1px solid #ddd; /* Light gray border */
+    border-bottom: 1px solid #ddd; /* Borda cinza claro */
     padding: 10px 0;
     text-align: left;
 }
@@ -156,24 +160,38 @@ textarea {
     border-bottom: none;
 }
 
-/* Quote Style for Daily Targets */
+/* Estilo de citação para Alvos Diários */
 #dailyTargets .target:nth-child(odd) {
-  background-color: rgba(249, 168, 37, 0.1); /* Light orange background for odd targets */
+  background-color: rgba(249, 168, 37, 0.1); /* Fundo laranja claro para alvos ímpares */
 }
 
 #dailyTargets .target:nth-child(even) {
-  background-color: white; /* Light gray background for even targets */
+  background-color: white; /* Fundo cinza claro para alvos pares */
+}
+/* ==== FIM SEÇÃO - ESTILOS DOS ALVOS ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-/* New main buttons darker tone */
-button, .btn {
-  background-color: #e29420;
-}
-button:hover, .btn:hover {
-    background-color: #ca7d1b; /* Darker orange on hover */
+.login-container input {
+    margin: 0 5px 0 10px;
+    display: inline-block;
+    width: 200px;
+    max-width: none;
 }
 
-/* Styles for the modal */
+.login-container button {
+    margin: 0 5px 0 0;
+    display: inline-block;
+}
+/* ==== FIM SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL ==== */
 .modal {
     display: none;
     position: fixed;
@@ -194,9 +212,10 @@ button:hover, .btn:hover {
     width: 80%;
     max-width: 600px;
     border-radius: 5px;
-    position: relative; /* Make it relative for the close button */
+    position: relative;
 }
-/* Close button style */
+
+/* Estilo do botão Fechar */
 .close-button {
     color: #aaa;
     float: right;
@@ -204,55 +223,77 @@ button:hover, .btn:hover {
     font-weight: bold;
     cursor: pointer;
 }
- .close-button:hover,
+
+.close-button:hover,
 .close-button:focus {
     color: black;
     text-decoration: none;
     cursor: pointer;
 }
+
+/* Estilos do histórico de observações */
 #observationHistory {
     margin-bottom: 15px;
-     max-height: 150px; /* Ajuste a altura conforme necessário */
-     overflow-y: auto; /* Permite rolagem quando o conteúdo excede a altura */
+    max-height: 150px;
+    overflow-y: auto;
 }
+
 #observationHistory div {
-  margin-bottom: 10px; /* Espaçamento entre as observações */
-  border-bottom: 1px solid #ddd; /* Linha separadora entre observações */
-  padding-bottom: 5px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
 }
+
 #observationHistory div:last-child {
-    border-bottom: none; /* Remove a linha separadora do último elemento */
+    border-bottom: none;
+}
+/* ==== FIM SEÇÃO - ESTILOS DO MODAL ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL DE SELEÇÃO DE DATA ==== */
+/* Estilos para o modal de seleção de data */
+#dateRangeModal .modal-content {
+    width: 400px; /* Ajuste a largura conforme necessário */
 }
 
-   .page-link {
-        display: inline-block;
-        padding: 8px 12px;
-        margin: 0 3px;
-        border: 1px solid #ddd;
-        background-color: #f9f9f9;
-        color: #333;
-        text-decoration: none;
-        border-radius: 4px;
-        transition: background-color 0.3s;
-    }
-    .page-link:hover {
-       background-color: #eee;
-    }
-  .page-link.active {
-      background-color: #f9a825;
-       color: white;
-       border-color: #f9a825;
-    }
-    .search-input {
-        margin: 10px auto;
-        padding: 8px;
-        width: 80%;
-        max-width: 300px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-         display: block;
-    }
+#dateRangeModal label {
+    display: block;
+    margin-top: 10px;
+}
 
+#dateRangeModal input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+/* ==== FIM SEÇÃO - ESTILOS DO MODAL DE SELEÇÃO DE DATA ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DA PAGINAÇÃO ==== */
+.page-link {
+    display: inline-block;
+    padding: 8px 12px;
+    margin: 0 3px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.page-link:hover {
+    background-color: #eee;
+}
+
+.page-link.active {
+    background-color: #f9a825;
+    color: white;
+    border-color: #f9a825;
+}
+/* ==== FIM SEÇÃO - ESTILOS DA PAGINAÇÃO ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO HTML GERADO ==== */
 /* CSS para o HTML gerado pela função generateViewHTML */
 .view-html-container {
     margin: 10px;
@@ -293,9 +334,23 @@ button:hover, .btn:hover {
     border: 0;
     border-top: 1px solid #ddd;
 }
+/* ==== FIM SEÇÃO - ESTILOS DO HTML GERADO ==== */
 
+/* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
 @media (max-width: 768px) {
+    input, textarea, button, .btn {
+        width: 100%;
+    }
+    body {
+        font-size: 14px; /* Reduz o tamanho da fonte em telas menores */
+    }
+    h1 {
+        font-size: 2em;
+    }
+    h2 {
+        font-size: 1.5em;
+    }
     .view-html-container {
         font-size: 14px;
     }
@@ -308,39 +363,4 @@ button:hover, .btn:hover {
         font-size: 1.5em;
     }
 }
-
-/* Botões de visualização */
-.generate-view, .daily-view {
-  background-color: #9b681d;
-}
-
-.generate-view:hover, .daily-view:hover {
-  background-color: #7a5217; /* Um tom mais escuro para o hover */
-}
-
-/* Botões de Arquivados e Respondidos */
-.archived-resolved {
-  background-color: #948484;
-}
-
-.archived-resolved:hover {
-  background-color: #756b6b; /* Um tom mais escuro para o hover */
-}
-
-/* Estilos para o modal de seleção de data */
-#dateRangeModal .modal-content {
-    width: 400px; /* Ajuste a largura conforme necessário */
-}
-
-#dateRangeModal label {
-    display: block;
-    margin-top: 10px;
-}
-
-#dateRangeModal input[type="date"] {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
+/* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
