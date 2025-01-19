@@ -37,6 +37,10 @@ h2 {
     font-size: 1.75em;
     margin-bottom: 10px;
 }
+
+h4 {
+    margin-top: 15px;
+}
 /* ==== FIM SEÇÃO - ESTILOS GERAIS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS BOTÕES ==== */
@@ -168,6 +172,37 @@ textarea {
 #dailyTargets .target:nth-child(even) {
   background-color: white; /* Fundo cinza claro para alvos pares */
 }
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
+.add-observation-form {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.add-observation-form textarea {
+    width: calc(100% - 22px); /* Ajuste para considerar o padding */
+    max-width: none;
+    margin: 0 auto 10px auto;
+}
+
+.add-observation-form input[type="date"] {
+    width: calc(100% - 22px); /* Ajuste para considerar o padding */
+    max-width: none;
+    margin: 0 auto 10px auto;
+}
+
+.add-observation-form .btn {
+    margin: 0 auto;
+    display: block;
+}
+
+.observations-list {
+    margin-top: 10px;
+}
+/* ==== FIM SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
 /* ==== FIM SEÇÃO - ESTILOS DOS ALVOS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
@@ -229,23 +264,6 @@ textarea {
     color: black;
     text-decoration: none;
     cursor: pointer;
-}
-
-/* Estilos do histórico de observações */
-#observationHistory {
-    margin-bottom: 15px;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-#observationHistory div {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5px;
-}
-
-#observationHistory div:last-child {
-    border-bottom: none;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO MODAL ==== */
 
