@@ -116,11 +116,19 @@ function renderTargets() {
             <h3>${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data:</strong> ${formattedDate}</p>
-             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Pendente</p>
-             <button onclick="markAsResolved(${index + startIndex})" class="btn resolved">Marcar como Respondido</button>
+            <button onclick="markAsResolved(${index + startIndex})" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTarget(${index + startIndex})" class="btn archive">Arquivar</button>
-            <button onclick="openObservationModal(${index + startIndex})" class="btn update">Atualizar</button>
+            <button onclick="toggleAddObservation(${index + startIndex})" class="btn add-observation">Adicionar Observação</button>
+            <div class="add-observation-form" style="display: none;">
+                <textarea placeholder="Escreva aqui a nova observação"></textarea>
+                <input type="date" >
+                <button onclick="saveObservation(${index + startIndex})" class="btn">Salvar Observação</button>
+            </div>
+            <div class="observations-list">
+                ${renderObservations(target.observations)}
+            </div>
         `;
         targetList.appendChild(targetDiv);
     });
@@ -223,6 +231,63 @@ function renderPagination(panelId, page, targets) {
 
         });
         paginationDiv.appendChild(pageLink);
+    }
+}
+
+// Renderizar as observações de um alvo
+function renderObservations(observations) {
+    if (!observations || observations.length === 0) return '';
+
+    let observationsHTML = '<h4>Observações:</h4>';
+    observations.forEach(obs => {
+        observationsHTML += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+    });
+    return observationsHTML;
+}
+
+// Alternar a exibição do formulário de adição de observação
+function toggleAddObservation(index) {
+    const formIndex = index - (currentPage -1) * targetsPerPage;
+    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+// Salvar a observação
+function saveObservation(index) {
+    const targetIndex = index;
+    const formIndex = index - (currentPage -1) * targetsPerPage;
+    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    const textarea = form.querySelector('textarea');
+    const dateInput = form.querySelector('input[type="date"]');
+    const observationText = textarea.value.trim();
+    const observationDateValue = dateInput.value;
+
+    if (observationText !== "") {
+        let observationDate;
+        if (observationDateValue) {
+            observationDate = observationDateValue;
+        } else {
+            observationDate = formatDateToISO(new Date());
+        }
+
+        const newObservation = {
+            date: observationDate,
+            observation: observationText,
+        };
+
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+
+        // Renderizar novamente o alvo para atualizar as observações
+        renderTargets();
+
+        // Limpar o campo de texto e a data e ocultar o formulário
+        textarea.value = "";
+        dateInput.value = "";
+        form.style.display = "none";
+
+    } else {
+        alert("Por favor, insira o texto da observação.");
     }
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
@@ -471,6 +536,12 @@ document.getElementById("viewResolvedViewButton").addEventListener("click", () =
     startDateInput.value = '';
     endDateInput.value = '';
 });
+const dateRangeModal = document.getElementById("dateRangeModal");
+const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
+const generateResolvedViewButton = document.getElementById("generateResolvedView");
+const cancelDateRangeButton = document.getElementById("cancelDateRange");
+const startDateInput = document.getElementById("startDate");
+const endDateInput = document.getElementById("endDate");
 closeDateRangeModalButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
@@ -488,105 +559,6 @@ cancelDateRangeButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
 // ==== FIM SEÇÃO - EVENT LISTENERS ====
-
-// ==== INÍCIO SEÇÃO - FUNÇÕES DO MODAL ====
-let currentTargetIndex = null;
-
-const modal = document.getElementById("observationModal");
-const closeModalButton = document.getElementById("closeModal");
-const saveObservationButton = document.getElementById("saveObservation");
-const newObservationInput = document.getElementById("newObservation");
-const observationDateInput = document.getElementById("observationDate");
-const observationHistoryDiv = document.getElementById("observationHistory");
-
-// Função para formatar a data no formato DD/MM/YYYY
-function formatDateFixed(date) {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adicionar +1 ao mês (base zero)
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
-
-function openObservationModal(index) {
-    console.log("openObservationModal chamado com index:", index);
-    currentTargetIndex = index;
-    modal.style.display = "block";
-    newObservationInput.value = "";
-    observationDateInput.value = ""; // Limpar o campo de data
-    renderObservationHistory(index);
-}
-
-closeModalButton.addEventListener("click", () => {
-    console.log("closeModalButton clicado");
-    modal.style.display = "none";
-});
-
-window.onclick = function (event) {
-    if (event.target == modal) {
-        console.log("Modal fechado clicando fora");
-        modal.style.display = "none";
-    }
-}
-
-saveObservationButton.addEventListener("click", () => {
-    console.log("saveObservationButton clicado. currentTargetIndex:", currentTargetIndex);
-    if (currentTargetIndex === null) {
-        console.log("currentTargetIndex é nulo. Retornando.");
-        return;
-    }
-
-    const observationText = newObservationInput.value.trim();
-    const observationDateValue = observationDateInput.value; // Pegar o valor do campo de data
-    console.log("Texto da observação:", observationText);
-    if (observationText !== "") {
-        let observationDate;
-        if (observationDateValue) {
-            observationDate = new Date(observationDateValue);
-        } else {
-            observationDate = new Date();
-        }
-        const formattedDate = formatDateFixed(observationDate); // Usando a função corrigida
-
-        const newObservation = {
-            date: formattedDate, // Usar a data formatada corretamente
-            observation: observationText,
-        };
-
-        console.log("Nova observação:", newObservation);
-        prayerTargets[currentTargetIndex].observations.push(newObservation);
-        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-        newObservationInput.value = "";
-        observationDateInput.value = ""; // Limpar o campo de data
-        renderObservationHistory(currentTargetIndex);
-    } else {
-        console.log("Texto da observação está vazio.");
-    }
-});
-
-function renderObservationHistory(index) {
-    console.log("renderObservationHistory chamado com index:", index);
-    observationHistoryDiv.innerHTML = "";
-    const target = prayerTargets[index];
-    console.log("Target:", target);
-    if (target) {
-        const initialObsDiv = document.createElement("div");
-        initialObsDiv.innerHTML = `<p><strong>${formatDateForDisplay(target.date)}:</strong> ${target.details}</p>`;
-        observationHistoryDiv.appendChild(initialObsDiv);
-        if (target.observations) {
-            console.log("Observações:", target.observations);
-            target.observations.forEach((obs, obsIndex) => {
-                console.log("Renderizando observação", obsIndex, ":", obs);
-                const obsDiv = document.createElement("div");
-                obsDiv.innerHTML = `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
-                observationHistoryDiv.appendChild(obsDiv);
-            });
-        }
-    } else {
-        console.log("Target é nulo ou indefinido para o index:", index);
-    }
-}
-// ==== FIM SEÇÃO - FUNÇÕES DO MODAL ====
-
 
 // ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
 // Função para gerar o HTML com os alvos ativos
@@ -972,19 +944,4 @@ function refreshDailyTargets() {
         dailyTargets.appendChild(dailyDiv);
     });
 }
-
 // ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
-
-// DATE RANGE MODAL
-const dateRangeModal = document.getElementById("dateRangeModal");
-const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
-const generateResolvedViewButton = document.getElementById("generateResolvedView");
-const cancelDateRangeButton = document.getElementById("cancelDateRange");
-const startDateInput = document.getElementById("startDate");
-const endDateInput = document.getElementById("endDate");
-
-window.addEventListener("click", (event) => {
-    if (event.target === dateRangeModal) {
-        dateRangeModal.style.display = "none";
-    }
-});
