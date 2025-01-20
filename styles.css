@@ -124,7 +124,6 @@ h4 {
     background-color: #4a301a; /* Tom mais escuro no hover */
 }
 
-
 /* Linhas de separação */
 hr.menu-separator {
     border: none;
@@ -136,7 +135,6 @@ hr.menu-separator {
 hr.menu-separator.dark {
     border-top: 2px solid #654321;
 }
-
 
 hr.section-separator {
     border: none;
@@ -260,7 +258,6 @@ input[type="date"] {
     background-color: #a65b5b; /* Tom mais escuro no hover */
 }
 
-
 .target button.add-observation {
     background-color: #73a8f3; /* Tom azul claro */
     color: #fff;
@@ -313,7 +310,6 @@ input[type="date"] {
     background-color: #649464; /* Tom mais escuro no hover */
 }
 
-
 .observations-list {
     margin-top: 10px;
 }
@@ -340,6 +336,29 @@ input[type="date"] {
     display: inline-block;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
+.login-success-message {
+    display: none; /* Inicialmente oculto */
+    position: fixed; /* Posicionamento fixo na tela */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centraliza na tela */
+    background-color: #4CAF50; /* Cor de fundo verde */
+    color: white; /* Texto branco */
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+    opacity: 0; /* Começa com opacidade 0 */
+    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
+}
+
+.login-success-message.show {
+    display: block; /* Exibe a mensagem */
+    opacity: 1; /* Opacidade total */
+}
+/* ==== FIM SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL ==== */
 .modal {
