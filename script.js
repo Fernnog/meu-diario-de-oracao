@@ -54,6 +54,15 @@ function timeElapsed(date) {
 function setLogin(login) {
     localStorage.setItem('currentLogin', login);
     loadData();
+
+    // Mostrar mensagem de sucesso
+    const message = document.getElementById('loginSuccessMessage');
+    message.classList.add('show');
+
+    // Ocultar a mensagem após 3 segundos
+    setTimeout(() => {
+        message.classList.remove('show');
+    }, 3000);
 }
 
 // Função para carregar os dados correspondentes ao login atual
