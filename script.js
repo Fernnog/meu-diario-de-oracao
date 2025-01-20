@@ -73,6 +73,7 @@ function loadData() {
     resolvedTargets = archivedTargets.filter(target => target.resolved);
 
     // Renderizar os dados
+    renderTargets(); // Adicionado para renderizar os alvos principais
     renderArchivedTargets();
     renderResolvedTargets();
     refreshDailyTargets();
@@ -94,9 +95,6 @@ window.onload = function () {
     document.getElementById('searchMain').addEventListener('input', handleSearchMain);
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
-     document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
-        toggleSection('mainPanel');
-    });
 };
 // ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 
@@ -368,7 +366,8 @@ function exportData() {
 }
 
 // Importar dados de arquivo JSON
-function importData(file) {
+function importData(event) { // Alterado para receber o evento diretamente
+    const file = event.target.files[0]; // Obter o arquivo do evento
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -432,7 +431,8 @@ function resetData() {
         alert("Todos os alvos foram resetados.");
     }
 }
-// ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ==== 
+// ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
+
 // ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
 document.getElementById('setLoginButton').addEventListener('click', () => {
     const login = document.getElementById('loginInput').value.trim();
@@ -447,12 +447,21 @@ const exportDataButton = document.getElementById("exportData");
 exportDataButton.addEventListener("click", exportData);
 
 const importDataInput = document.getElementById("importData");
-importDataInput.addEventListener("change", (event) => {
-    importData(event.target.files[0]);
-});
+importDataInput.addEventListener("change", importData); // Removido o parâmetro, a função importData agora recebe o evento
 
 const resetDataButton = document.getElementById("resetData");
 resetDataButton.addEventListener("click", resetData);
+
+document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
+    mainPanel.style.display = "block";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block";
+    renderTargets();
+});
 
 const viewArchivedButton = document.getElementById("viewArchivedButton");
 const viewResolvedButton = document.getElementById("viewResolvedButton");
@@ -560,7 +569,8 @@ generateResolvedViewButton.addEventListener("click", () => {
 cancelDateRangeButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
-// ==== FIM SEÇÃO - EVENT LISTENERS ====               
+// ==== FIM SEÇÃO - EVENT LISTENERS ====
+
 // ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
 // Função para gerar o HTML com os alvos ativos
 function generateViewHTML() {
@@ -949,4 +959,4 @@ function refreshDailyTargets() {
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
-                    }
+}
