@@ -514,6 +514,57 @@ input[type="date"] {
 }
 /* ==== FIM SEÇÃO - ESTILOS DO HTML GERADO ==== */
 
+/* ==== INÍCIO SEÇÃO - ESTILOS DO BOTÃO "OREI!" ==== */
+.daily-section .target .pray-button {
+    background-color: #9cbe4a; /* Tom de verde igual ao do botão "Marcar como Respondido" */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin-right: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.daily-section .target .pray-button:hover {
+    background-color: #85a739; /* Tom de verde mais escuro para o hover (igual ao do botão "Marcar como Respondido") */
+}
+/* ==== FIM SEÇÃO - ESTILOS DO BOTÃO "OREI!" ==== */
+
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO POPUP ==== */
+.popup {
+    display: none;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 5px;
+    text-align: center;
+}
+
+.popup-content {
+    padding: 20px;
+}
+
+.popup-verse {
+    font-style: italic;
+    margin-top: 10px;
+}
+/* ==== FIM SEÇÃO - ESTILOS DO POPUP ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
+.daily-verses {
+    text-align: center;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: #555;
+}
+/* ==== FIM SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
+
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
 @media (max-width: 768px) {
