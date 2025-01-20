@@ -919,6 +919,56 @@ function handleSearchResolved(event) {
     renderResolvedTargets();
 }
 
+// ==== INÍCIO SEÇÃO - VERSÍCULOS BÍBLICOS ====
+const verses = [
+    "Mateus 7:7-8: “Peçam, e será dado a vocês; busquem, e encontrarão; batam, e a porta será aberta a vocês. Pois todo o que pede recebe; o que busca encontra; e àquele que bate, a porta será aberta.”",
+    "Marcos 11:24: \"Portanto, eu digo a vocês, tudo o que pedirem em oração, creiam que já o receberam, e será de vocês.\"",
+    "João 14:13-14: “E eu farei o que vocês pedirem em meu nome, para que o Pai seja glorificado no Filho. O que vocês pedirem em meu nome, eu farei.”",
+    "Filipenses 4:6-7: “Não se preocupem com nada, mas em todas as situações, pela oração e petição, com ação de graças, apresentem seus pedidos a Deus. E a paz de Deus, que excede todo o entendimento, guardará os seus corações e as suas mentes em Cristo Jesus.”",
+    "1 Tessalonicenses 5:16-18: “Alegrem-se sempre, orem continuamente, deem graças em todas as circunstâncias; pois esta é a vontade de Deus para vocês em Cristo Jesus.”",
+    "Tiago 5:13-16: “Há alguém entre vocês que está em apuros? Que ele ore. Há alguém feliz? Que ele cante louvores. Há alguém entre vocês que está doente? Que ele chame os presbíteros da igreja para orar por ele e ungi-lo com óleo em nome do Senhor. E a oração oferecida com fé fará o doente ficar bom; o Senhor o levantará. Se ele pecou, ele será perdoado. Portanto, confessem seus pecados uns aos outros e orem uns pelos outros para que vocês possam ser curados. A oração de um justo é poderosa e eficaz.”",
+    "1 João 5:14-15: “Esta é a confiança que temos ao nos aproximarmos de Deus: que se pedirmos qualquer coisa de acordo com a sua vontade, ele nos ouve. E se sabemos que ele nos ouve — tudo o que pedimos — sabemos que temos o que lhe pedimos.”",
+    "Efésios 6:18: \"Orem no Espírito em todas as ocasiões com todo tipo de orações e pedidos. Com isso em mente, estejam alertas e sempre continuem a orar por todo o povo do Senhor.\"",
+    "1 Timóteo 2:1-2: \"Eu exorto, então, antes de tudo, que petições, orações, intercessões e ações de graças sejam feitas para todos os povos, para reis e todos aqueles em autoridade, para que possamos viver vidas pacíficas e tranquilas em toda a piedade e santidade.\""
+];
+
+function displayRandomVerse() {
+    const randomIndex = Math.floor(Math.random() * verses.length);
+    const verseElement = document.getElementById('dailyVerses');
+    verseElement.textContent = verses[randomIndex];
+}
+// ==== FIM SEÇÃO - VERSÍCULOS BÍBLICOS ====
+
+// ==== INÍCIO SEÇÃO - FUNCIONALIDADE DO BOTÃO "OREI!" ====
+function addPrayButtonFunctionality(dailyDiv, targetIndex) {
+    const prayButton = document.createElement("button");
+    prayButton.textContent = "Orei!";
+    prayButton.classList.add("pray-button");
+    prayButton.onclick = () => {
+        dailyDiv.remove();
+        checkIfAllPrayersDone();
+    };
+    dailyDiv.insertBefore(prayButton, dailyDiv.firstChild);
+}
+
+function checkIfAllPrayersDone() {
+    const dailyTargets = document.getElementById("dailyTargets");
+    if (dailyTargets.children.length === 0) {
+        displayCompletionPopup();
+    }
+}
+
+function displayCompletionPopup() {
+    const popup = document.getElementById('completionPopup');
+    popup.style.display = 'block';
+}
+
+// Adicionando o event listener para fechar o popup
+document.getElementById('closePopup').addEventListener('click', () => {
+    document.getElementById('completionPopup').style.display = 'none';
+});
+// ==== FIM SEÇÃO - FUNCIONALIDADE DO BOTÃO "OREI!" ====
+
 // Atualizar os alvos diários
 function refreshDailyTargets() {
     const dailyTargets = document.getElementById("dailyTargets");
@@ -941,7 +991,7 @@ function refreshDailyTargets() {
     // Atualizar o histórico de exibição
     lastDisplayedTargets = [...lastDisplayedTargets, ...selectedTargets].slice(-prayerTargets.length);
 
-    selectedTargets.forEach((target) => {
+    selectedTargets.forEach((target, index) => {
         const dailyDiv = document.createElement("div");
         dailyDiv.classList.add("target");
 
@@ -962,7 +1012,13 @@ function refreshDailyTargets() {
 
         dailyDiv.innerHTML = contentHTML;
         dailyTargets.appendChild(dailyDiv);
+
+        // Adicionar funcionalidade ao botão "Orei!"
+        addPrayButtonFunctionality(dailyDiv, index);
     });
+
+    // Exibir versículo aleatório
+    displayRandomVerse();
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
 function hideTargets(){
