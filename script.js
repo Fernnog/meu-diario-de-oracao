@@ -293,3 +293,143 @@ function saveObservation(index) {
     }
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
+
+// ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
+// Adicionar alvo
+const form = document.getElementById("prayerForm");
+form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const newTarget = {
+        title: document.getElementById("title").value,
+        details: document.getElementById("details").value,
+        date: formatDateToISO(new Date(document.getElementById("date").value)),
+        resolved: false,
+        observations: []
+    };
+    prayerTargets.push(newTarget);
+    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+    currentPage = 1;
+    renderTargets();
+    form.reset();
+    refreshDailyTargets();
+});
+
+// Marcar como Respondido
+function markAsResolved(index) {
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[index].resolved = true;
+    prayerTargets[index].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[index]);
+    resolvedTargets.push(prayerTargets[index]);
+    prayerTargets.splice(index, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
+}
+
+// Arquivar Alvo
+function archiveTarget(index) {
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[index].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[index]);
+    prayerTargets.splice(index, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
+}
+
+// Atualizar LocalStorage
+function updateStorage() {
+    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+    localStorage.setItem(localStorageKeyPrefix + "archivedTargets", JSON.stringify(archivedTargets));
+    resolvedTargets = archivedTargets.filter(target => target.resolved);
+}
+
+// Exportar dados para arquivo JSON
+function exportData() {
+    const login = localStorage.getItem('currentLogin');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const filename = `${login}_${year}${month}${day}.json`;
+
+    const data = { login: localStorage.getItem('currentLogin'), prayerTargets, archivedTargets };
+    const dataStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Importar dados de arquivo JSON
+function importData(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            const importedLogin = importedData.login;
+            const newPrayerTargets = importedData.prayerTargets || [];
+            const newArchivedTargets = importedData.archivedTargets || [];
+
+            const currentLogin = localStorage.getItem('currentLogin');
+
+            if (importedLogin !== currentLogin) {
+                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
+                    return;
+                }
+            }
+
+            const allTargets = [...prayerTargets, ...archivedTargets];
+
+            const isDuplicate = (target) => allTargets.some(item => item.title === target.title && item.date === target.date);
+
+            newPrayerTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    prayerTargets.push(target);
+                }
+            });
+
+            newArchivedTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    archivedTargets.push(target);
+                }
+            });
+
+            updateStorage();
+            renderTargets();
+            renderArchivedTargets();
+            renderResolvedTargets();
+            refreshDailyTargets();
+        } catch (error) {
+            alert("Erro ao importar dados. Certifique-se de que é um arquivo válido.");
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Resetar todos os dados
+function resetData() {
+    if (confirm("Tem certeza de que deseja resetar todos os alvos? Esta ação não pode ser desfeita.")) {
+        if (confirm("Você gostaria de exportar os alvos antes de resetar?")) {
+            exportData();
+        }
+
+        prayerTargets = [];
+        archivedTargets = [];
+        resolvedTargets = [];
+        updateStorage();
+        renderTargets();
+        renderArchivedTargets();
+        renderResolvedTargets();
+        refreshDailyTargets();
+        alert("Todos os alvos foram resetados.");
+    }
+}
+// ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
