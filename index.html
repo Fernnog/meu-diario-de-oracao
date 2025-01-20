@@ -70,15 +70,22 @@
     <div class="daily-section" id="dailySection">
         <h2>
             Alvos de oração do dia
-            
             <div class="daily-buttons-container">
                 <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
                 <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
                 <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
             </div>
         </h2>
+        <div id="dailyVerses" class="daily-verses"></div>
         <div id="dailyTargets"></div>
-
+        <!-- Popup de Conclusão -->
+        <div id="completionPopup" class="popup">
+            <div class="popup-content">
+                <p>Objetivo de oração diário cumprido com sucesso!</p>
+                <p id="popupVerse" class="popup-verse">“Muito pode, por sua eficácia, a súplica do justo (Tg 5:16).”</p>
+                <button id="closePopup" class="btn">Fechar</button>
+            </div>
+        </div>
     </div>
     <!-- ==== FIM SEÇÃO - ALVOS DO DIA ==== -->
 
