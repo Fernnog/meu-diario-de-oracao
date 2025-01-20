@@ -872,3 +872,82 @@ function generateResolvedViewHTML(startDate, endDate) {
 }
 // ==== FIM SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
                     
+// ==== INÍCIO SEÇÃO - FUNÇÕES DE BUSCA ====
+function filterTargets(targets, searchTerm) {
+    if (!searchTerm) return targets;
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return targets.filter(target =>
+        target.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+        target.details.toLowerCase().includes(lowerCaseSearchTerm) ||
+        (target.observations && target.observations.some(obs => obs.observation.toLowerCase().includes(lowerCaseSearchTerm)))
+    );
+}
+
+function handleSearchMain(event) {
+    currentSearchTermMain = event.target.value;
+    currentPage = 1;
+    renderTargets();
+}
+
+function handleSearchArchived(event) {
+    currentSearchTermArchived = event.target.value;
+    currentArchivedPage = 1;
+    renderArchivedTargets();
+}
+
+function handleSearchResolved(event) {
+    currentSearchTermResolved = event.target.value;
+    currentResolvedPage = 1;
+    renderResolvedTargets();
+}
+
+// Atualizar os alvos diários
+function refreshDailyTargets() {
+    const dailyTargets = document.getElementById("dailyTargets");
+    dailyTargets.innerHTML = "";
+    const dailyTargetsCount = Math.min(prayerTargets.length, 10); // Mostrar até 10 alvos
+
+    // Filtrar alvos que não foram exibidos recentemente
+    let availableTargets = prayerTargets.filter(target => !lastDisplayedTargets.includes(target));
+
+    // Se todos os alvos foram exibidos, reseta o histórico
+    if (availableTargets.length === 0) {
+        lastDisplayedTargets = [];
+        availableTargets = prayerTargets.slice(); // Cria uma cópia da array para evitar modificação direta
+    }
+
+    // Seleciona aleatoriamente os alvos
+    const shuffledTargets = availableTargets.sort(() => 0.5 - Math.random());
+    const selectedTargets = shuffledTargets.slice(0, dailyTargetsCount);
+
+    // Atualizar o histórico de exibição
+    lastDisplayedTargets = [...lastDisplayedTargets, ...selectedTargets].slice(-prayerTargets.length);
+
+    selectedTargets.forEach((target) => {
+        const dailyDiv = document.createElement("div");
+        dailyDiv.classList.add("target");
+
+        // Construindo o HTML para incluir título, detalhes e tempo decorrido
+        let contentHTML = `
+            <h3>${target.title}</h3>
+            <p>${target.details}</p> <!-- Inclui os detalhes (observações originais) -->
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+        `;
+
+        // Adicionando observações, se existirem
+        if (target.observations && target.observations.length > 0) {
+            contentHTML += `<h4>Observações:</h4>`;
+            target.observations.forEach(obs => {
+                contentHTML += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+            });
+        }
+
+        dailyDiv.innerHTML = contentHTML;
+        dailyTargets.appendChild(dailyDiv);
+    });
+}
+// ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
+function hideTargets(){
+   const targetList = document.getElementById("targetList");
+    targetList.innerHTML = "";
+}
