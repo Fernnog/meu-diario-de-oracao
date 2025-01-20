@@ -433,4 +433,131 @@ function resetData() {
     }
 }
 // ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ==== 
-                
+// ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
+document.getElementById('setLoginButton').addEventListener('click', () => {
+    const login = document.getElementById('loginInput').value.trim();
+    if (login) {
+        setLogin(login);
+    } else {
+        alert("Por favor, insira um login válido.");
+    }
+});
+
+const exportDataButton = document.getElementById("exportData");
+exportDataButton.addEventListener("click", exportData);
+
+const importDataInput = document.getElementById("importData");
+importDataInput.addEventListener("change", (event) => {
+    importData(event.target.files[0]);
+});
+
+const resetDataButton = document.getElementById("resetData");
+resetDataButton.addEventListener("click", resetData);
+
+const viewArchivedButton = document.getElementById("viewArchivedButton");
+const viewResolvedButton = document.getElementById("viewResolvedButton");
+const backToMainButton = document.getElementById("backToMainButton");
+const mainPanel = document.getElementById("mainPanel");
+const dailySection = document.getElementById("dailySection");
+const archivedPanel = document.getElementById("archivedPanel");
+const resolvedPanel = document.getElementById("resolvedPanel");
+
+viewArchivedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "block";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "none";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block";
+    currentArchivedPage = 1;
+    renderArchivedTargets();
+});
+
+viewResolvedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "block";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "none";
+    backToMainButton.style.display = "inline-block";
+    currentResolvedPage = 1;
+    renderResolvedTargets();
+});
+
+backToMainButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "block";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "none";
+     hideTargets();
+    currentPage = 1;
+});
+
+const copyDailyButton = document.getElementById("copyDaily");
+copyDailyButton.addEventListener("click", function () {
+    const dailyTargetsElement = document.getElementById("dailyTargets");
+    if (!dailyTargetsElement) {
+        alert("Não foi possível encontrar os alvos diários para copiar.");
+        return;
+    }
+
+    const dailyTargetsText = Array.from(dailyTargetsElement.children).map(div => {
+        const title = div.querySelector('h3')?.textContent || '';
+        const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+        const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+
+        const observations = Array.from(div.querySelectorAll('p'))
+            .slice(2)
+            .map(p => p.textContent)
+            .join('\n');
+
+        let result = `${title}\n${details}\n${timeElapsed}`;
+        if (observations) {
+            result += `\nObservações:\n${observations}`;
+        }
+        return result;
+    }).join('\n\n---\n\n');
+
+    navigator.clipboard.writeText(dailyTargetsText).then(() => {
+        alert('Alvos diários copiados para a área de transferência!');
+    }, (err) => {
+        console.error('Erro ao copiar texto: ', err);
+        alert('Não foi possível copiar os alvos diários, por favor tente novamente.');
+    });
+});
+
+document.getElementById('generateViewButton').addEventListener('click', generateViewHTML);
+document.getElementById('viewDaily').addEventListener('click', generateDailyViewHTML);
+document.getElementById("viewResolvedViewButton").addEventListener("click", () => {
+    dateRangeModal.style.display = "block";
+    startDateInput.value = '';
+    endDateInput.value = '';
+});
+const dateRangeModal = document.getElementById("dateRangeModal");
+const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
+const generateResolvedViewButton = document.getElementById("generateResolvedView");
+const cancelDateRangeButton = document.getElementById("cancelDateRange");
+const startDateInput = document.getElementById("startDate");
+const endDateInput = document.getElementById("endDate");
+closeDateRangeModalButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+generateResolvedViewButton.addEventListener("click", () => {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    const today = new Date();
+    const formattedToday = formatDateToISO(today);
+    const adjustedEndDate = endDate || formattedToday;
+
+    generateResolvedViewHTML(startDate, adjustedEndDate);
+    dateRangeModal.style.display = "none";
+});
+cancelDateRangeButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+// ==== FIM SEÇÃO - EVENT LISTENERS ====               
