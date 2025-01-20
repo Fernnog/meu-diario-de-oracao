@@ -25,32 +25,28 @@
     </div>
     <!-- ==== FIM SEÇÃO - LOGIN ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - ALVOS DO DIA ==== -->
-    <div class="daily-section" id="dailySection" style="display: none;">
-        <h2>Alvos de oração do dia</h2>
-        <div id="dailyTargets"></div>
-        <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
-        <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
-        <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
-    </div>
-    <!-- ==== FIM SEÇÃO - ALVOS DO DIA ==== -->
-
-    <!-- ==== INÍCIO SEÇÃO - BOTÕES ==== -->
-    <div class="buttons" style="display: none;">
+    <!-- ==== INÍCIO SEÇÃO - MENU ==== -->
+    <hr class="menu-separator">
+    <div class="main-menu" id="mainMenu">
+        <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
         <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
         <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
-        <button id="backToMainButton" class="btn" style="display: none;">Voltar aos Alvos</button>
-        <button id="exportData" class="btn">Exportar Alvos</button>
-        <input type="file" id="importData" style="display: none;">
-        <label for="importData" class="btn">Importar Alvos</label>
-        <button id="resetData" class="btn">Resetar Alvos</button>
-        <button id="generateViewButton" class="btn generate-view">Gerar Visualização Geral</button>
-        <button id="viewResolvedViewButton" class="btn generate-view">Visualizar Respondidos</button>
+        <button id="backToMainButton" class="btn">Voltar</button>
     </div>
-    <!-- ==== FIM SEÇÃO - BOTÕES ==== -->
+    <hr class="menu-separator dark">
+        <div class="main-menu" id="mainMenu">
+        <button id="exportData" class="btn action-btn">Exportar Alvos</button>
+        <input type="file" id="importData" style="display: none;">
+        <label for="importData" class="btn action-btn">Importar Alvos</label>
+        <button id="resetData" class="btn action-btn">Resetar Alvos</button>
+        <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Geral</button>
+        <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos</button>
+    </div>
+    <hr class="menu-separator">
+    <!-- ==== FIM SEÇÃO - MENU ==== -->
 
     <!-- ==== INÍCIO SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
-    <div class="form-section" style="display: none;">
+    <div class="form-section">
         <h2>Cadastrar Novo Alvo de Oração</h2>
         <form id="prayerForm">
             <label for="title">Título:</label>
@@ -64,25 +60,43 @@
     </div>
     <!-- ==== FIM SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
 
+    <hr class="section-separator">
+
+    <!-- ==== INÍCIO SEÇÃO - ALVOS DO DIA ==== -->
+    <div class="daily-section" id="dailySection">
+        <h2>
+            Alvos de oração do dia
+            
+            <div class="daily-buttons-container">
+                <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
+                <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
+                <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
+            </div>
+        </h2>
+        <div id="dailyTargets"></div>
+
+    </div>
+    <!-- ==== FIM SEÇÃO - ALVOS DO DIA ==== -->
+
     <!-- ==== INÍCIO SEÇÃO - PAINÉIS DE ALVOS ==== -->
-    <!-- Painel Principal com Alvos Ativos -->
+    <!-- Painel Principal com Alvos Ativos (inicialmente oculto) -->
     <div class="targets-section" id="mainPanel" style="display: none;">
         <h2>Alvos de Oração</h2>
-          <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
+        <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
         <div id="targetList"></div>
     </div>
 
     <!-- Painel para Alvos Arquivados -->
     <div class="targets-section" id="archivedPanel" style="display: none;">
         <h2>Alvos Arquivados</h2>
-         <input type="text" id="searchArchived" placeholder="Pesquisar alvos..."  class="search-input">
+        <input type="text" id="searchArchived" placeholder="Pesquisar alvos..." class="search-input">
         <div id="archivedList"></div>
     </div>
 
     <!-- Painel para Alvos Respondidos -->
     <div class="targets-section" id="resolvedPanel" style="display: none;">
         <h2>Alvos Respondidos</h2>
-        <input type="text" id="searchResolved" placeholder="Pesquisar alvos..."  class="search-input">
+        <input type="text" id="searchResolved" placeholder="Pesquisar alvos..." class="search-input">
         <div id="resolvedList"></div>
     </div>
     <!-- ==== FIM SEÇÃO - PAINÉIS DE ALVOS ==== -->
