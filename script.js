@@ -433,3 +433,442 @@ function resetData() {
     }
 }
 // ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
+// ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
+document.getElementById('setLoginButton').addEventListener('click', () => {
+    const login = document.getElementById('loginInput').value.trim();
+    if (login) {
+        setLogin(login);
+    } else {
+        alert("Por favor, insira um login válido.");
+    }
+});
+
+const exportDataButton = document.getElementById("exportData");
+exportDataButton.addEventListener("click", exportData);
+
+const importDataInput = document.getElementById("importData");
+importDataInput.addEventListener("change", (event) => {
+    importData(event.target.files[0]);
+});
+
+const resetDataButton = document.getElementById("resetData");
+resetDataButton.addEventListener("click", resetData);
+
+const viewArchivedButton = document.getElementById("viewArchivedButton");
+const viewResolvedButton = document.getElementById("viewResolvedButton");
+const backToMainButton = document.getElementById("backToMainButton");
+const mainPanel = document.getElementById("mainPanel");
+const dailySection = document.getElementById("dailySection");
+const archivedPanel = document.getElementById("archivedPanel");
+const resolvedPanel = document.getElementById("resolvedPanel");
+
+viewArchivedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "block";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "none";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block";
+    currentArchivedPage = 1;
+    renderArchivedTargets();
+});
+
+viewResolvedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "block";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "none";
+    backToMainButton.style.display = "inline-block";
+    currentResolvedPage = 1;
+    renderResolvedTargets();
+});
+
+backToMainButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "block";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "none";
+     hideTargets();
+    currentPage = 1;
+});
+
+const copyDailyButton = document.getElementById("copyDaily");
+copyDailyButton.addEventListener("click", function () {
+    const dailyTargetsElement = document.getElementById("dailyTargets");
+    if (!dailyTargetsElement) {
+        alert("Não foi possível encontrar os alvos diários para copiar.");
+        return;
+    }
+
+    const dailyTargetsText = Array.from(dailyTargetsElement.children).map(div => {
+        const title = div.querySelector('h3')?.textContent || '';
+        const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+        const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+
+        const observations = Array.from(div.querySelectorAll('p'))
+            .slice(2)
+            .map(p => p.textContent)
+            .join('\n');
+
+        let result = `${title}\n${details}\n${timeElapsed}`;
+        if (observations) {
+            result += `\nObservações:\n${observations}`;
+        }
+        return result;
+    }).join('\n\n---\n\n');
+
+    navigator.clipboard.writeText(dailyTargetsText).then(() => {
+        alert('Alvos diários copiados para a área de transferência!');
+    }, (err) => {
+        console.error('Erro ao copiar texto: ', err);
+        alert('Não foi possível copiar os alvos diários, por favor tente novamente.');
+    });
+});
+
+document.getElementById('generateViewButton').addEventListener('click', generateViewHTML);
+document.getElementById('viewDaily').addEventListener('click', generateDailyViewHTML);
+document.getElementById("viewResolvedViewButton").addEventListener("click", () => {
+    dateRangeModal.style.display = "block";
+    startDateInput.value = '';
+    endDateInput.value = '';
+});
+const dateRangeModal = document.getElementById("dateRangeModal");
+const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
+const generateResolvedViewButton = document.getElementById("generateResolvedView");
+const cancelDateRangeButton = document.getElementById("cancelDateRange");
+const startDateInput = document.getElementById("startDate");
+const endDateInput = document.getElementById("endDate");
+closeDateRangeModalButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+generateResolvedViewButton.addEventListener("click", () => {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    const today = new Date();
+    const formattedToday = formatDateToISO(today);
+    const adjustedEndDate = endDate || formattedToday;
+
+    generateResolvedViewHTML(startDate, adjustedEndDate);
+    dateRangeModal.style.display = "none";
+});
+cancelDateRangeButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+// ==== FIM SEÇÃO - EVENT LISTENERS ====
+
+// ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
+// Função para gerar o HTML com os alvos ativos
+function generateViewHTML() {
+    let htmlContent = `<!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Alvos de Oração</title>
+      <style>
+        body {
+            font-family: 'Playfair Display', serif;
+            margin: 10px; 
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 16px; 
+        }
+h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 2.5em;
+    }
+    h2 {
+        color: #555;
+        font-size: 1.75em;
+        margin-bottom: 10px;
+    }
+    div {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    p {
+        margin: 5px 0; 
+    }
+    hr {
+        margin-top: 30px;
+        margin-bottom: 30px;
+        border: 0;
+        border-top: 1px solid #ddd;
+    }
+    @media (max-width: 768px) {
+        body {
+            font-size: 14px; 
+        }
+        h1 {
+            font-size: 2em;
+        }
+        h2 {
+            font-size: 1.5em;
+        }
+    }
+</style>
+  </head>
+  <body>
+  <h1>Alvos de Oração</h1>`;
+    if (prayerTargets.length === 0) {
+        htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
+    } else {
+        prayerTargets.forEach(target => {
+            const formattedDate = formatDateForDisplay(target.date);
+            const time = timeElapsed(target.date);
+            htmlContent += `
+      <div>
+          <h2>${target.title}</h2>
+          <p>${target.details}</p>
+          <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
+          <p><strong>Tempo Decorrido:</strong> ${time}</p>
+    `;
+            if (target.observations && target.observations.length > 0) {
+                htmlContent += `<h3>Observações:</h3>`;
+                target.observations.forEach(obs => {
+                    htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+                });
+            }
+            htmlContent += '</div><hr>';
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos de oração geral até o dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Função para gerar o HTML com os alvos do dia
+function generateDailyViewHTML() {
+    let htmlContent = `<!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Alvos de Oração do Dia</title>
+      <style>
+        body {
+            font-family: 'Playfair Display', serif;
+            margin: 10px; 
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 16px; 
+        }
+h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 2.5em;
+    }
+    h2 {
+        color: #555;
+        font-size: 1.75em;
+        margin-bottom: 10px;
+    }
+    div {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    p {
+        margin: 5px 0; 
+    }
+    hr {
+        margin-top: 30px;
+        margin-bottom: 30px;
+        border: 0;
+        border-top: 1px solid #ddd;
+    }
+    @media (max-width: 768px) {
+        body {
+            font-size: 14px; 
+        }
+        h1 {
+            font-size: 2em;
+        }
+        h2 {
+            font-size: 1.5em;
+        }
+    }
+</style>
+  </head>
+  <body>
+  <h1>Alvos de Oração do Dia</h1>`;
+    const dailyTargetsElement = document.getElementById("dailyTargets");
+    if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
+        htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
+    } else {
+        Array.from(dailyTargetsElement.children).forEach(div => {
+            const title = div.querySelector('h3')?.textContent || '';
+            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+
+            const observations = Array.from(div.querySelectorAll('h4 + p'))
+                .map(p => p.textContent)
+                .join('\n');
+
+            htmlContent += `
+            <div>
+                <h2>${title}</h2>
+                <p>${details}</p>
+                <p>${timeElapsed}</p>
+        `;
+            if (observations) {
+                htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
+            }
+            htmlContent += `</div><hr>`;
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos de oração do dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function generateResolvedViewHTML(startDate, endDate) {
+    const filteredResolvedTargets = resolvedTargets.filter(target => {
+        if (!target.resolved) return false;
+
+        const dateParts = target.archivedDate.split('/');
+        if (dateParts.length !== 3) {
+            console.error("Formato de archivedDate inválido:", target.archivedDate);
+            return false;
+        }
+
+        const resolvedDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+
+        const startDateObj = startDate ? new Date(startDate) : null;
+        const endDateObj = endDate ? new Date(endDate) : null;
+
+        if (startDateObj && resolvedDateObj < startDateObj) return false;
+        if (endDateObj) {
+            endDateObj.setHours(23, 59, 59);
+            if (resolvedDateObj > endDateObj) return false;
+        }
+
+        return true;
+    });
+
+    let htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alvos Respondidos</title>
+    <style>
+        body {
+            font-family: 'Playfair Display', serif;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 16px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.75em;
+            margin-bottom: 10px;
+        }
+        div {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        p {
+            margin: 5px 0;
+        }
+        hr {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>Alvos Respondidos</h1>`;
+
+    if (filteredResolvedTargets.length === 0) {
+        htmlContent += '<p>Nenhum alvo respondido encontrado para o período selecionado.</p>';
+    } else {
+        filteredResolvedTargets.forEach(target => {
+            const formattedDate = formatDateForDisplay(target.date);
+            const formattedArchivedDate = target.archivedDate;
+            htmlContent += `
+            <div>
+                <h2>${target.title}</h2>
+                <p>${target.details}</p>
+                <p><strong>Data Original:</strong> ${formattedDate}</p>
+                <p><strong>Data de Resolução:</strong> ${formattedArchivedDate}</p> 
+            </div><hr>
+        `;
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos Respondidos - ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+// ==== FIM SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
+                    
