@@ -582,6 +582,15 @@ input[type="date"] {
     margin-left: 10px;
     font-size: 0.8em;
 }
+/* Estilo para a tag de prazo de validade em ALVOS DIÁRIOS */
+.daily-section .deadline-tag {
+    background-color: #ffcc00; /* Cor de fundo amarela */
+    color: #333; /* Cor do texto escura */
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 0.8em;
+}
 
 /* Estilo para quando o prazo está vencido */
 .deadline-tag.expired {
