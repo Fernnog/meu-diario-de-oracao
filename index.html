@@ -100,35 +100,49 @@
     </div>
     <!-- ==== FIM SEÇÃO - ALVOS DO DIA ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - PAINÉIS DE ALVOS ==== -->
-    <!-- Painel Principal com Alvos Ativos (inicialmente oculto) -->
-    <div class="targets-section" id="mainPanel" style="display: none;">
-        <h2>Alvos de Oração</h2>
-        <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
-        <div id="targetList"></div>
-    </div>
+  <!-- ==== INÍCIO SEÇÃO - PAINÉIS DE ALVOS ==== -->
+   <!-- Painel Principal com Alvos Ativos -->
+<div class="targets-section" id="mainPanel" style="display: none;">
+    <h2>Alvos de Oração</h2>
+    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
+    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <div id="targetList"></div>
+</div>
 
-    <!-- Painel para Alvos Arquivados -->
-    <div class="targets-section" id="archivedPanel" style="display: none;">
-        <h2>Alvos Arquivados</h2>
-        <input type="text" id="searchArchived" placeholder="Pesquisar alvos..." class="search-input">
-        <div id="archivedList"></div>
-    </div>
+<!-- Painel para Alvos Arquivados -->
+<div class="targets-section" id="archivedPanel" style="display: none;">
+    <h2>Alvos Arquivados</h2>
+    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <input type="text" id="searchArchived" placeholder="Pesquisar alvos..." class="search-input">
+    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <div id="archivedList"></div>
+</div>
 
-    <!-- Painel para Alvos Respondidos -->
-    <div class="targets-section" id="resolvedPanel" style="display: none;">
-        <h2>Alvos Respondidos</h2>
-        <input type="text" id="searchResolved" placeholder="Pesquisar alvos..." class="search-input">
-        <div id="resolvedList"></div>
-    </div>
+<!-- Painel para Alvos Respondidos -->
+<div class="targets-section" id="resolvedPanel" style="display: none;">
+    <h2>Alvos Respondidos</h2>
+    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <input type="text" id="searchResolved" placeholder="Pesquisar alvos..." class="search-input">
+    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <div id="resolvedList"></div>
+</div>
 
-    <!-- Painel para Alvos com Prazo de Validade -->
-    <div class="targets-section" id="deadlinePanel" style="display: none;">
-        <h2>Alvos com Prazo de Validade</h2>
-        <input type="text" id="searchDeadline" placeholder="Pesquisar alvos..." class="search-input">
-        <div id="deadlineList"></div>
+<!-- Painel para Alvos com Prazo de Validade -->
+<div class="targets-section" id="deadlinePanel" style="display: none;">
+    <h2>Alvos com Prazo de Validade</h2>
+    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <input type="text" id="searchDeadline" placeholder="Pesquisar alvos..." class="search-input">
+    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <!-- Checkbox para filtrar alvos vencidos -->
+    <div class="filter-container">
+        <input type="checkbox" id="showExpiredOnly" name="showExpiredOnly">
+        <label for="showExpiredOnly">Vencidos</label> <!-- Texto alterado para "Vencidos" -->
     </div>
-    <!-- ==== FIM SEÇÃO - PAINÉIS DE ALVOS ==== -->
+    <hr class="filter-separator"> <!-- Linha horizontal após o filtro -->
+    <div id="deadlineList"></div>
+</div>
+<!-- ==== FIM SEÇÃO - PAINÉIS DE ALVOS ==== -->
 
     <!-- ==== INÍCIO SEÇÃO - MODAIS ==== -->
     <!-- Modal para Seleção de Período -->
