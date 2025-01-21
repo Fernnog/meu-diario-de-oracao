@@ -117,7 +117,8 @@ window.onload = function () {
     document.getElementById('searchMain').addEventListener('input', handleSearchMain);
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
-    document.getElementById('searchDeadline').addEventListener('input', handleSearchDeadline); // Novo
+    document.getElementById('searchDeadline').addEventListener('input', handleSearchDeadline);
+    document.getElementById('showExpiredOnly').addEventListener('change', handleExpiredFilterChange); // Adicionado event listener para o checkbox
     document.getElementById('viewDeadlineButton').addEventListener('click', () => { // Novo
         mainPanel.style.display = "none";
         dailySection.style.display = "none";
@@ -132,7 +133,6 @@ window.onload = function () {
     });
 };
 // ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
-
 // ==== INÍCIO SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
 // Renderizar alvos principais
 function renderTargets() {
@@ -229,7 +229,19 @@ function renderResolvedTargets() {
 function renderDeadlineTargets() {
     const deadlineList = document.getElementById("deadlineList");
     deadlineList.innerHTML = "";
-    const filteredTargets = filterTargets(prayerTargets.filter(t => t.hasDeadline), currentSearchTermDeadline);
+
+    // Verificar se o checkbox de alvos vencidos está marcado
+    const showExpiredOnly = document.getElementById("showExpiredOnly").checked;
+
+    // Filtrar alvos que têm prazo de validade e, se a opção estiver marcada, filtrar também os vencidos
+    let filteredTargets = prayerTargets.filter(t => t.hasDeadline);
+    if (showExpiredOnly) {
+        filteredTargets = filteredTargets.filter(t => isDateExpired(t.deadlineDate));
+    }
+
+    // Aplicar o filtro de pesquisa
+    filteredTargets = filterTargets(filteredTargets, currentSearchTermDeadline);
+
     const startIndex = (currentDeadlinePage - 1) * targetsPerPage;
     const endIndex = startIndex + targetsPerPage;
     const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
@@ -262,6 +274,7 @@ function renderDeadlineTargets() {
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
 }
+
 function markAsResolvedDeadline(index) {
     // Encontrar o índice correto do alvo na lista original de prayerTargets
     const targetIndex = prayerTargets.findIndex((target, i) => target.hasDeadline && i === index);
@@ -282,6 +295,7 @@ function markAsResolvedDeadline(index) {
     renderDeadlineTargets(); // Atualizar a lista de alvos com prazo
     refreshDailyTargets();
 }
+
 function archiveTargetDeadline(index) {
     // Encontrar o índice correto do alvo na lista original de prayerTargets
     const targetIndex = prayerTargets.findIndex((target, i) => target.hasDeadline && i === index);
@@ -301,27 +315,13 @@ function archiveTargetDeadline(index) {
     refreshDailyTargets();
 }
 function toggleAddObservationDeadline(index) {
-    // Encontrar o índice do alvo clicado na lista filtrada de alvos com prazo
-    const filteredTargets = prayerTargets.filter(t => t.hasDeadline);
-    const target = filteredTargets[index];
-
-    // Encontrar o índice correspondente na lista original de prayerTargets
-    const targetIndex = prayerTargets.indexOf(target);
-
-    if (targetIndex === -1) {
-        console.error("Alvo não encontrado na lista original.");
-        return;
-    }
-
-    // Encontrar o índice do formulário na página atual, considerando a paginação
-    const formIndex = index - (currentDeadlinePage - 1) * targetsPerPage;
-
-    // Obter o formulário específico
-    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    // Obter o formulário diretamente pelo índice
+    const form = document.getElementsByClassName('add-observation-form')[index];
 
     // Alternar a visibilidade do formulário
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
+
 function saveObservationDeadline(index) {
     // Encontrar o índice do alvo clicado na lista filtrada de alvos com prazo
     const filteredTargets = prayerTargets.filter(t => t.hasDeadline);
@@ -335,11 +335,8 @@ function saveObservationDeadline(index) {
         return;
     }
 
-    // Encontrar o índice do formulário na página atual, considerando a paginação
-    const formIndex = index - (currentDeadlinePage - 1) * targetsPerPage;
-
-    // Obter o formulário e seus campos
-    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    // Obter o formulário diretamente pelo índice
+    const form = document.getElementsByClassName('add-observation-form')[index];
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
     const observationText = textarea.value.trim();
@@ -369,7 +366,6 @@ function saveObservationDeadline(index) {
         alert("Por favor, insira o texto da observação.");
     }
 }
-
 // Função para renderizar a paginação
 function renderPagination(panelId, page, targets) {
     const totalPages = Math.ceil(targets.length / targetsPerPage);
@@ -428,19 +424,18 @@ function renderObservations(observations) {
     });
     return observationsHTML;
 }
-
-// Alternar a exibição do formulário de adição de observação
+// Função para alternar a exibição do formulário de adição de observação
 function toggleAddObservation(index) {
-    const formIndex = index - (currentPage -1) * targetsPerPage;
-    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    // Usar diretamente o índice passado para a função
+    const form = document.getElementsByClassName('add-observation-form')[index];
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-// Salvar a observação
+// Função para salvar a observação
 function saveObservation(index) {
     const targetIndex = index;
-    const formIndex = index - (currentPage -1) * targetsPerPage;
-    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    // Usar diretamente o índice passado para a função
+    const form = document.getElementsByClassName('add-observation-form')[index];
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
     const observationText = textarea.value.trim();
@@ -474,7 +469,11 @@ function saveObservation(index) {
         alert("Por favor, insira o texto da observação.");
     }
 }
-
+// Função para lidar com a mudança no filtro de alvos vencidos
+function handleExpiredFilterChange() {
+    currentDeadlinePage = 1;
+    renderDeadlineTargets();
+}
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
 
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
@@ -773,76 +772,88 @@ cancelDateRangeButton.addEventListener("click", () => {
 // ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
 // Função para gerar o HTML com os alvos ativos
 function generateViewHTML() {
+    // Captura o versículo atual exibido na página
+    const verseElement = document.getElementById('dailyVerses');
+    const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
+
     let htmlContent = `<!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Alvos de Oração</title>
-      <style>
-        body {
-            font-family: 'Playfair Display', serif;
-            margin: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            color: #333;
-            font-size: 16px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-        }
-        h2 {
-            color: #555;
-            font-size: 1.75em;
-            margin-bottom: 10px;
-        }
-        div {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        p {
-            margin: 5px 0;
-        }
-        hr {
-            margin-top: 30px;
-            margin-bottom: 30px;
-            border: 0;
-            border-top: 1px solid #ddd;
-        }
-        .deadline-tag {
-          background-color: #ffcc00;
-          color: #333;
-          padding: 5px 10px;
-          border-radius: 5px;
-          margin-left: 10px;
-          font-size: 0.8em;
-        }
-        .expired {
-          background-color: #ff6666;
-          color: #fff;
-        }
-        @media (max-width: 768px) {
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Alvos de Oração</title>
+        <style>
             body {
-                font-size: 14px;
+                font-family: 'Playfair Display', serif;
+                margin: 10px;
+                padding: 10px;
+                background-color: #f9f9f9;
+                color: #333;
+                font-size: 16px;
             }
             h1 {
-                font-size: 2em;
+                text-align: center;
+                color: #333;
+                margin-bottom: 20px;
+                font-size: 2.5em;
             }
             h2 {
-                font-size: 1.5em;
+                color: #555;
+                font-size: 1.75em;
+                margin-bottom: 10px;
             }
-        }
-      </style>
-  </head>
-  <body>
-  <h1>Alvos de Oração</h1>`;
+            div {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            p {
+                margin: 5px 0;
+            }
+            hr {
+                margin-top: 30px;
+                margin-bottom: 30px;
+                border: 0;
+                border-top: 1px solid #ddd;
+            }
+            .verse-container {
+                font-style: italic;
+                text-align: center;
+                margin-bottom: 20px;
+                color: #555;
+            }
+            .deadline-tag {
+                background-color: #ffcc00;
+                color: #333;
+                padding: 5px 10px;
+                border-radius: 5px;
+                margin-left: 10px;
+                font-size: 0.8em;
+            }
+            .expired {
+                background-color: #ff6666;
+                color: #fff;
+            }
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                h1 {
+                    font-size: 2em;
+                }
+                h2 {
+                    font-size: 1.5em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Alvos de Oração</h1>
+        <div class="verse-container">${currentVerse}</div> <!-- Inserindo o versículo aqui -->`;
+
     if (prayerTargets.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
     } else {
@@ -851,12 +862,12 @@ function generateViewHTML() {
             const time = timeElapsed(target.date);
             const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
             htmlContent += `
-      <div>
-          <h2>${target.title} ${deadlineTag}</h2>
-          <p>${target.details}</p>
-          <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
-          <p><strong>Tempo Decorrido:</strong> ${time}</p>
-    `;
+            <div>
+                <h2>${target.title} ${deadlineTag}</h2>
+                <p>${target.details}</p>
+                <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
+                <p><strong>Tempo Decorrido:</strong> ${time}</p>
+        `;
             if (target.observations && target.observations.length > 0) {
                 htmlContent += `<h3>Observações:</h3>`;
                 target.observations.forEach(obs => {
@@ -879,93 +890,122 @@ function generateViewHTML() {
     a.click();
     URL.revokeObjectURL(url);
 }
-
 // Função para gerar o HTML com os alvos do dia
 function generateDailyViewHTML() {
+    // Captura o versículo atual exibido na página
+    const verseElement = document.getElementById('dailyVerses');
+    const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
+
     let htmlContent = `<!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Alvos de Oração do Dia</title>
-      <style>
-        body {
-            font-family: 'Playfair Display', serif;
-            margin: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            color: #333;
-            font-size: 16px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-        }
-        h2 {
-            color: #555;
-            font-size: 1.75em;
-            margin-bottom: 10px;
-        }
-        div {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        p {
-            margin: 5px 0;
-        }
-        hr {
-            margin-top: 30px;
-            margin-bottom: 30px;
-            border: 0;
-            border-top: 1px solid #ddd;
-        }
-        .deadline-tag {
-          background-color: #ffcc00;
-          color: #333;
-          padding: 5px 10px;
-          border-radius: 5px;
-          margin-left: 10px;
-          font-size: 0.8em;
-        }
-        @media (max-width: 768px) {
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Alvos de Oração do Dia</title>
+        <style>
             body {
-                font-size: 14px;
+                font-family: 'Playfair Display', serif;
+                margin: 10px;
+                padding: 10px;
+                background-color: #f9f9f9;
+                color: #333;
+                font-size: 16px;
             }
             h1 {
-                font-size: 2em;
+                text-align: center;
+                color: #333;
+                margin-bottom: 20px;
+                font-size: 2.5em;
             }
             h2 {
-                font-size: 1.5em;
+                color: #555;
+                font-size: 1.75em;
+                margin-bottom: 10px;
+                display: inline-block; /* Para alinhar com a tag de prazo */
             }
-        }
-      </style>
-  </head>
-  <body>
-  <h1>Alvos de Oração do Dia</h1>`;
+            div {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            p {
+                margin: 5px 0;
+            }
+            hr {
+                margin-top: 30px;
+                margin-bottom: 30px;
+                border: 0;
+                border-top: 1px solid #ddd;
+            }
+            .verse-container {
+                font-style: italic;
+                text-align: center;
+                margin-bottom: 20px;
+                color: #555;
+            }
+            .deadline-tag {
+                background-color: #ffcc00;
+                color: #333;
+                padding: 5px 10px;
+                border-radius: 5px;
+                margin-left: 10px;
+                font-size: 0.8em;
+                float: right; /* Para flutuar à direita do título */
+            }
+            .title-container {
+                display: flex; /* Para alinhar título e tag na mesma linha */
+                align-items: center; /* Para alinhar verticalmente */
+                justify-content: space-between; /* Para separar título e tag */
+            }
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                h1 {
+                    font-size: 2em;
+                }
+                h2 {
+                    font-size: 1.5em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Alvos de Oração do Dia</h1>
+        <div class="verse-container">${currentVerse}</div>`; // Inserindo o versículo
 
     const dailyTargetsElement = document.getElementById("dailyTargets");
     if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
     } else {
         Array.from(dailyTargetsElement.children).forEach(div => {
-            const title = div.querySelector('h3')?.textContent || '';
-            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
-            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+            // Captura o título e remove a tag de prazo, se existir
+            const titleElement = div.querySelector('h3');
+            let title = titleElement ? titleElement.cloneNode(true) : document.createElement('h3');
+            const deadlineTagElement = title.querySelector('.deadline-tag');
+            if (deadlineTagElement) {
+                deadlineTagElement.remove(); // Remove a tag de prazo do título clonado
+            }
+            title = title.textContent.trim();
+
+            // Captura a tag de prazo separadamente
             const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
 
+            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
             const observations = Array.from(div.querySelectorAll('h4 + p'))
                 .map(p => p.textContent)
                 .join('\n');
 
             htmlContent += `
             <div>
-                <h2>${title} ${deadlineTag}</h2>
+                <div class="title-container">
+                    <h2>${title}</h2>  <!-- Título sem a tag de prazo -->
+                    ${deadlineTag}    <!-- Tag de prazo inserida separadamente -->
+                </div>
                 <p>${details}</p>
                 <p>${timeElapsed}</p>
         `;
@@ -988,7 +1028,6 @@ function generateDailyViewHTML() {
     a.click();
     URL.revokeObjectURL(url);
 }
-
 function generateResolvedViewHTML(startDate, endDate) {
     const filteredResolvedTargets = resolvedTargets.filter(target => {
         if (!target.resolved) return false;
@@ -1148,9 +1187,16 @@ const verses = [
     "Tiago 5:13-16: “Há alguém entre vocês que está em apuros? Que ele ore. Há alguém feliz? Que ele cante louvores. Há alguém entre vocês que está doente? Que ele chame os presbíteros da igreja para orar por ele e ungi-lo com óleo em nome do Senhor. E a oração oferecida com fé fará o doente ficar bom; o Senhor o levantará. Se ele pecou, ele será perdoado. Portanto, confessem seus pecados uns aos outros e orem uns pelos outros para que vocês possam ser curados. A oração de um justo é poderosa e eficaz.”",
     "1 João 5:14-15: “Esta é a confiança que temos ao nos aproximarmos de Deus: que se pedirmos qualquer coisa de acordo com a sua vontade, ele nos ouve. E se sabemos que ele nos ouve — tudo o que pedimos — sabemos que temos o que lhe pedimos.”",
     "Efésios 6:18: \"Orem no Espírito em todas as ocasiões com todo tipo de orações e pedidos. Com isso em mente, estejam alertas e sempre continuem a orar por todo o povo do Senhor.\"",
-    "1 Timóteo 2:1-2: \"Eu exorto, então, antes de tudo, que petições, orações, intercessões e ações de graças sejam feitas para todos os povos, para reis e todos aqueles em autoridade, para que possamos viver vidas pacíficas e tranquilas em toda a piedade e santidade.\""
+    "1 Timóteo 2:1-2: \"Eu exorto, então, antes de tudo, que petições, orações, intercessões e ações de graças sejam feitas para todos os povos, para reis e todos aqueles em autoridade, para que possamos viver vidas pacíficas e tranquilas em toda a piedade e santidade.\"",
+    "2 Crônicas 7:14: “Se o meu povo, que se chama pelo meu nome, se humilhar, e orar, e buscar a minha face, e se desviar dos seus maus caminhos, então ouvirei dos céus, perdoarei os seus pecados, e sararei a sua terra.”",
+    "Salmos 34:17: “Os justos clamam, o Senhor os ouve, e os livra de todas as suas angústias.”",
+    "Jeremias 33:3: “Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e firmes que não sabes.”",
+    "Salmos 145:18-19: “Perto está o Senhor de todos os que o invocam, de todos os que o invocam em verdade. Ele cumprirá o desejo dos que o temem; ouvirá o seu clamor, e os salvará.”",
+    "Daniel 9:18: “Inclina, ó Deus meu, os ouvidos, e ouve; abre os olhos, e olha para a nossa desolação, e para a cidade que é chamada pelo teu nome; porque não lançamos as nossas súplicas perante a tua face confiados em nossas justiças, mas em tuas muitas misericórdias.”",
+    "Provérbios 15:29: “O Senhor está longe dos perversos, mas ouve a oração dos justos.”",
+    "1 Reis 18:37: “Responde-me, Senhor, responde-me, para que este povo saiba que tu, Senhor, és Deus, e que tu fizeste o coração deles voltar para ti.”",
+    "Isaías 65:24: “E será que antes que clamem, eu responderei; estando eles ainda falando, eu os ouvirei.”"
 ];
-
 function displayRandomVerse() {
     const randomIndex = Math.floor(Math.random() * verses.length);
     const verseElement = document.getElementById('dailyVerses');
@@ -1214,12 +1260,13 @@ function refreshDailyTargets() {
         const dailyDiv = document.createElement("div");
         dailyDiv.classList.add("target");
 
-        // Construindo o HTML para incluir título, detalhes e tempo decorrido
+        // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
         const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         let contentHTML = `
-            <h3>${target.title} ${deadlineTag}</h3>
+            <h3>${target.title}</h3> <!-- Removida a tag de prazo do título -->
             <p>${target.details}</p> <!-- Inclui os detalhes (observações originais) -->
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            ${deadlineTag} <!-- Adiciona a tag de prazo separadamente -->
         `;
 
         // Adicionando observações, se existirem
@@ -1255,4 +1302,4 @@ function checkExpiredDeadlines() {
         });
         alert(message);
     }
-}
+}         
