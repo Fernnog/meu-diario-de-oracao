@@ -11,6 +11,8 @@ const targetsPerPage = 10;
 let currentSearchTermMain = '';
 let currentSearchTermArchived = '';
 let currentSearchTermResolved = '';
+let currentDeadlinePage = 1;
+let currentSearchTermDeadline = '';
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
 // ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
@@ -47,6 +49,13 @@ function timeElapsed(date) {
     const weeks = Math.floor(days / 7);
     return `${weeks} semana(s)`;
 }
+// Função para verificar se uma data está vencida em relação à data atual
+function isDateExpired(dateString) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Zerar horas, minutos, segundos e milissegundos
+    const date = new Date(dateString);
+    return date < today;
+}
 // ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
 
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
@@ -81,10 +90,14 @@ function loadData() {
     archivedTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "archivedTargets")) || [];
     resolvedTargets = archivedTargets.filter(target => target.resolved);
 
+    // Verificar prazos de validade vencidos
+    checkExpiredDeadlines();
+
     // Renderizar os dados
-    renderTargets(); // Adicionado para renderizar os alvos principais
+    renderTargets();
     renderArchivedTargets();
     renderResolvedTargets();
+    renderDeadlineTargets(); // Adicionado para renderizar os alvos com prazo de validade
     refreshDailyTargets();
 
     // Mostrar as seções principais
@@ -104,6 +117,19 @@ window.onload = function () {
     document.getElementById('searchMain').addEventListener('input', handleSearchMain);
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
+    document.getElementById('searchDeadline').addEventListener('input', handleSearchDeadline); // Novo
+    document.getElementById('viewDeadlineButton').addEventListener('click', () => { // Novo
+        mainPanel.style.display = "none";
+        dailySection.style.display = "none";
+        archivedPanel.style.display = "none";
+        resolvedPanel.style.display = "none";
+        deadlinePanel.style.display = "block";
+        viewArchivedButton.style.display = "inline-block";
+        viewResolvedButton.style.display = "inline-block";
+        backToMainButton.style.display = "inline-block";
+        currentDeadlinePage = 1;
+        renderDeadlineTargets();
+    });
 };
 // ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 
@@ -119,10 +145,11 @@ function renderTargets() {
 
     targetsToDisplay.forEach((target, index) => {
         const formattedDate = formatDateForDisplay(target.date);
+        const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         const targetDiv = document.createElement("div");
         targetDiv.classList.add("target");
         targetDiv.innerHTML = `
-            <h3>${target.title}</h3>
+            <h3>${target.title} ${deadlineTag}</h3>
             <p>${target.details}</p>
             <p><strong>Data:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
@@ -198,6 +225,151 @@ function renderResolvedTargets() {
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
 
+// Renderizar alvos com prazo de validade
+function renderDeadlineTargets() {
+    const deadlineList = document.getElementById("deadlineList");
+    deadlineList.innerHTML = "";
+    const filteredTargets = filterTargets(prayerTargets.filter(t => t.hasDeadline), currentSearchTermDeadline);
+    const startIndex = (currentDeadlinePage - 1) * targetsPerPage;
+    const endIndex = startIndex + targetsPerPage;
+    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+
+    targetsToDisplay.forEach((target, index) => {
+        const formattedDate = formatDateForDisplay(target.date);
+        const deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>`;
+        const targetDiv = document.createElement("div");
+        targetDiv.classList.add("target");
+        targetDiv.innerHTML = `
+            <h3>${target.title} ${deadlineTag}</h3>
+            <p>${target.details}</p>
+            <p><strong>Data:</strong> ${formattedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> Pendente</p>
+            <button onclick="markAsResolvedDeadline(${index + startIndex})" class="btn resolved">Marcar como Respondido</button>
+            <button onclick="archiveTargetDeadline(${index + startIndex})" class="btn archive">Arquivar</button>
+            <button onclick="toggleAddObservationDeadline(${index + startIndex})" class="btn add-observation">Adicionar Observação</button>
+            <div class="add-observation-form" style="display: none;">
+                <textarea placeholder="Escreva aqui a nova observação"></textarea>
+                <input type="date">
+                <button onclick="saveObservationDeadline(${index + startIndex})" class="btn">Salvar Observação</button>
+            </div>
+            <div class="observations-list">
+                ${renderObservations(target.observations)}
+            </div>
+        `;
+        deadlineList.appendChild(targetDiv);
+    });
+
+    renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
+}
+function markAsResolvedDeadline(index) {
+    // Encontrar o índice correto do alvo na lista original de prayerTargets
+    const targetIndex = prayerTargets.findIndex((target, i) => target.hasDeadline && i === index);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
+        return;
+    }
+
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].resolved = true;
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    resolvedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentDeadlinePage = 1;
+    renderDeadlineTargets(); // Atualizar a lista de alvos com prazo
+    refreshDailyTargets();
+}
+function archiveTargetDeadline(index) {
+    // Encontrar o índice correto do alvo na lista original de prayerTargets
+    const targetIndex = prayerTargets.findIndex((target, i) => target.hasDeadline && i === index);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
+        return;
+    }
+
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentDeadlinePage = 1;
+    renderDeadlineTargets(); // Atualizar a lista de alvos com prazo
+    refreshDailyTargets();
+}
+function toggleAddObservationDeadline(index) {
+    // Encontrar o índice do alvo clicado na lista filtrada de alvos com prazo
+    const filteredTargets = prayerTargets.filter(t => t.hasDeadline);
+    const target = filteredTargets[index];
+
+    // Encontrar o índice correspondente na lista original de prayerTargets
+    const targetIndex = prayerTargets.indexOf(target);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado na lista original.");
+        return;
+    }
+
+    // Encontrar o índice do formulário na página atual, considerando a paginação
+    const formIndex = index - (currentDeadlinePage - 1) * targetsPerPage;
+
+    // Obter o formulário específico
+    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+
+    // Alternar a visibilidade do formulário
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function saveObservationDeadline(index) {
+    // Encontrar o índice do alvo clicado na lista filtrada de alvos com prazo
+    const filteredTargets = prayerTargets.filter(t => t.hasDeadline);
+    const target = filteredTargets[index];
+
+    // Encontrar o índice correspondente na lista original de prayerTargets
+    const targetIndex = prayerTargets.indexOf(target);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado na lista original.");
+        return;
+    }
+
+    // Encontrar o índice do formulário na página atual, considerando a paginação
+    const formIndex = index - (currentDeadlinePage - 1) * targetsPerPage;
+
+    // Obter o formulário e seus campos
+    const form = document.getElementsByClassName('add-observation-form')[formIndex];
+    const textarea = form.querySelector('textarea');
+    const dateInput = form.querySelector('input[type="date"]');
+    const observationText = textarea.value.trim();
+    const observationDateValue = dateInput.value;
+
+    // Validar e salvar a observação
+    if (observationText !== "") {
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+
+        const newObservation = {
+            date: observationDate,
+            observation: observationText,
+        };
+
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+
+        // Renderizar novamente os alvos para atualizar as observações
+        renderDeadlineTargets();
+
+        // Limpar o campo de texto e a data e ocultar o formulário
+        textarea.value = "";
+        dateInput.value = "";
+        form.style.display = "none";
+
+    } else {
+        alert("Por favor, insira o texto da observação.");
+    }
+}
+
 // Função para renderizar a paginação
 function renderPagination(panelId, page, targets) {
     const totalPages = Math.ceil(targets.length / targetsPerPage);
@@ -236,6 +408,9 @@ function renderPagination(panelId, page, targets) {
             } else if (panelId === 'resolvedPanel') {
                 currentResolvedPage = i;
                 renderResolvedTargets();
+            } else if (panelId === 'deadlinePanel') { // Adicionado para suportar o painel de alvos com prazo
+                currentDeadlinePage = i;
+                renderDeadlineTargets();
             }
 
         });
@@ -303,15 +478,24 @@ function saveObservation(index) {
 
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
 // Adicionar alvo
+// Exibe se campo prazo de validade vai ser preenchido ou não
+document.getElementById('hasDeadline').addEventListener('change', function() {
+    const deadlineContainer = document.getElementById('deadlineContainer');
+    deadlineContainer.style.display = this.checked ? 'block' : 'none';
+});
 const form = document.getElementById("prayerForm");
 form.addEventListener("submit", (e) => {
     e.preventDefault();
+    const hasDeadline = document.getElementById("hasDeadline").checked;
+    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value)) : null;
     const newTarget = {
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
         date: formatDateToISO(new Date(document.getElementById("date").value)),
         resolved: false,
-        observations: []
+        observations: [],
+        hasDeadline: hasDeadline,
+        deadlineDate: deadlineDate
     };
     prayerTargets.push(newTarget);
     localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
@@ -375,8 +559,8 @@ function exportData() {
 }
 
 // Importar dados de arquivo JSON
-function importData(event) { // Alterado para receber o evento diretamente
-    const file = event.target.files[0]; // Obter o arquivo do evento
+function importData(event) {
+    const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -456,7 +640,7 @@ const exportDataButton = document.getElementById("exportData");
 exportDataButton.addEventListener("click", exportData);
 
 const importDataInput = document.getElementById("importData");
-importDataInput.addEventListener("change", importData); // Removido o parâmetro, a função importData agora recebe o evento
+importDataInput.addEventListener("change", importData);
 
 const resetDataButton = document.getElementById("resetData");
 resetDataButton.addEventListener("click", resetData);
@@ -466,6 +650,7 @@ document.getElementById('viewAllTargetsButton').addEventListener('click', () => 
     dailySection.style.display = "none";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "none";
+    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "inline-block";
@@ -479,12 +664,14 @@ const mainPanel = document.getElementById("mainPanel");
 const dailySection = document.getElementById("dailySection");
 const archivedPanel = document.getElementById("archivedPanel");
 const resolvedPanel = document.getElementById("resolvedPanel");
+const deadlinePanel = document.getElementById("deadlinePanel");
 
 viewArchivedButton.addEventListener("click", () => {
     mainPanel.style.display = "none";
     dailySection.style.display = "none";
     archivedPanel.style.display = "block";
     resolvedPanel.style.display = "none";
+    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "none";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "inline-block";
@@ -497,6 +684,7 @@ viewResolvedButton.addEventListener("click", () => {
     dailySection.style.display = "none";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "block";
+    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "none";
     backToMainButton.style.display = "inline-block";
@@ -509,6 +697,7 @@ backToMainButton.addEventListener("click", () => {
     dailySection.style.display = "block";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "none";
+    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "none";
@@ -592,52 +781,52 @@ function generateViewHTML() {
       <style>
         body {
             font-family: 'Playfair Display', serif;
-            margin: 10px; 
+            margin: 10px;
             padding: 10px;
             background-color: #f9f9f9;
             color: #333;
-            font-size: 16px; 
-        }
-h1 {
-        text-align: center;
-        color: #333;
-        margin-bottom: 20px;
-        font-size: 2.5em;
-    }
-    h2 {
-        color: #555;
-        font-size: 1.75em;
-        margin-bottom: 10px;
-    }
-    div {
-        margin-bottom: 20px;
-        padding: 15px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        background-color: #fff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    p {
-        margin: 5px 0; 
-    }
-    hr {
-        margin-top: 30px;
-        margin-bottom: 30px;
-        border: 0;
-        border-top: 1px solid #ddd;
-    }
-    @media (max-width: 768px) {
-        body {
-            font-size: 14px; 
+            font-size: 16px;
         }
         h1 {
-            font-size: 2em;
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
         }
         h2 {
-            font-size: 1.5em;
+            color: #555;
+            font-size: 1.75em;
+            margin-bottom: 10px;
         }
-    }
-</style>
+        div {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        p {
+            margin: 5px 0;
+        }
+        hr {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+      </style>
   </head>
   <body>
   <h1>Alvos de Oração</h1>`;
@@ -647,9 +836,10 @@ h1 {
         prayerTargets.forEach(target => {
             const formattedDate = formatDateForDisplay(target.date);
             const time = timeElapsed(target.date);
+            const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
             htmlContent += `
       <div>
-          <h2>${target.title}</h2>
+          <h2>${target.title} ${deadlineTag}</h2>
           <p>${target.details}</p>
           <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
           <p><strong>Tempo Decorrido:</strong> ${time}</p>
@@ -688,55 +878,56 @@ function generateDailyViewHTML() {
       <style>
         body {
             font-family: 'Playfair Display', serif;
-            margin: 10px; 
+            margin: 10px;
             padding: 10px;
             background-color: #f9f9f9;
             color: #333;
-            font-size: 16px; 
-        }
-h1 {
-        text-align: center;
-        color: #333;
-        margin-bottom: 20px;
-        font-size: 2.5em;
-    }
-    h2 {
-        color: #555;
-        font-size: 1.75em;
-        margin-bottom: 10px;
-    }
-    div {
-        margin-bottom: 20px;
-        padding: 15px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        background-color: #fff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    p {
-        margin: 5px 0; 
-    }
-    hr {
-        margin-top: 30px;
-        margin-bottom: 30px;
-        border: 0;
-        border-top: 1px solid #ddd;
-    }
-    @media (max-width: 768px) {
-        body {
-            font-size: 14px; 
+            font-size: 16px;
         }
         h1 {
-            font-size: 2em;
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
         }
         h2 {
-            font-size: 1.5em;
+            color: #555;
+            font-size: 1.75em;
+            margin-bottom: 10px;
         }
-    }
-</style>
+        div {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        p {
+            margin: 5px 0;
+        }
+        hr {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+      </style>
   </head>
   <body>
   <h1>Alvos de Oração do Dia</h1>`;
+
     const dailyTargetsElement = document.getElementById("dailyTargets");
     if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
@@ -870,7 +1061,7 @@ function generateResolvedViewHTML(startDate, endDate) {
                 <h2>${target.title}</h2>
                 <p>${target.details}</p>
                 <p><strong>Data Original:</strong> ${formattedDate}</p>
-                <p><strong>Data de Resolução:</strong> ${formattedArchivedDate}</p> 
+                <p><strong>Data de Resolução:</strong> ${formattedArchivedDate}</p>
             </div><hr>
         `;
         });
@@ -917,6 +1108,12 @@ function handleSearchResolved(event) {
     currentSearchTermResolved = event.target.value;
     currentResolvedPage = 1;
     renderResolvedTargets();
+}
+
+function handleSearchDeadline(event) {
+    currentSearchTermDeadline = event.target.value;
+    currentDeadlinePage = 1;
+    renderDeadlineTargets();
 }
 
 // ==== INÍCIO SEÇÃO - VERSÍCULOS BÍBLICOS ====
@@ -1024,4 +1221,15 @@ function refreshDailyTargets() {
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
+}
+// Função para verificar e alertar sobre prazos de validade vencidos
+function checkExpiredDeadlines() {
+    const expiredTargets = prayerTargets.filter(target => target.hasDeadline && isDateExpired(target.deadlineDate));
+    if (expiredTargets.length > 0) {
+        let message = 'Os seguintes alvos estão com prazo de validade vencido:\n';
+        expiredTargets.forEach(target => {
+            message += `- ${target.title}\n`;
+        });
+        alert(message);
+    }
 }
