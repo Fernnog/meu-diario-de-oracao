@@ -474,6 +474,7 @@ function saveObservation(index) {
         alert("Por favor, insira o texto da observação.");
     }
 }
+
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
 
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
@@ -815,6 +816,18 @@ function generateViewHTML() {
             border: 0;
             border-top: 1px solid #ddd;
         }
+        .deadline-tag {
+          background-color: #ffcc00;
+          color: #333;
+          padding: 5px 10px;
+          border-radius: 5px;
+          margin-left: 10px;
+          font-size: 0.8em;
+        }
+        .expired {
+          background-color: #ff6666;
+          color: #fff;
+        }
         @media (max-width: 768px) {
             body {
                 font-size: 14px;
@@ -912,6 +925,14 @@ function generateDailyViewHTML() {
             border: 0;
             border-top: 1px solid #ddd;
         }
+        .deadline-tag {
+          background-color: #ffcc00;
+          color: #333;
+          padding: 5px 10px;
+          border-radius: 5px;
+          margin-left: 10px;
+          font-size: 0.8em;
+        }
         @media (max-width: 768px) {
             body {
                 font-size: 14px;
@@ -936,6 +957,7 @@ function generateDailyViewHTML() {
             const title = div.querySelector('h3')?.textContent || '';
             const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
             const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+            const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
 
             const observations = Array.from(div.querySelectorAll('h4 + p'))
                 .map(p => p.textContent)
@@ -943,7 +965,7 @@ function generateDailyViewHTML() {
 
             htmlContent += `
             <div>
-                <h2>${title}</h2>
+                <h2>${title} ${deadlineTag}</h2>
                 <p>${details}</p>
                 <p>${timeElapsed}</p>
         `;
@@ -1193,8 +1215,9 @@ function refreshDailyTargets() {
         dailyDiv.classList.add("target");
 
         // Construindo o HTML para incluir título, detalhes e tempo decorrido
+        const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         let contentHTML = `
-            <h3>${target.title}</h3>
+            <h3>${target.title} ${deadlineTag}</h3>
             <p>${target.details}</p> <!-- Inclui os detalhes (observações originais) -->
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
         `;
