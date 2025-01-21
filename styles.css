@@ -123,6 +123,14 @@ h4 {
 .main-menu .action-btn:hover {
     background-color: #4a301a; /* Tom mais escuro no hover */
 }
+/* Novos botões prazo de validade em tom mais escuro */
+.main-menu button.deadline, .main-menu .btn.deadline {
+    background-color: #e29420;
+}
+
+.main-menu button.deadline:hover, .main-menu .btn.deadline:hover {
+    background-color: #ca7d1b; /* Tom mais escuro no hover */
+}
 
 /* Linhas de separação */
 hr.menu-separator {
@@ -531,7 +539,6 @@ input[type="date"] {
 }
 /* ==== FIM SEÇÃO - ESTILOS DO BOTÃO "OREI!" ==== */
 
-
 /* ==== INÍCIO SEÇÃO - ESTILOS DO POPUP ==== */
 .popup {
     display: none;
@@ -564,6 +571,24 @@ input[type="date"] {
     color: #555;
 }
 /* ==== FIM SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
+/* Estilo para a tag de prazo de validade */
+.deadline-tag {
+    background-color: #ffcc00; /* Cor de fundo amarela */
+    color: #333; /* Cor do texto escura */
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 0.8em;
+}
+
+/* Estilo para quando o prazo está vencido */
+.deadline-tag.expired {
+    background-color: #ff6666; /* Cor de fundo vermelha */
+    color: #fff; /* Cor do texto branca */
+}
+/* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
 
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
