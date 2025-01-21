@@ -571,7 +571,6 @@ input[type="date"] {
     color: #555;
 }
 /* ==== FIM SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
-
 /* ==== INÍCIO SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
 /* Estilo para a tag de prazo de validade */
 .deadline-tag {
@@ -582,6 +581,7 @@ input[type="date"] {
     margin-left: 10px;
     font-size: 0.8em;
 }
+
 /* Estilo para a tag de prazo de validade em ALVOS DIÁRIOS */
 .daily-section .deadline-tag {
     background-color: #ffcc00; /* Cor de fundo amarela */
@@ -596,6 +596,50 @@ input[type="date"] {
 .deadline-tag.expired {
     background-color: #ff6666; /* Cor de fundo vermelha */
     color: #fff; /* Cor do texto branca */
+}
+
+/* Estilos para o contêiner do filtro */
+.filter-container {
+    text-align: left; /* Alinhamento à esquerda */
+    margin: 20px auto; /* Margem superior e inferior para separação */
+    padding: 10px; /* Espaçamento interno */
+    background-color: rgba(249, 168, 37, 0.2); /* Fundo laranja claro */
+    width: fit-content; /* Ajusta a largura ao conteúdo */
+    max-width: 90%; /* Largura máxima para evitar que fique muito largo */
+    display: flex; /* Usar flexbox para alinhar itens na mesma linha */
+    align-items: center; /* Alinhar itens verticalmente ao centro */
+}
+
+/* Estilo para o checkbox dentro do contêiner do filtro */
+.filter-container input[type="checkbox"] {
+    margin: 0 10px 0 0; /* Espaçamento à direita do checkbox */
+    vertical-align: middle; /* Alinhamento vertical para melhor estética */
+}
+
+/* Estilo para o label do checkbox */
+.filter-container label {
+    font-size: 0.9em; /* Tamanho da fonte */
+    vertical-align: middle; /* Alinhamento vertical para melhor estética */
+}
+/* Estilo para a linha horizontal após o título */
+.title-separator {
+    border: none;
+    border-top: 3px solid #e29420; /* Linha mais espessa */
+    margin: 10px 0; /* Espaçamento acima e abaixo da linha */
+}
+
+/* Estilo para a linha horizontal após a caixa de pesquisa */
+.search-separator {
+    border: none;
+    border-top: 1px solid #e29420; /* Linha padrão */
+    margin: 10px 0; /* Espaçamento acima e abaixo da linha */
+}
+
+/* Estilo para a linha horizontal após o filtro */
+.filter-separator {
+    border: none;
+    border-top: 1px solid #e29420; /* Linha padrão */
+    margin: 10px 0; /* Espaçamento acima e abaixo da linha */
 }
 /* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
 
