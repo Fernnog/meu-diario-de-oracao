@@ -49,12 +49,18 @@ function timeElapsed(date) {
     const weeks = Math.floor(days / 7);
     return `${weeks} semana(s)`;
 }
+
 // Função para verificar se uma data está vencida em relação à data atual
 function isDateExpired(dateString) {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Zerar horas, minutos, segundos e milissegundos
     const date = new Date(dateString);
     return date < today;
+}
+
+// Função para gerar um ID único
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 // ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
 
@@ -97,7 +103,7 @@ function loadData() {
     renderTargets();
     renderArchivedTargets();
     renderResolvedTargets();
-    renderDeadlineTargets(); // Adicionado para renderizar os alvos com prazo de validade
+    renderDeadlineTargets();
     refreshDailyTargets();
 
     // Mostrar as seções principais
@@ -118,8 +124,8 @@ window.onload = function () {
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
     document.getElementById('searchDeadline').addEventListener('input', handleSearchDeadline);
-    document.getElementById('showExpiredOnly').addEventListener('change', handleExpiredFilterChange); // Adicionado event listener para o checkbox
-    document.getElementById('viewDeadlineButton').addEventListener('click', () => { // Novo
+    document.getElementById('showExpiredOnly').addEventListener('change', handleExpiredFilterChange);
+    document.getElementById('viewDeadlineButton').addEventListener('click', () => {
         mainPanel.style.display = "none";
         dailySection.style.display = "none";
         archivedPanel.style.display = "none";
@@ -148,20 +154,20 @@ function renderTargets() {
         const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         const targetDiv = document.createElement("div");
         targetDiv.classList.add("target");
-        targetDiv.setAttribute('data-target-id', target.id);
         targetDiv.innerHTML = `
-            <h3>${target.title} ${deadlineTag}</h3>
+            <h3>${deadlineTag} ${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Pendente</p>
-            <button onclick="markAsResolved(${target.id})" class="btn resolved">Marcar como Respondido</button>
-            <button onclick="archiveTarget(${target.id})" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservation(${target.id})" class="btn add-observation">Adicionar Observação</button>
-            <div class="add-observation-form" style="display: none;">
+            <button onclick="markAsResolved('${target.id}')" class="btn resolved">Marcar como Respondido</button>
+            <button onclick="archiveTarget('${target.id}')" class="btn archive">Arquivar</button>
+            <button onclick="toggleAddObservation('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
+                <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
                 <input type="date" >
-                <button onclick="saveObservation(${target.id})" class="btn">Salvar Observação</button>
+                <button onclick="saveObservation('${target.id}')" class="btn">Salvar Observação</button>
             </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
@@ -190,9 +196,9 @@ function renderArchivedTargets() {
             <h3>${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data Original:</strong> ${formattedDate}</p>
-             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
-             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
+            <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
         `;
         archivedList.appendChild(archivedDiv);
     });
@@ -217,7 +223,7 @@ function renderResolvedTargets() {
             <h3>${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data Original:</strong> ${formattedDate}</p>
-             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Respondido</p>
             <p><strong>Data de Resolução:</strong> ${resolvedDate}</p>
         `;
@@ -225,22 +231,18 @@ function renderResolvedTargets() {
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
-
 // Renderizar alvos com prazo de validade
 function renderDeadlineTargets() {
     const deadlineList = document.getElementById("deadlineList");
     deadlineList.innerHTML = "";
 
-    // Verificar se o checkbox de alvos vencidos está marcado
     const showExpiredOnly = document.getElementById("showExpiredOnly").checked;
 
-    // Filtrar alvos que têm prazo de validade e, se a opção estiver marcada, filtrar também os vencidos
     let filteredTargets = prayerTargets.filter(t => t.hasDeadline);
     if (showExpiredOnly) {
         filteredTargets = filteredTargets.filter(t => isDateExpired(t.deadlineDate));
     }
 
-    // Aplicar o filtro de pesquisa
     filteredTargets = filterTargets(filteredTargets, currentSearchTermDeadline);
 
     const startIndex = (currentDeadlinePage - 1) * targetsPerPage;
@@ -252,20 +254,20 @@ function renderDeadlineTargets() {
         const deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>`;
         const targetDiv = document.createElement("div");
         targetDiv.classList.add("target");
-        targetDiv.setAttribute('data-target-id', target.id);
         targetDiv.innerHTML = `
-            <h3>${target.title} ${deadlineTag}</h3>
+            <h3>${deadlineTag} ${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Pendente</p>
-            <button onclick="markAsResolvedDeadline(${target.id})" class="btn resolved">Marcar como Respondido</button>
-            <button onclick="archiveTargetDeadline(${target.id})" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservationDeadline(${target.id})" class="btn add-observation">Adicionar Observação</button>
-            <div class="add-observation-form" style="display: none;">
+            <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
+            <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
+            <button onclick="toggleAddObservationDeadline('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
+                <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
                 <input type="date">
-                <button onclick="saveObservationDeadline(${target.id})" class="btn">Salvar Observação</button>
+                <button onclick="saveObservationDeadline('${target.id}')" class="btn">Salvar Observação</button>
             </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
@@ -293,7 +295,7 @@ function markAsResolvedDeadline(targetId) {
     prayerTargets.splice(targetIndex, 1);
     updateStorage();
     currentDeadlinePage = 1;
-    renderDeadlineTargets(); // Atualizar a lista de alvos com prazo
+    renderDeadlineTargets();
     refreshDailyTargets();
 }
 
@@ -311,47 +313,48 @@ function archiveTargetDeadline(targetId) {
     prayerTargets.splice(targetIndex, 1);
     updateStorage();
     currentDeadlinePage = 1;
-    renderDeadlineTargets(); // Atualizar a lista de alvos com prazo
+    renderDeadlineTargets();
     refreshDailyTargets();
 }
+
+// Alterna a exibição do formulário de adição de observação (prazo de validade) e exibe o título do alvo
 function toggleAddObservationDeadline(targetId) {
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
-    const form = targetDiv.querySelector('.add-observation-form');
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+    if (form.style.display === 'block') {
+        const target = prayerTargets.find(t => t.id === targetId);
+        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
+    }
 }
 
 function saveObservationDeadline(targetId) {
-    const target = prayerTargets.find(t => t.id === targetId);
-
-    if (!target) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
-
-    // Obter o formulário correspondente ao alvo
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
-    const form = targetDiv.querySelector('.add-observation-form');
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
     const observationText = textarea.value.trim();
     const observationDateValue = dateInput.value;
 
-    // Validar e salvar a observação
     if (observationText !== "") {
         let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+
+        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
 
         const newObservation = {
             date: observationDate,
             observation: observationText,
         };
 
-        target.observations.push(newObservation);
-        updateStorage();
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
 
-        // Renderizar novamente os alvos para atualizar as observações
         renderDeadlineTargets();
 
-        // Limpar o campo de texto e a data e ocultar o formulário
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
@@ -360,6 +363,7 @@ function saveObservationDeadline(targetId) {
         alert("Por favor, insira o texto da observação.");
     }
 }
+
 // Função para renderizar a paginação
 function renderPagination(panelId, page, targets) {
     const totalPages = Math.ceil(targets.length / targetsPerPage);
@@ -369,7 +373,7 @@ function renderPagination(panelId, page, targets) {
         paginationDiv.id = "pagination-" + panelId;
         document.getElementById(panelId).appendChild(paginationDiv);
     }
-    paginationDiv.innerHTML = ""; // Limpa a paginação anterior
+    paginationDiv.innerHTML = "";
 
     if (totalPages <= 1) {
         paginationDiv.style.display = 'none';
@@ -398,11 +402,10 @@ function renderPagination(panelId, page, targets) {
             } else if (panelId === 'resolvedPanel') {
                 currentResolvedPage = i;
                 renderResolvedTargets();
-            } else if (panelId === 'deadlinePanel') { // Adicionado para suportar o painel de alvos com prazo
+            } else if (panelId === 'deadlinePanel') {
                 currentDeadlinePage = i;
                 renderDeadlineTargets();
             }
-
         });
         paginationDiv.appendChild(pageLink);
     }
@@ -418,25 +421,21 @@ function renderObservations(observations) {
     });
     return observationsHTML;
 }
+
 // Função para alternar a exibição do formulário de adição de observação
 function toggleAddObservation(targetId) {
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
-    const form = targetDiv.querySelector('.add-observation-form');
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+    if (form.style.display === 'block') {
+        const target = prayerTargets.find(t => t.id === targetId);
+        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
+    }
 }
 
 // Função para salvar a observação
 function saveObservation(targetId) {
-    const target = prayerTargets.find(t => t.id === targetId);
-
-    if (!target) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
-
-    // Obter o formulário correspondente ao alvo
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
-    const form = targetDiv.querySelector('.add-observation-form');
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
     const observationText = textarea.value.trim();
@@ -445,46 +444,52 @@ function saveObservation(targetId) {
     if (observationText !== "") {
         let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
 
+        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
+
         const newObservation = {
             date: observationDate,
             observation: observationText,
         };
 
-        target.observations.push(newObservation);
-        updateStorage();
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
 
-        // Renderizar novamente o alvo para atualizar as observações
         renderTargets();
 
-        // Limpar o campo de texto e a data e ocultar o formulário
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
+
     } else {
         alert("Por favor, insira o texto da observação.");
     }
 }
+
 // Função para lidar com a mudança no filtro de alvos vencidos
 function handleExpiredFilterChange() {
     currentDeadlinePage = 1;
     renderDeadlineTargets();
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
-
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
 // Adicionar alvo
-// Exibe se campo prazo de validade vai ser preenchido ou não
 document.getElementById('hasDeadline').addEventListener('change', function() {
     const deadlineContainer = document.getElementById('deadlineContainer');
     deadlineContainer.style.display = this.checked ? 'block' : 'none';
 });
+
 const form = document.getElementById("prayerForm");
 form.addEventListener("submit", (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
     const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value)) : null;
     const newTarget = {
-        id: Date.now(), // Adiciona um ID único
+        id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
         date: formatDateToISO(new Date(document.getElementById("date").value)),
@@ -494,7 +499,7 @@ form.addEventListener("submit", (e) => {
         deadlineDate: deadlineDate
     };
     prayerTargets.push(newTarget);
-    updateStorage();
+    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
     currentPage = 1;
     renderTargets();
     form.reset();
@@ -711,7 +716,7 @@ backToMainButton.addEventListener("click", () => {
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "none";
-     hideTargets();
+    hideTargets();
     currentPage = 1;
 });
 
@@ -755,15 +760,18 @@ document.getElementById("viewResolvedViewButton").addEventListener("click", () =
     startDateInput.value = '';
     endDateInput.value = '';
 });
+
 const dateRangeModal = document.getElementById("dateRangeModal");
 const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
 const generateResolvedViewButton = document.getElementById("generateResolvedView");
 const cancelDateRangeButton = document.getElementById("cancelDateRange");
 const startDateInput = document.getElementById("startDate");
 const endDateInput = document.getElementById("endDate");
+
 closeDateRangeModalButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
+
 generateResolvedViewButton.addEventListener("click", () => {
     const startDate = startDateInput.value;
     const endDate = endDateInput.value;
@@ -774,6 +782,7 @@ generateResolvedViewButton.addEventListener("click", () => {
     generateResolvedViewHTML(startDate, adjustedEndDate);
     dateRangeModal.style.display = "none";
 });
+
 cancelDateRangeButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
@@ -866,25 +875,25 @@ function generateViewHTML() {
     if (prayerTargets.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
     } else {
-        prayerTargets.forEach(target => {
-            const formattedDate = formatDateForDisplay(target.date);
-            const time = timeElapsed(target.date);
-            const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
-            htmlContent += `
-            <div>
-                <h2>${target.title} ${deadlineTag}</h2>
-                <p>${target.details}</p>
-                <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
-                <p><strong>Tempo Decorrido:</strong> ${time}</p>
-        `;
-            if (target.observations && target.observations.length > 0) {
-                htmlContent += `<h3>Observações:</h3>`;
-                target.observations.forEach(obs => {
-                    htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
-                });
-            }
-            htmlContent += '</div><hr>';
+    prayerTargets.forEach(target => {
+    const formattedDate = formatDateForDisplay(target.date);
+    const time = timeElapsed(target.date);
+    const deadlineTag = target.hasDeadline ? `<span class="deadline-tag" style="margin-left: 10px; ${isDateExpired(target.deadlineDate) ? 'background-color: #ff6666; color: #fff;' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+    htmlContent += `
+    <div>
+        <h2>${deadlineTag} ${target.title}</h2>
+        <p>${target.details}</p>
+        <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
+        <p><strong>Tempo Decorrido:</strong> ${time}</p>
+`;
+    if (target.observations && target.observations.length > 0) {
+        htmlContent += `<h3>Observações:</h3>`;
+        target.observations.forEach(obs => {
+            htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
         });
+    }
+    htmlContent += '</div><hr>';
+});
     }
 
     htmlContent += `</body></html>`;
@@ -960,14 +969,13 @@ function generateDailyViewHTML() {
                 color: #333;
                 padding: 5px 10px;
                 border-radius: 5px;
-                margin-left: 10px;
+                margin-right: 10px; /* Espaço à direita da tag */
                 font-size: 0.8em;
-                float: right; /* Para flutuar à direita do título */
             }
             .title-container {
                 display: flex; /* Para alinhar título e tag na mesma linha */
                 align-items: center; /* Para alinhar verticalmente */
-                justify-content: space-between; /* Para separar título e tag */
+                justify-content: flex-start; /* Alinha os itens à esquerda */
             }
             @media (max-width: 768px) {
                 body {
@@ -984,45 +992,37 @@ function generateDailyViewHTML() {
     </head>
     <body>
         <h1>Alvos de Oração do Dia</h1>
-        <div class="verse-container">${currentVerse}</div>`; // Inserindo o versículo
+        <div class="verse-container">${currentVerse}</div>`;
 
     const dailyTargetsElement = document.getElementById("dailyTargets");
     if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
     } else {
-        Array.from(dailyTargetsElement.children).forEach(div => {
-            // Captura o título e remove a tag de prazo, se existir
-            const titleElement = div.querySelector('h3');
-            let title = titleElement ? titleElement.cloneNode(true) : document.createElement('h3');
-            const deadlineTagElement = title.querySelector('.deadline-tag');
-            if (deadlineTagElement) {
-                deadlineTagElement.remove(); // Remove a tag de prazo do título clonado
-            }
-            title = title.textContent.trim();
+     Array.from(dailyTargetsElement.children).forEach(div => {
+    // Captura a tag de prazo separadamente
+    const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
 
-            // Captura a tag de prazo separadamente
-            const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
+    // Captura o título 
+    const titleElement = div.querySelector('h3');
+    let title = titleElement ? titleElement.textContent.trim() : '';
 
-            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
-            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
-            const observations = Array.from(div.querySelectorAll('h4 + p'))
-                .map(p => p.textContent)
-                .join('\n');
+    const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+    const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+    const observations = Array.from(div.querySelectorAll('h4 + p'))
+        .map(p => p.textContent)
+        .join('\n');
 
-            htmlContent += `
-            <div>
-                <div class="title-container">
-                    <h2>${title}</h2>  <!-- Título sem a tag de prazo -->
-                    ${deadlineTag}    <!-- Tag de prazo inserida separadamente -->
-                </div>
-                <p>${details}</p>
-                <p>${timeElapsed}</p>
-        `;
-            if (observations) {
-                htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
-            }
-            htmlContent += `</div><hr>`;
-        });
+    htmlContent += `
+    <div>
+        <h2>${deadlineTag} ${title}</h2>
+        <p>${details}</p>
+        <p>${timeElapsed}</p>
+`;
+    if (observations) {
+        htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
+    }
+    htmlContent += `</div><hr>`;
+});
     }
 
     htmlContent += `</body></html>`;
@@ -1272,10 +1272,9 @@ function refreshDailyTargets() {
         // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
         const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         let contentHTML = `
-            <h3>${target.title}</h3> <!-- Removida a tag de prazo do título -->
+            <h3>${deadlineTag} ${target.title}</h3>
             <p>${target.details}</p> <!-- Inclui os detalhes (observações originais) -->
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-            ${deadlineTag} <!-- Adiciona a tag de prazo separadamente -->
         `;
 
         // Adicionando observações, se existirem
