@@ -875,25 +875,25 @@ function generateViewHTML() {
     if (prayerTargets.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
     } else {
-    prayerTargets.forEach(target => {
-    const formattedDate = formatDateForDisplay(target.date);
-    const time = timeElapsed(target.date);
-    const deadlineTag = target.hasDeadline ? `<span class="deadline-tag" style="margin-left: 10px; ${isDateExpired(target.deadlineDate) ? 'background-color: #ff6666; color: #fff;' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
-    htmlContent += `
-    <div>
-        <h2>${deadlineTag} ${target.title}</h2>
-        <p>${target.details}</p>
-        <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
-        <p><strong>Tempo Decorrido:</strong> ${time}</p>
-`;
-    if (target.observations && target.observations.length > 0) {
-        htmlContent += `<h3>Observações:</h3>`;
-        target.observations.forEach(obs => {
-            htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+        prayerTargets.forEach(target => {
+            const formattedDate = formatDateForDisplay(target.date);
+            const time = timeElapsed(target.date);
+            const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+            htmlContent += `
+            <div>
+                <h2>${deadlineTag} ${target.title}</h2>
+                <p>${target.details}</p>
+                <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
+                <p><strong>Tempo Decorrido:</strong> ${time}</p>
+        `;
+            if (target.observations && target.observations.length > 0) {
+                htmlContent += `<h3>Observações:</h3>`;
+                target.observations.forEach(obs => {
+                    htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+                });
+            }
+            htmlContent += '</div><hr>';
         });
-    }
-    htmlContent += '</div><hr>';
-});
     }
 
     htmlContent += `</body></html>`;
@@ -998,31 +998,33 @@ function generateDailyViewHTML() {
     if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
     } else {
-     Array.from(dailyTargetsElement.children).forEach(div => {
-    // Captura a tag de prazo separadamente
-    const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
+        Array.from(dailyTargetsElement.children).forEach(div => {
+            // Captura a tag de prazo separadamente
+            const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
 
-    // Captura o título 
-    const titleElement = div.querySelector('h3');
-    let title = titleElement ? titleElement.textContent.trim() : '';
+            // Captura o título 
+            const titleElement = div.querySelector('h3');
+            let title = titleElement ? titleElement.textContent.trim() : '';
 
-    const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
-    const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
-    const observations = Array.from(div.querySelectorAll('h4 + p'))
-        .map(p => p.textContent)
-        .join('\n');
+            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+            const observations = Array.from(div.querySelectorAll('h4 + p'))
+                .map(p => p.textContent)
+                .join('\n');
 
-    htmlContent += `
-    <div>
-        <h2>${deadlineTag} ${title}</h2>
-        <p>${details}</p>
-        <p>${timeElapsed}</p>
-`;
-    if (observations) {
-        htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
-    }
-    htmlContent += `</div><hr>`;
-});
+            htmlContent += `
+            <div>
+                <div class="title-container">
+                    ${deadlineTag} <h2>${title}</h2>
+                </div>
+                <p>${details}</p>
+                <p>${timeElapsed}</p>
+        `;
+            if (observations) {
+                htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
+            }
+            htmlContent += `</div><hr>`;
+        });
     }
 
     htmlContent += `</body></html>`;
@@ -1311,3 +1313,4 @@ function checkExpiredDeadlines() {
         alert(message);
     }
 }
+
