@@ -26,6 +26,11 @@ function formatDateToISO(date) {
 
 // Função para formatar data para exibição (DD/MM/YYYY)
 function formatDateForDisplay(dateString) {
+    // Verificar se dateString é um objeto Date e convertê-lo para string ISO, se necessário
+    if (dateString instanceof Date) {
+        dateString = formatDateToISO(dateString);
+    }
+
     if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Data Inválida';
@@ -63,6 +68,7 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 // ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+
 // ==== INÍCIO SEÇÃO - FUNÇÕES AUXILIARES ====
 
 // Função para reidratar os alvos (converter strings de data para objetos Date)
@@ -89,7 +95,7 @@ function rehydrateTargets(targets) {
     });
 }
 
-// Função para reassociar os eventos aos botões
+// Função para reassociar os eventos aos botões (CORRIGIDA)
 function reattachEventListeners() {
     // Reassociar eventos aos botões dos alvos principais
     const targetDivs = document.querySelectorAll("#targetList .target");
@@ -121,11 +127,22 @@ function reattachEventListeners() {
         addObservationButton.onclick = () => toggleAddObservationDeadline(targetId);
     });
 
-    // Fazer o mesmo para os alvos arquivados e resolvidos, se necessário
-    // ...
+    // Reassociar eventos aos botões de alvos ARQUIVADOS (se necessário)
+    const archivedTargetDivs = document.querySelectorAll("#archivedList .target");
+    archivedTargetDivs.forEach(targetDiv => {
+        // Aqui você pode adicionar lógica para associar eventos a botões
+        // específicos dentro dos alvos arquivados, se houver.
+        // Por exemplo, um botão para desarquivar.
+    });
+
+    // Reassociar eventos aos botões de alvos RESOLVIDOS (se necessário)
+    const resolvedTargetDivs = document.querySelectorAll("#resolvedList .target");
+    resolvedTargetDivs.forEach(targetDiv => {
+        // Aqui você pode adicionar lógica para associar eventos a botões
+        // específicos dentro dos alvos resolvidos, se houver.
+    });
 }
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
-
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
 function setLogin(login) {
@@ -398,7 +415,7 @@ function saveObservationDeadline(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -504,7 +521,7 @@ function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -549,12 +566,12 @@ const form = document.getElementById("prayerForm");
 form.addEventListener("submit", (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
-    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value)) : null;
+    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00")) : null;
     const newTarget = {
         id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: formatDateToISO(new Date(document.getElementById("date").value)),
+        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")), // CORREÇÃO AQUI
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
@@ -635,22 +652,33 @@ function exportData() {
     URL.revokeObjectURL(url);
 }
 
-// Importar dados de arquivo JSON
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado)
 function importData(event) {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) {
+        console.log("Nenhum arquivo selecionado.");
+        return;
+    }
     const reader = new FileReader();
     reader.onload = function (e) {
         try {
+            console.log("Conteúdo bruto do arquivo:", e.target.result); // **LOG DA ETAPA 1**
             const importedData = JSON.parse(e.target.result);
+            console.log("Dados importados (parsed):", importedData); // **LOG DA ETAPA 2**
+
             const importedLogin = importedData.login;
             const newPrayerTargets = importedData.prayerTargets || [];
             const newArchivedTargets = importedData.archivedTargets || [];
+
+            console.log("Login importado:", importedLogin); // **LOG DA ETAPA 3**
+            console.log("Novos alvos de oração importados:", newPrayerTargets); // **LOG DA ETAPA 4**
+            console.log("Novos alvos arquivados importados:", newArchivedTargets); // **LOG DA ETAPA 5**
 
             const currentLogin = localStorage.getItem('currentLogin');
 
             if (importedLogin !== currentLogin) {
                 if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
+                    console.log("Importação cancelada devido à incompatibilidade de login.");
                     return;
                 }
             }
@@ -664,9 +692,12 @@ function importData(event) {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
                     if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
                     prayerTargets.push(target);
+                } else {
+                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
                 }
             });
 
@@ -674,9 +705,12 @@ function importData(event) {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
                     if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
                     archivedTargets.push(target);
+                } else {
+                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
                 }
             });
 
@@ -684,18 +718,29 @@ function importData(event) {
             prayerTargets = rehydrateTargets(prayerTargets);
             archivedTargets = rehydrateTargets(archivedTargets);
 
+            console.log("prayerTargets após reidratação:", prayerTargets); // **LOG DA ETAPA 6**
+            console.log("archivedTargets após reidratação:", archivedTargets); // **LOG DA ETAPA 7**
+
             updateStorage();
+
+            // Atualizar a UI e reassociar event listeners
             renderTargets();
             renderArchivedTargets();
             renderResolvedTargets();
+            renderDeadlineTargets();
             refreshDailyTargets();
 
-            // Reassociar os eventos
+            // Reassociar os eventos (Importante para que os botões funcionem)
             reattachEventListeners();
 
         } catch (error) {
-            alert("Erro ao importar dados. Certifique-se de que é um arquivo válido.");
+            console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
+            console.error("Stack trace do erro:", error.stack); // **LOG DA ETAPA 9**
+            alert("Erro ao importar dados. Veja o console para mais detalhes.");
         }
+    };
+    reader.onerror = function (error) {
+        console.error("Erro ao ler o arquivo:", error); // **LOG DA ETAPA 10**
     };
     reader.readAsText(file);
 }
