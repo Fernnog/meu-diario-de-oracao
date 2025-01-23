@@ -63,6 +63,68 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 // ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+// ==== INÍCIO SEÇÃO - FUNÇÕES AUXILIARES ====
+
+// Função para reidratar os alvos (converter strings de data para objetos Date)
+function rehydrateTargets(targets) {
+    return targets.map(target => {
+        // Converter strings de data para objetos Date
+        target.date = new Date(target.date);
+        if (target.archivedDate) {
+            target.archivedDate = new Date(target.archivedDate);
+        }
+        if (target.deadlineDate) {
+            target.deadlineDate = new Date(target.deadlineDate);
+        }
+        if (target.observations) {
+            target.observations.forEach(obs => {
+                obs.date = new Date(obs.date);
+            });
+        }
+
+        // Aqui você pode adicionar mais lógica para associar métodos,
+        // se necessário, por exemplo, usando uma classe ou um protótipo.
+
+        return target;
+    });
+}
+
+// Função para reassociar os eventos aos botões
+function reattachEventListeners() {
+    // Reassociar eventos aos botões dos alvos principais
+    const targetDivs = document.querySelectorAll("#targetList .target");
+    targetDivs.forEach(targetDiv => {
+        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
+
+        const resolvedButton = targetDiv.querySelector(".resolved");
+        resolvedButton.onclick = () => markAsResolved(targetId);
+
+        const archiveButton = targetDiv.querySelector(".archive");
+        archiveButton.onclick = () => archiveTarget(targetId);
+
+        const addObservationButton = targetDiv.querySelector(".add-observation");
+        addObservationButton.onclick = () => toggleAddObservation(targetId);
+    });
+
+    // Reassociar eventos aos botões dos alvos com prazo de validade
+    const deadlineTargetDivs = document.querySelectorAll("#deadlineList .target");
+    deadlineTargetDivs.forEach(targetDiv => {
+        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
+
+        const resolvedButton = targetDiv.querySelector(".resolved");
+        resolvedButton.onclick = () => markAsResolvedDeadline(targetId);
+
+        const archiveButton = targetDiv.querySelector(".archive");
+        archiveButton.onclick = () => archiveTargetDeadline(targetId);
+
+        const addObservationButton = targetDiv.querySelector(".add-observation");
+        addObservationButton.onclick = () => toggleAddObservationDeadline(targetId);
+    });
+
+    // Fazer o mesmo para os alvos arquivados e resolvidos, se necessário
+    // ...
+}
+// ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
 
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
@@ -595,25 +657,42 @@ function importData(event) {
 
             const allTargets = [...prayerTargets, ...archivedTargets];
 
-            const isDuplicate = (target) => allTargets.some(item => item.title === target.title && item.date === target.date);
+            // Verificar duplicatas com base no título, data e ID
+            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
 
             newPrayerTargets.forEach(target => {
                 if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (allTargets.some(t => t.id === target.id)) {
+                        target.id = generateUniqueId();
+                    }
                     prayerTargets.push(target);
                 }
             });
 
             newArchivedTargets.forEach(target => {
                 if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (allTargets.some(t => t.id === target.id)) {
+                        target.id = generateUniqueId();
+                    }
                     archivedTargets.push(target);
                 }
             });
+
+            // Reidratar os alvos (converter strings de data para objetos Date)
+            prayerTargets = rehydrateTargets(prayerTargets);
+            archivedTargets = rehydrateTargets(archivedTargets);
 
             updateStorage();
             renderTargets();
             renderArchivedTargets();
             renderResolvedTargets();
             refreshDailyTargets();
+
+            // Reassociar os eventos
+            reattachEventListeners();
+
         } catch (error) {
             alert("Erro ao importar dados. Certifique-se de que é um arquivo válido.");
         }
@@ -1313,4 +1392,3 @@ function checkExpiredDeadlines() {
         alert(message);
     }
 }
-
