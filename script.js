@@ -95,53 +95,6 @@ function rehydrateTargets(targets) {
     });
 }
 
-// Função para reassociar os eventos aos botões (CORRIGIDA)
-function reattachEventListeners() {
-    // Reassociar eventos aos botões dos alvos principais
-    const targetDivs = document.querySelectorAll("#targetList .target");
-    targetDivs.forEach(targetDiv => {
-        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
-
-        const resolvedButton = targetDiv.querySelector(".resolved");
-        resolvedButton.onclick = () => markAsResolved(targetId);
-
-        const archiveButton = targetDiv.querySelector(".archive");
-        archiveButton.onclick = () => archiveTarget(targetId);
-
-        const addObservationButton = targetDiv.querySelector(".add-observation");
-        addObservationButton.onclick = () => toggleAddObservation(targetId);
-    });
-
-    // Reassociar eventos aos botões dos alvos com prazo de validade
-    const deadlineTargetDivs = document.querySelectorAll("#deadlineList .target");
-    deadlineTargetDivs.forEach(targetDiv => {
-        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
-
-        const resolvedButton = targetDiv.querySelector(".resolved");
-        resolvedButton.onclick = () => markAsResolvedDeadline(targetId);
-
-        const archiveButton = targetDiv.querySelector(".archive");
-        archiveButton.onclick = () => archiveTargetDeadline(targetId);
-
-        const addObservationButton = targetDiv.querySelector(".add-observation");
-        addObservationButton.onclick = () => toggleAddObservationDeadline(targetId);
-    });
-
-    // Reassociar eventos aos botões de alvos ARQUIVADOS (se necessário)
-    const archivedTargetDivs = document.querySelectorAll("#archivedList .target");
-    archivedTargetDivs.forEach(targetDiv => {
-        // Aqui você pode adicionar lógica para associar eventos a botões
-        // específicos dentro dos alvos arquivados, se houver.
-        // Por exemplo, um botão para desarquivar.
-    });
-
-    // Reassociar eventos aos botões de alvos RESOLVIDOS (se necessário)
-    const resolvedTargetDivs = document.querySelectorAll("#resolvedList .target");
-    resolvedTargetDivs.forEach(targetDiv => {
-        // Aqui você pode adicionar lógica para associar eventos a botões
-        // específicos dentro dos alvos resolvidos, se houver.
-    });
-}
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
@@ -278,6 +231,7 @@ function renderArchivedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
         `;
         archivedList.appendChild(archivedDiv);
     });
@@ -341,7 +295,7 @@ function renderDeadlineTargets() {
             <p><strong>Status:</strong> Pendente</p>
             <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservationDeadline('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            <button class="btn add-observation">Adicionar Observação</button>
             <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
             <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
                 <h4 class="target-title"></h4>
@@ -354,10 +308,17 @@ function renderDeadlineTargets() {
             </div>
         `;
         deadlineList.appendChild(targetDiv);
+
+        // Event listener para o botão de adicionar observação para cada alvo com prazo
+        const addObservationButton = targetDiv.querySelector('.add-observation');
+        addObservationButton.addEventListener('click', () => {
+            toggleAddObservationDeadline(target.id);
+        });
     });
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
 }
+
 function markAsResolvedDeadline(targetId) {
     const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
 
@@ -651,7 +612,8 @@ function exportData() {
     a.click();
     URL.revokeObjectURL(url);
 }
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado)
+
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
 function importData(event) {
     const file = event.target.files[0];
     if (!file) {
@@ -735,8 +697,14 @@ function importData(event) {
             renderDeadlineTargets();
             refreshDailyTargets();
 
-            // Reassociar os eventos (Importante para que os botões funcionem)
-            reattachEventListeners();
+            // Mostrar mensagem de sucesso
+            const message = document.getElementById('importSuccessMessage');
+            message.classList.add('show');
+
+            // Ocultar a mensagem após 3 segundos
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 3000);
 
         } catch (error) {
             console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
@@ -1501,5 +1469,15 @@ function checkExpiredDeadlines() {
             message += `- ${target.title}\n`;
         });
         alert(message);
+    }
+}
+
+function deleteArchivedTarget(targetId) {
+    if (confirm("Tem certeza de que deseja excluir este alvo arquivado? Esta ação não pode ser desfeita.")) {
+        archivedTargets = archivedTargets.filter(target => target.id !== targetId);
+        resolvedTargets = resolvedTargets.filter(target => target.id !== targetId);
+        updateStorage();
+        currentArchivedPage = 1;
+        renderArchivedTargets();
     }
 }
