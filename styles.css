@@ -367,7 +367,28 @@ input[type="date"] {
     opacity: 1; /* Opacidade total */
 }
 /* ==== FIM SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
+/* ==== INÍCIO SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE IMPORTAÇÃO ==== */
+.import-success-message {
+    display: none; /* Inicialmente oculto */
+    position: fixed; /* Posicionamento fixo na tela */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centraliza na tela */
+    background-color: #4CAF50; /* Cor de fundo verde */
+    color: white; /* Texto branco */
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+    opacity: 0; /* Começa com opacidade 0 */
+    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
+}
 
+.import-success-message.show {
+    display: block; /* Exibe a mensagem */
+    opacity: 1; /* Opacidade total */
+}
+/* ==== FIM SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE IMPORTAÇÃO ==== */
 /* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL ==== */
 .modal {
     display: none;
@@ -615,6 +636,28 @@ input[type="date"] {
     background-color: #4a77a5; /* Tom mais escuro no hover */
 }
 /* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
+/* ==== INÍCIO SEÇÃO - ESTILOS DO BOTÃO EXCLUIR ARQUIVADO ==== */
+.target button.delete-archived-btn {
+    background-color: #d14949; /* Cor vermelha */
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 5px;
+    line-height: 0; /* Remove o espaço extra */
+}
+
+.target button.delete-archived-btn span{
+    font-size: 20px;
+    display: inline-block;
+}
+
+.target button.delete-archived-btn:hover {
+    background-color: #b03d3d; /* Tom mais escuro no hover */
+}
+/* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EXCLUIR ARQUIVADO ==== */
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
 @media (max-width: 768px) {
