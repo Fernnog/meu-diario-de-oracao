@@ -225,13 +225,15 @@ function renderArchivedTargets() {
         const archivedDiv = document.createElement("div");
         archivedDiv.classList.add("target");
         archivedDiv.innerHTML = `
-            <h3>${target.title}</h3>
+            <div class="archived-title-container">
+                <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
+                <h3>${target.title}</h3>
+            </div>
             <p>${target.details}</p>
             <p><strong>Data Original:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
-             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
         `;
         archivedList.appendChild(archivedDiv);
     });
@@ -264,6 +266,7 @@ function renderResolvedTargets() {
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
+
 // Renderizar alvos com prazo de validade
 function renderDeadlineTargets() {
     const deadlineList = document.getElementById("deadlineList");
@@ -295,25 +298,12 @@ function renderDeadlineTargets() {
             <p><strong>Status:</strong> Pendente</p>
             <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
-            <button class="btn add-observation">Adicionar Observação</button>
             <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
-            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
-                <h4 class="target-title"></h4>
-                <textarea placeholder="Escreva aqui a nova observação"></textarea>
-                <input type="date">
-                <button onclick="saveObservationDeadline('${target.id}')" class="btn">Salvar Observação</button>
-            </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
             </div>
         `;
         deadlineList.appendChild(targetDiv);
-
-        // Event listener para o botão de adicionar observação para cada alvo com prazo
-        const addObservationButton = targetDiv.querySelector('.add-observation');
-        addObservationButton.addEventListener('click', () => {
-            toggleAddObservationDeadline(target.id);
-        });
     });
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
