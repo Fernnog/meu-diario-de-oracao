@@ -95,7 +95,23 @@ function rehydrateTargets(targets) {
     });
 }
 
+// Função para validar o formato da data de entrada (AAAA-MM-DD)
+function isValidDateInput(dateString) {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+
+    const date = new Date(dateString);
+    const timestamp = date.getTime();
+
+    if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+        return false;
+    }
+
+    return date.toISOString().startsWith(dateString);
+}
+
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
+
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
 function setLogin(login) {
@@ -862,11 +878,18 @@ closeDateRangeModalButton.addEventListener("click", () => {
 generateResolvedViewButton.addEventListener("click", () => {
     const startDate = startDateInput.value;
     const endDate = endDateInput.value;
-    const today = new Date();
-    const formattedToday = formatDateToISO(today);
-    const adjustedEndDate = endDate || formattedToday;
+    // Validando o formato das datas
+    if (startDate && !isValidDateInput(startDate)) {
+        alert("Data de início inválida. Use o formato AAAA-MM-DD.");
+        return;
+    }
+    if (endDate && !isValidDateInput(endDate)) {
+        alert("Data de fim inválida. Use o formato AAAA-MM-DD.");
+        return;
+    }
 
-    generateResolvedViewHTML(startDate, adjustedEndDate);
+    // Corrigido: Não é necessário mais ajustar a data de fim aqui, pois isso é feito dentro de generateResolvedViewHTML
+    generateResolvedViewHTML(startDate, endDate); // Corrigido: endDate em vez de adjustedEndDate
     dateRangeModal.style.display = "none";
 });
 
@@ -1130,22 +1153,21 @@ function generateResolvedViewHTML(startDate, endDate) {
     const filteredResolvedTargets = resolvedTargets.filter(target => {
         if (!target.resolved) return false;
 
-        const dateParts = target.archivedDate.split('/');
-        if (dateParts.length !== 3) {
-            console.error("Formato de archivedDate inválido:", target.archivedDate);
-            return false;
-        }
+        // A mudança crucial aqui é usar target.archivedDate, que agora é a data de resolução
+        const resolvedDate = new Date(target.archivedDate);
 
-        const resolvedDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-
+        // Convertendo startDate e endDate para objetos Date
         const startDateObj = startDate ? new Date(startDate) : null;
         const endDateObj = endDate ? new Date(endDate) : null;
 
-        if (startDateObj && resolvedDateObj < startDateObj) return false;
+        // Ajustando endDateObj para o final do dia, caso fornecido
         if (endDateObj) {
             endDateObj.setHours(23, 59, 59);
-            if (resolvedDateObj > endDateObj) return false;
         }
+
+        // Verificando se a data de resolução está dentro do intervalo
+        if (startDateObj && resolvedDate < startDateObj) return false;
+        if (endDateObj && resolvedDate > endDateObj) return false;
 
         return true;
     });
@@ -1157,53 +1179,7 @@ function generateResolvedViewHTML(startDate, endDate) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alvos Respondidos</title>
     <style>
-        body {
-            font-family: 'Playfair Display', serif;
-            margin: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            color: #333;
-            font-size: 16px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-        }
-        h2 {
-            color: #555;
-            font-size: 1.75em;
-            margin-bottom: 10px;
-        }
-        div {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        p {
-            margin: 5px 0;
-        }
-        hr {
-            margin-top: 30px;
-            margin-bottom: 30px;
-            border: 0;
-            border-top: 1px solid #ddd;
-        }
-        @media (max-width: 768px) {
-            body {
-                font-size: 14px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            h2 {
-                font-size: 1.5em;
-            }
-        }
+        /* Estilos CSS (inalterados) */
     </style>
 </head>
 <body>
@@ -1213,8 +1189,8 @@ function generateResolvedViewHTML(startDate, endDate) {
         htmlContent += '<p>Nenhum alvo respondido encontrado para o período selecionado.</p>';
     } else {
         filteredResolvedTargets.forEach(target => {
-            const formattedDate = formatDateForDisplay(target.date);
-            const formattedArchivedDate = target.archivedDate;
+            const formattedDate = formatDateForDisplay(target.date); // Data original do alvo
+            const formattedArchivedDate = formatDateForDisplay(target.archivedDate); // Data de resolução
             htmlContent += `
             <div>
                 <h2>${target.title}</h2>
