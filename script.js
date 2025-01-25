@@ -16,27 +16,23 @@ let currentSearchTermDeadline = '';
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
 // ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
-// Função para formatar data para o formato ISO (YYYY-MM-DD)
 function formatDateToISO(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return date.toISOString().split('T')[0];
 }
 
 // Função para formatar data para exibição (DD/MM/YYYY)
 function formatDateForDisplay(dateString) {
-    // Verificar se dateString é um objeto Date e convertê-lo para string ISO, se necessário
-    if (dateString instanceof Date) {
-        dateString = formatDateToISO(dateString);
-    }
-
-    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
-    const date = new Date(dateString);
+    if (!dateString) return 'Data Inválida';
+    
+    // Cria a data no fuso horário local
+    const date = new Date(dateString + 'T00:00'); // Adiciona horário local
+    
     if (isNaN(date.getTime())) return 'Data Inválida';
+    
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
+    
     return `${day}/${month}/${year}`;
 }
 
@@ -376,7 +372,7 @@ function saveObservationDeadline(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -482,7 +478,7 @@ function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
+       let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -532,7 +528,7 @@ form.addEventListener("submit", (e) => {
         id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")), // CORREÇÃO AQUI
+        date: document.getElementById("date").value, // Armazena diretamente a string YYYY-MM-DD
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
@@ -1481,3 +1477,4 @@ function deleteArchivedTarget(targetId) {
         renderArchivedTargets();
     }
 }
+
