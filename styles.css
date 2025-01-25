@@ -322,15 +322,6 @@ input[type="date"] {
     margin-top: 10px;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
-
-/* Estilo para o container do título e botão de excluir em alvos arquivados */
-.archived-title-container {
-    display: flex;
-    align-items: center;
-}
-
-
-
 /* ==== FIM SEÇÃO - ESTILOS DOS ALVOS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
@@ -699,4 +690,3 @@ input[type="date"] {
     }
 }
 /* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
-
