@@ -16,22 +16,27 @@ let currentSearchTermDeadline = '';
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
 // ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+// Função para formatar data para o formato ISO (YYYY-MM-DD)
 function formatDateToISO(date) {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
+// Função para formatar data para exibição (DD/MM/YYYY)
 function formatDateForDisplay(dateString) {
-    if (!dateString) return 'Data Inválida';
-    
-    // Cria a data no fuso horário local
-    const date = new Date(dateString + 'T00:00'); // Adiciona horário local
-    
+    // Verificar se dateString é um objeto Date e convertê-lo para string ISO, se necessário
+    if (dateString instanceof Date) {
+        dateString = formatDateToISO(dateString);
+    }
+
+    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
+    const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Data Inválida';
-    
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    
     return `${day}/${month}/${year}`;
 }
 
@@ -90,23 +95,7 @@ function rehydrateTargets(targets) {
     });
 }
 
-// Função para validar o formato da data de entrada (AAAA-MM-DD)
-function isValidDateInput(dateString) {
-    const regex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!regex.test(dateString)) return false;
-
-    const date = new Date(dateString);
-    const timestamp = date.getTime();
-
-    if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
-        return false;
-    }
-
-    return date.toISOString().startsWith(dateString);
-}
-
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
-
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
 function setLogin(login) {
@@ -236,15 +225,13 @@ function renderArchivedTargets() {
         const archivedDiv = document.createElement("div");
         archivedDiv.classList.add("target");
         archivedDiv.innerHTML = `
-            <div class="archived-title-container">
-                <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
-                <h3>${target.title}</h3>
-            </div>
+            <h3>${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data Original:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
         `;
         archivedList.appendChild(archivedDiv);
     });
@@ -277,7 +264,6 @@ function renderResolvedTargets() {
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
-
 // Renderizar alvos com prazo de validade
 function renderDeadlineTargets() {
     const deadlineList = document.getElementById("deadlineList");
@@ -309,12 +295,25 @@ function renderDeadlineTargets() {
             <p><strong>Status:</strong> Pendente</p>
             <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
+            <button class="btn add-observation">Adicionar Observação</button>
             <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
+            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
+                <h4 class="target-title"></h4>
+                <textarea placeholder="Escreva aqui a nova observação"></textarea>
+                <input type="date">
+                <button onclick="saveObservationDeadline('${target.id}')" class="btn">Salvar Observação</button>
+            </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
             </div>
         `;
         deadlineList.appendChild(targetDiv);
+
+        // Event listener para o botão de adicionar observação para cada alvo com prazo
+        const addObservationButton = targetDiv.querySelector('.add-observation');
+        addObservationButton.addEventListener('click', () => {
+            toggleAddObservationDeadline(target.id);
+        });
     });
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
@@ -377,7 +376,7 @@ function saveObservationDeadline(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-       let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -483,7 +482,7 @@ function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -533,7 +532,7 @@ form.addEventListener("submit", (e) => {
         id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: document.getElementById("date").value, // Armazena diretamente a string YYYY-MM-DD
+        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")), // CORREÇÃO AQUI
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
@@ -873,18 +872,11 @@ closeDateRangeModalButton.addEventListener("click", () => {
 generateResolvedViewButton.addEventListener("click", () => {
     const startDate = startDateInput.value;
     const endDate = endDateInput.value;
-    // Validando o formato das datas
-    if (startDate && !isValidDateInput(startDate)) {
-        alert("Data de início inválida. Use o formato AAAA-MM-DD.");
-        return;
-    }
-    if (endDate && !isValidDateInput(endDate)) {
-        alert("Data de fim inválida. Use o formato AAAA-MM-DD.");
-        return;
-    }
+    const today = new Date();
+    const formattedToday = formatDateToISO(today);
+    const adjustedEndDate = endDate || formattedToday;
 
-    // Corrigido: Não é necessário mais ajustar a data de fim aqui, pois isso é feito dentro de generateResolvedViewHTML
-    generateResolvedViewHTML(startDate, endDate); // Corrigido: endDate em vez de adjustedEndDate
+    generateResolvedViewHTML(startDate, adjustedEndDate);
     dateRangeModal.style.display = "none";
 });
 
@@ -1148,21 +1140,22 @@ function generateResolvedViewHTML(startDate, endDate) {
     const filteredResolvedTargets = resolvedTargets.filter(target => {
         if (!target.resolved) return false;
 
-        // A mudança crucial aqui é usar target.archivedDate, que agora é a data de resolução
-        const resolvedDate = new Date(target.archivedDate);
+        const dateParts = target.archivedDate.split('/');
+        if (dateParts.length !== 3) {
+            console.error("Formato de archivedDate inválido:", target.archivedDate);
+            return false;
+        }
 
-        // Convertendo startDate e endDate para objetos Date
+        const resolvedDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+
         const startDateObj = startDate ? new Date(startDate) : null;
         const endDateObj = endDate ? new Date(endDate) : null;
 
-        // Ajustando endDateObj para o final do dia, caso fornecido
+        if (startDateObj && resolvedDateObj < startDateObj) return false;
         if (endDateObj) {
             endDateObj.setHours(23, 59, 59);
+            if (resolvedDateObj > endDateObj) return false;
         }
-
-        // Verificando se a data de resolução está dentro do intervalo
-        if (startDateObj && resolvedDate < startDateObj) return false;
-        if (endDateObj && resolvedDate > endDateObj) return false;
 
         return true;
     });
@@ -1174,7 +1167,53 @@ function generateResolvedViewHTML(startDate, endDate) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alvos Respondidos</title>
     <style>
-        /* Estilos CSS (inalterados) */
+        body {
+            font-family: 'Playfair Display', serif;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 16px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.75em;
+            margin-bottom: 10px;
+        }
+        div {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        p {
+            margin: 5px 0;
+        }
+        hr {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1184,8 +1223,8 @@ function generateResolvedViewHTML(startDate, endDate) {
         htmlContent += '<p>Nenhum alvo respondido encontrado para o período selecionado.</p>';
     } else {
         filteredResolvedTargets.forEach(target => {
-            const formattedDate = formatDateForDisplay(target.date); // Data original do alvo
-            const formattedArchivedDate = formatDateForDisplay(target.archivedDate); // Data de resolução
+            const formattedDate = formatDateForDisplay(target.date);
+            const formattedArchivedDate = target.archivedDate;
             htmlContent += `
             <div>
                 <h2>${target.title}</h2>
@@ -1417,28 +1456,6 @@ function convertToISO(dateString) {
     return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
 }
 // ==== FIM SEÇÃO - EDITAR PRAZO DE VALIDADE ====
-
-// ==== INÍCIO SEÇÃO - FUNÇÃO PARA DELETAR ALVO ARQUIVADO ====
-function deleteArchivedTarget(targetId) {
-    if (confirm("Tem certeza de que deseja excluir este alvo arquivado? Esta ação não pode ser desfeita.")) {
-        archivedTargets = archivedTargets.filter(target => target.id !== targetId);
-        resolvedTargets = resolvedTargets.filter(target => target.id !== targetId);
-        updateStorage();
-        currentArchivedPage = 1;
-        renderArchivedTargets();
-
-        // Mostrar mensagem de sucesso da exclusão
-        const message = document.getElementById('deleteSuccessMessage');
-        message.classList.add('show');
-
-        // Ocultar a mensagem após 3 segundos
-        setTimeout(() => {
-            message.classList.remove('show');
-        }, 3000);
-    }
-}
-// ==== FIM SEÇÃO - FUNÇÃO PARA DELETAR ALVO ARQUIVADO ====
-
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
