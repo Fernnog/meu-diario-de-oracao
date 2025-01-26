@@ -143,6 +143,126 @@ function reattachEventListeners() {
     });
 }
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
+
+// ==== INÍCIO SEÇÃO - FUNÇÕES DE MENSAGEM DE CONFIRMAÇÃO ====
+// Função para mostrar a mensagem de sucesso
+function showSuccessMessage(messageId) {
+    const message = document.getElementById(messageId);
+    message.classList.add('show');
+
+    // Ocultar a mensagem após 3 segundos
+    setTimeout(() => {
+        message.classList.remove('show');
+    }, 3000);
+}
+
+// ==== FIM SEÇÃO - FUNÇÕES DE MENSAGEM DE CONFIRMAÇÃO ====
+
+// ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
+// ... (funções anteriores) ...
+
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        console.log("Nenhum arquivo selecionado.");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            console.log("Conteúdo bruto do arquivo:", e.target.result); // **LOG DA ETAPA 1**
+            const importedData = JSON.parse(e.target.result);
+            console.log("Dados importados (parsed):", importedData); // **LOG DA ETAPA 2**
+
+            const importedLogin = importedData.login;
+            const newPrayerTargets = importedData.prayerTargets || [];
+            const newArchivedTargets = importedData.archivedTargets || [];
+
+            console.log("Login importado:", importedLogin); // **LOG DA ETAPA 3**
+            console.log("Novos alvos de oração importados:", newPrayerTargets); // **LOG DA ETAPA 4**
+            console.log("Novos alvos arquivados importados:", newArchivedTargets); // **LOG DA ETAPA 5**
+
+            const currentLogin = localStorage.getItem('currentLogin');
+
+            if (importedLogin !== currentLogin) {
+                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
+                    console.log("Importação cancelada devido à incompatibilidade de login.");
+                    return;
+                }
+            }
+
+            const allTargets = [...prayerTargets, ...archivedTargets];
+
+            // Verificar duplicatas com base no título, data e ID
+            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
+
+            newPrayerTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
+                        target.id = generateUniqueId();
+                    }
+                    prayerTargets.push(target);
+                } else {
+                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
+                }
+            });
+
+            newArchivedTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
+                        target.id = generateUniqueId();
+                    }
+                    archivedTargets.push(target);
+                } else {
+                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
+                }
+            });
+
+            // Reidratar os alvos (converter strings de data para objetos Date)
+            prayerTargets = rehydrateTargets(prayerTargets);
+            archivedTargets = rehydrateTargets(archivedTargets);
+
+            console.log("prayerTargets após reidratação:", prayerTargets); // **LOG DA ETAPA 6**
+            console.log("archivedTargets após reidratação:", archivedTargets); // **LOG DA ETAPA 7**
+
+            updateStorage();
+
+            // Atualizar a UI e reassociar event listeners
+            renderTargets();
+            renderArchivedTargets();
+            renderResolvedTargets();
+            renderDeadlineTargets();
+            refreshDailyTargets();
+
+            // Reassociar os eventos (Importante para que os botões funcionem)
+            reattachEventListeners();
+
+            // Mostrar mensagem de sucesso
+            showSuccessMessage('importSuccessMessage');
+
+        } catch (error) {
+            console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
+            console.error("Stack trace do erro:", error.stack); // **LOG DA ETAPA 9**
+            alert("Erro ao importar dados. Veja o console para mais detalhes.");
+        }
+    };
+    reader.onerror = function (error) {
+        console.error("Erro ao ler o arquivo:", error); // **LOG DA ETAPA 10**
+    };
+    reader.readAsText(file);
+}
+
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
 function setLogin(login) {
@@ -651,7 +771,8 @@ function exportData() {
     a.click();
     URL.revokeObjectURL(url);
 }
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado)
+
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
 function importData(event) {
     const file = event.target.files[0];
     if (!file) {
@@ -660,6 +781,7 @@ function importData(event) {
     }
     const reader = new FileReader();
     reader.onload = function (e) {
+        let importSuccess = false; // Flag para indicar se a importação foi bem-sucedida
         try {
             console.log("Conteúdo bruto do arquivo:", e.target.result); // **LOG DA ETAPA 1**
             const importedData = JSON.parse(e.target.result);
@@ -738,10 +860,18 @@ function importData(event) {
             // Reassociar os eventos (Importante para que os botões funcionem)
             reattachEventListeners();
 
+            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
+            importSuccess = true;
+
         } catch (error) {
             console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
             console.error("Stack trace do erro:", error.stack); // **LOG DA ETAPA 9**
             alert("Erro ao importar dados. Veja o console para mais detalhes.");
+        } finally {
+            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
+            if (importSuccess) {
+                showSuccessMessage('importSuccessMessage');
+            }
         }
     };
     reader.onerror = function (error) {
@@ -769,6 +899,62 @@ function resetData() {
     }
 }
 // ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
+// ==== INÍCIO SEÇÃO - RENDERIZAÇÃO ====
+// Renderizar alvos arquivados
+function renderArchivedTargets() {
+    const archivedList = document.getElementById("archivedList");
+    archivedList.innerHTML = "";
+    const filteredTargets = filterTargets(archivedTargets, currentSearchTermArchived);
+    const startIndex = (currentArchivedPage - 1) * targetsPerPage;
+    const endIndex = startIndex + targetsPerPage;
+    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+
+    targetsToDisplay.forEach((target) => {
+        const formattedDate = formatDateForDisplay(target.date);
+        const formattedArchivedDate = formatDateForDisplay(target.archivedDate);
+        const archivedDiv = document.createElement("div");
+        archivedDiv.classList.add("target");
+        archivedDiv.innerHTML = `
+            <h3>${target.title}</h3>
+            <p>${target.details}</p>
+            <p><strong>Data Original:</strong> ${formattedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
+            <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+            <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
+        `;
+        archivedList.appendChild(archivedDiv);
+    });
+    renderPagination('archivedPanel', currentArchivedPage, filteredTargets);
+}
+// ==== FIM SEÇÃO - RENDERIZAÇÃO ====
+// ==== INÍCIO SEÇÃO - EXCLUSÃO ====
+// Função para excluir permanentemente um alvo arquivado
+function deleteArchivedTarget(targetId) {
+    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
+        const targetIndex = archivedTargets.findIndex(target => target.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
+
+        archivedTargets.splice(targetIndex, 1);
+        updateStorage();
+
+        // Atualizar a lista de alvos resolvidos
+        resolvedTargets = archivedTargets.filter(target => target.resolved);
+
+        // Renderizar novamente os alvos arquivados e os resolvidos
+        renderArchivedTargets();
+        renderResolvedTargets();
+
+        // Mostrar mensagem de sucesso
+        showSuccessMessage('deleteSuccessMessage');
+    }
+}
+// ==== FIM SEÇÃO - EXCLUSÃO ====
+
 
 // ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
 document.getElementById('setLoginButton').addEventListener('click', () => {
