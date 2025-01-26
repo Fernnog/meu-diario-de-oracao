@@ -342,6 +342,7 @@ function renderDeadlineTargets() {
             <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
             <button onclick="toggleAddObservationDeadline('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
             <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
                 <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
@@ -357,7 +358,6 @@ function renderDeadlineTargets() {
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
 }
-
 function markAsResolvedDeadline(targetId) {
     const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
 
@@ -651,7 +651,6 @@ function exportData() {
     a.click();
     URL.revokeObjectURL(url);
 }
-
 // Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado)
 function importData(event) {
     const file = event.target.files[0];
@@ -691,7 +690,10 @@ function importData(event) {
             newPrayerTargets.forEach(target => {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
-                    if (allTargets.some(t => t.id === target.id)) {
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
                         console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
@@ -704,7 +706,10 @@ function importData(event) {
             newArchivedTargets.forEach(target => {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
-                    if (allTargets.some(t => t.id === target.id)) {
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
                         console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
@@ -1163,30 +1168,31 @@ function generateDailyViewHTML() {
     a.click();
     URL.revokeObjectURL(url);
 }
+
+// Função CORRIGIDA para gerar o HTML com os alvos respondidos, filtrando por data de resolução
 function generateResolvedViewHTML(startDate, endDate) {
+    // Converte as datas de início e fim para objetos Date
+    const startDateObj = startDate ? new Date(startDate) : null;
+    const endDateObj = endDate ? new Date(endDate) : null;
+
+    // Filtra os alvos respondidos dentro do intervalo de datas especificado
     const filteredResolvedTargets = resolvedTargets.filter(target => {
-        if (!target.resolved) return false;
+        if (!target.resolved || !target.archivedDate) return false;
 
-        const dateParts = target.archivedDate.split('/');
-        if (dateParts.length !== 3) {
-            console.error("Formato de archivedDate inválido:", target.archivedDate);
-            return false;
-        }
+        // Converte a data de resolução (archivedDate) para um objeto Date
+        const resolvedDateObj = new Date(target.archivedDate);
 
-        const resolvedDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
-
-        const startDateObj = startDate ? new Date(startDate) : null;
-        const endDateObj = endDate ? new Date(endDate) : null;
-
+        // Verifica se a data de resolução está dentro do intervalo
         if (startDateObj && resolvedDateObj < startDateObj) return false;
         if (endDateObj) {
-            endDateObj.setHours(23, 59, 59);
+            endDateObj.setHours(23, 59, 59); // Ajusta para o final do dia
             if (resolvedDateObj > endDateObj) return false;
         }
 
         return true;
     });
 
+    // Monta o HTML para exibição
     let htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1251,7 +1257,7 @@ function generateResolvedViewHTML(startDate, endDate) {
     } else {
         filteredResolvedTargets.forEach(target => {
             const formattedDate = formatDateForDisplay(target.date);
-            const formattedArchivedDate = target.archivedDate;
+            const formattedArchivedDate = formatDateForDisplay(target.archivedDate); // Formata a data de resolução
             htmlContent += `
             <div>
                 <h2>${target.title}</h2>
@@ -1265,6 +1271,7 @@ function generateResolvedViewHTML(startDate, endDate) {
 
     htmlContent += `</body></html>`;
 
+    // Cria um link para download do HTML gerado
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1422,6 +1429,67 @@ function refreshDailyTargets() {
     displayRandomVerse();
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
+// ==== INÍCIO SEÇÃO - EDITAR PRAZO DE VALIDADE ====
+function editDeadline(targetId) {
+    const target = prayerTargets.find(t => t.id === targetId);
+    if (!target) {
+        console.error("Alvo não encontrado.");
+        return;
+    }
+
+    // Obter a data atual do prazo (se houver)
+    const currentDeadline = target.deadlineDate ? formatDateForDisplay(target.deadlineDate) : '';
+
+    // Usar um prompt para obter a nova data de prazo de validade
+    const newDeadline = prompt("Insira a nova data de prazo de validade (DD/MM/YYYY):", currentDeadline);
+
+    // Se o usuário cancelar ou inserir uma data inválida, a função é encerrada
+    if (newDeadline === null) return;
+
+    // Validar a nova data
+    if (!isValidDate(newDeadline)) {
+        alert("Data inválida. Por favor, use o formato DD/MM/YYYY.");
+        return;
+    }
+
+    // Converter a nova data para o formato ISO (YYYY-MM-DD)
+    const newDeadlineISO = convertToISO(newDeadline);
+
+    // Atualizar o prazo de validade do alvo
+    target.deadlineDate = newDeadlineISO;
+
+    // Atualizar o localStorage
+    updateStorage();
+
+    // Renderizar novamente os alvos com prazo de validade
+    renderDeadlineTargets();
+
+    alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+}
+
+function isValidDate(dateString) {
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return false;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+
+    if (month < 1 || month > 12) return false;
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) return false;
+
+    return true;
+}
+
+function convertToISO(dateString) {
+    const parts = dateString.split('/');
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+}
+// ==== FIM SEÇÃO - EDITAR PRAZO DE VALIDADE ====
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
