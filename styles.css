@@ -345,6 +345,50 @@ input[type="date"] {
 }
 /* ==== FIM SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
 
+/* ==== INÍCIO SEÇÃO - ESTILOS DAS MENSAGENS DE CONFIRMAÇÃO ==== */
+.success-message {
+    display: none; /* Inicialmente oculto */
+    position: fixed; /* Posicionamento fixo na tela */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centraliza na tela */
+    background-color: #4CAF50; /* Cor de fundo verde */
+    color: white; /* Texto branco */
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+    opacity: 0; /* Começa com opacidade 0 */
+    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
+}
+
+.success-message.show {
+    display: block; /* Exibe a mensagem */
+    opacity: 1; /* Opacidade total */
+}
+
+.delete-success-message {
+    display: none; /* Inicialmente oculto */
+    position: fixed; /* Posicionamento fixo na tela */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centraliza na tela */
+    background-color: #d9534f; /* Cor de fundo vermelha */
+    color: white; /* Texto branco */
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Garante que fique acima de outros elementos */
+    opacity: 0; /* Começa com opacidade 0 */
+    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
+}
+
+.delete-success-message.show {
+    display: block; /* Exibe a mensagem */
+    opacity: 1; /* Opacidade total */
+}
+/* ==== FIM SEÇÃO - ESTILOS DAS MENSAGENS DE CONFIRMAÇÃO ==== */
+
 /* ==== INÍCIO SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
 .login-success-message {
     display: none; /* Inicialmente oculto */
@@ -647,3 +691,5 @@ input[type="date"] {
     }
 }
 /* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
+
+
