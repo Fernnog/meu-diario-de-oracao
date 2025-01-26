@@ -599,7 +599,22 @@ input[type="date"] {
 }
 
 /* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
+/* ==== INÍCIO SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
+.target button.edit-deadline {
+    background-color: #6599cc; /* Tom azul claro */
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 5px;
+}
 
+.target button.edit-deadline:hover {
+    background-color: #4a77a5; /* Tom mais escuro no hover */
+}
+/* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
 @media (max-width: 768px) {
