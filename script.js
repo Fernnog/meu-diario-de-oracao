@@ -16,23 +16,27 @@ let currentSearchTermDeadline = '';
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
 // ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+// Função para formatar data para o formato ISO (YYYY-MM-DD)
 function formatDateToISO(date) {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 // Função para formatar data para exibição (DD/MM/YYYY)
 function formatDateForDisplay(dateString) {
-    if (!dateString) return 'Data Inválida';
-    
-    // Cria a data no fuso horário local
-    const date = new Date(dateString + 'T00:00'); // Adiciona horário local
-    
+    // Verificar se dateString é um objeto Date e convertê-lo para string ISO, se necessário
+    if (dateString instanceof Date) {
+        dateString = formatDateToISO(dateString);
+    }
+
+    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
+    const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Data Inválida';
-    
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    
     return `${day}/${month}/${year}`;
 }
 
@@ -91,6 +95,53 @@ function rehydrateTargets(targets) {
     });
 }
 
+// Função para reassociar os eventos aos botões (CORRIGIDA)
+function reattachEventListeners() {
+    // Reassociar eventos aos botões dos alvos principais
+    const targetDivs = document.querySelectorAll("#targetList .target");
+    targetDivs.forEach(targetDiv => {
+        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
+
+        const resolvedButton = targetDiv.querySelector(".resolved");
+        resolvedButton.onclick = () => markAsResolved(targetId);
+
+        const archiveButton = targetDiv.querySelector(".archive");
+        archiveButton.onclick = () => archiveTarget(targetId);
+
+        const addObservationButton = targetDiv.querySelector(".add-observation");
+        addObservationButton.onclick = () => toggleAddObservation(targetId);
+    });
+
+    // Reassociar eventos aos botões dos alvos com prazo de validade
+    const deadlineTargetDivs = document.querySelectorAll("#deadlineList .target");
+    deadlineTargetDivs.forEach(targetDiv => {
+        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
+
+        const resolvedButton = targetDiv.querySelector(".resolved");
+        resolvedButton.onclick = () => markAsResolvedDeadline(targetId);
+
+        const archiveButton = targetDiv.querySelector(".archive");
+        archiveButton.onclick = () => archiveTargetDeadline(targetId);
+
+        const addObservationButton = targetDiv.querySelector(".add-observation");
+        addObservationButton.onclick = () => toggleAddObservationDeadline(targetId);
+    });
+
+    // Reassociar eventos aos botões de alvos ARQUIVADOS (se necessário)
+    const archivedTargetDivs = document.querySelectorAll("#archivedList .target");
+    archivedTargetDivs.forEach(targetDiv => {
+        // Aqui você pode adicionar lógica para associar eventos a botões
+        // específicos dentro dos alvos arquivados, se houver.
+        // Por exemplo, um botão para desarquivar.
+    });
+
+    // Reassociar eventos aos botões de alvos RESOLVIDOS (se necessário)
+    const resolvedTargetDivs = document.querySelectorAll("#resolvedList .target");
+    resolvedTargetDivs.forEach(targetDiv => {
+        // Aqui você pode adicionar lógica para associar eventos a botões
+        // específicos dentro dos alvos resolvidos, se houver.
+    });
+}
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
 // ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // Função para definir o login e carregar os dados correspondentes
@@ -227,7 +278,6 @@ function renderArchivedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
-             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete-archived-btn"><span>−</span></button>
         `;
         archivedList.appendChild(archivedDiv);
     });
@@ -291,8 +341,7 @@ function renderDeadlineTargets() {
             <p><strong>Status:</strong> Pendente</p>
             <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
-            <button class="btn add-observation">Adicionar Observação</button>
-            <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
+            <button onclick="toggleAddObservationDeadline('${target.id}')" class="btn add-observation">Adicionar Observação</button>
             <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
                 <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
@@ -304,12 +353,6 @@ function renderDeadlineTargets() {
             </div>
         `;
         deadlineList.appendChild(targetDiv);
-
-        // Event listener para o botão de adicionar observação para cada alvo com prazo
-        const addObservationButton = targetDiv.querySelector('.add-observation');
-        addObservationButton.addEventListener('click', () => {
-            toggleAddObservationDeadline(target.id);
-        });
     });
 
     renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
@@ -372,7 +415,7 @@ function saveObservationDeadline(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -478,7 +521,7 @@ function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-       let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date());
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -528,7 +571,7 @@ form.addEventListener("submit", (e) => {
         id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: document.getElementById("date").value, // Armazena diretamente a string YYYY-MM-DD
+        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")), // CORREÇÃO AQUI
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
@@ -609,7 +652,7 @@ function exportData() {
     URL.revokeObjectURL(url);
 }
 
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado)
 function importData(event) {
     const file = event.target.files[0];
     if (!file) {
@@ -648,10 +691,7 @@ function importData(event) {
             newPrayerTargets.forEach(target => {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
+                    if (allTargets.some(t => t.id === target.id)) {
                         console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
@@ -664,10 +704,7 @@ function importData(event) {
             newArchivedTargets.forEach(target => {
                 if (!isDuplicate(target)) {
                     // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
+                    if (allTargets.some(t => t.id === target.id)) {
                         console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
                         target.id = generateUniqueId();
                     }
@@ -693,14 +730,8 @@ function importData(event) {
             renderDeadlineTargets();
             refreshDailyTargets();
 
-            // Mostrar mensagem de sucesso
-            const message = document.getElementById('importSuccessMessage');
-            message.classList.add('show');
-
-            // Ocultar a mensagem após 3 segundos
-            setTimeout(() => {
-                message.classList.remove('show');
-            }, 3000);
+            // Reassociar os eventos (Importante para que os botões funcionem)
+            reattachEventListeners();
 
         } catch (error) {
             console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
@@ -1391,67 +1422,6 @@ function refreshDailyTargets() {
     displayRandomVerse();
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
-// ==== INÍCIO SEÇÃO - EDITAR PRAZO DE VALIDADE ====
-function editDeadline(targetId) {
-    const target = prayerTargets.find(t => t.id === targetId);
-    if (!target) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
-
-    // Obter a data atual do prazo (se houver)
-    const currentDeadline = target.deadlineDate ? formatDateForDisplay(target.deadlineDate) : '';
-
-    // Usar um prompt para obter a nova data de prazo de validade
-    const newDeadline = prompt("Insira a nova data de prazo de validade (DD/MM/YYYY):", currentDeadline);
-
-    // Se o usuário cancelar ou inserir uma data inválida, a função é encerrada
-    if (newDeadline === null) return;
-
-    // Validar a nova data
-    if (!isValidDate(newDeadline)) {
-        alert("Data inválida. Por favor, use o formato DD/MM/YYYY.");
-        return;
-    }
-
-    // Converter a nova data para o formato ISO (YYYY-MM-DD)
-    const newDeadlineISO = convertToISO(newDeadline);
-
-    // Atualizar o prazo de validade do alvo
-    target.deadlineDate = newDeadlineISO;
-
-    // Atualizar o localStorage
-    updateStorage();
-
-    // Renderizar novamente os alvos com prazo de validade
-    renderDeadlineTargets();
-
-    alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
-}
-
-function isValidDate(dateString) {
-    const parts = dateString.split('/');
-    if (parts.length !== 3) return false;
-
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-
-    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-
-    if (month < 1 || month > 12) return false;
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    if (day < 1 || day > daysInMonth) return false;
-
-    return true;
-}
-
-function convertToISO(dateString) {
-    const parts = dateString.split('/');
-    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-}
-// ==== FIM SEÇÃO - EDITAR PRAZO DE VALIDADE ====
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
@@ -1467,14 +1437,3 @@ function checkExpiredDeadlines() {
         alert(message);
     }
 }
-
-function deleteArchivedTarget(targetId) {
-    if (confirm("Tem certeza de que deseja excluir este alvo arquivado? Esta ação não pode ser desfeita.")) {
-        archivedTargets = archivedTargets.filter(target => target.id !== targetId);
-        resolvedTargets = resolvedTargets.filter(target => target.id !== targetId);
-        updateStorage();
-        currentArchivedPage = 1;
-        renderArchivedTargets();
-    }
-}
-
