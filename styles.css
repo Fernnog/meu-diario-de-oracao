@@ -2,6 +2,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 /* ==== FIM SEÇÃO - GOOGLE FONTS ==== */
 
+/* ==== INÍCIO SEÇÃO - PAINEL ÚLTIMO BACKUP ==== */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+.ultimo-backup {
+    font-size: 0.8em;
+    color: #666;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f5f5f5;
+}
+/* ==== FIM SEÇÃO - PAINEL ÚLTIMO BACKUP ==== */
+
 /* ==== INÍCIO SEÇÃO - ESTILOS DA LOGO ==== */
 .logo-container {
     text-align: center;
@@ -691,5 +709,4 @@ input[type="date"] {
     }
 }
 /* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
-
 
