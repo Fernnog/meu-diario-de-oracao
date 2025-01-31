@@ -7,6 +7,7 @@
     /* Removido display: flex, justify-content e align-items */
     padding: 10px 20px;
     text-align: right; /* Alinha o texto do último backup à direita */
+    overflow: auto; /* Adicionado para evitar que o conteúdo flutuante afete o layout */
 }
 
 .ultimo-backup {
@@ -16,6 +17,8 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #f5f5f5;
+    float: right; /* Faz o elemento flutuar à direita */
+    clear: right; /* Impede que outros elementos flutuantes fiquem ao lado */
 }
 /* ==== FIM SEÇÃO - PAINEL ÚLTIMO BACKUP ==== */
 
@@ -52,37 +55,6 @@ h1 {
     color: #333;
     /* Removido margin-bottom: 20px; */
     font-size: 2.5em;
-}
-
-h2 {
-    color: #555;
-    text-align: center;
-    font-size: 1.75em;
-    margin-bottom: 10px;
-}
-
-.daily-section h2 {
-    display: block; /* Retorna ao display de bloco para que a linha fique abaixo */
-}
-
-.daily-section .daily-buttons-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 10px auto; /* Centralizar o contêiner */
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-    padding: 10px 0;
-    flex-wrap: wrap;
-    max-width: 600px; /* Largura máxima para não estender demais os botões */
-}
-
-.daily-section .daily-buttons-container button {
-    margin: 5px;
-}
-
-h4 {
-    margin-top: 15px;
 }
 /* ==== FIM SEÇÃO - ESTILOS GERAIS ==== */
 
