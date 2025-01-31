@@ -4,11 +4,9 @@
 
 /* ==== INÍCIO SEÇÃO - PAINEL ÚLTIMO BACKUP ==== */
 .top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    /* Removido display: flex, justify-content e align-items */
     padding: 10px 20px;
-    position: relative; /* Adicionado para o posicionamento absoluto do painel de backup */
+    text-align: right; /* Alinha o texto do último backup à direita */
 }
 
 .ultimo-backup {
@@ -18,21 +16,14 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #f5f5f5;
-    position: absolute; /* Posicionamento absoluto */
-    top: 0; /* Alinhado ao topo */
-    right: 0; /* Alinhado à direita */
-    margin: 10px; /* Margem para não ficar colado nas bordas */
 }
 /* ==== FIM SEÇÃO - PAINEL ÚLTIMO BACKUP ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DA LOGO ==== */
 .logo-container {
     text-align: center;
-    /* margin-bottom: 20px; Removido para evitar espaçamento excessivo */
-    display: flex; /* Usar flexbox para centralização */
-    justify-content: center; /* Centralizar horizontalmente */
-    align-items: center; /* Centralizar verticalmente */
-    margin-top: 40px; /* Espaço entre o painel de backup e a logo (ajuste conforme necessário) */
+    margin-top: 20px; /* Espaço entre a logo e o painel de backup */
+    margin-bottom: 30px; /* Espaço entre a logo e o título h1 */
 }
 
 .logo {
@@ -46,15 +37,20 @@
 body {
     font-family: 'Playfair Display', serif;
     margin: 0;
-    padding: 20px;
+    padding: 10px; /* Diminui o padding */
     background-color: #f9f9f9;
     color: #333;
 }
 
+.main-title {
+    text-align: center; /* Centraliza o título h1 */
+    margin-bottom: 20px; /* Ajusta o espaço entre o título e o restante */
+}
+
 h1 {
-    text-align: center;
+    /* Removido text-align: center; */
     color: #333;
-    margin-bottom: 20px;
+    /* Removido margin-bottom: 20px; */
     font-size: 2.5em;
 }
 
