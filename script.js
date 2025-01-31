@@ -159,8 +159,6 @@ function showSuccessMessage(messageId) {
 // ==== FIM SEÇÃO - FUNÇÕES DE MENSAGEM DE CONFIRMAÇÃO ====
 
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
-// ... (funções anteriores) ...
-
 // Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
 function importData(event) {
     const file = event.target.files[0];
@@ -168,20 +166,46 @@ function importData(event) {
         console.log("Nenhum arquivo selecionado.");
         return;
     }
+
+    // Extrair data e hora do nome do arquivo
+    const filename = file.name;
+    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/; // **REGEX ATUALIZADA para capturar o login**
+    const match = filename.match(dateRegex);
+    let fileDate = null;
+    let importedLogin = null; // **Variável para armazenar o login extraído do nome do arquivo**
+
+    if (match) {
+        importedLogin = match[1]; // **Captura o login do nome do arquivo**
+        const year = parseInt(match[2], 10);
+        const month = parseInt(match[3], 10) - 1; // Mês começa em 0 (janeiro)
+        const day = parseInt(match[4], 10);
+        const hour = parseInt(match[5], 10);
+        const minute = parseInt(match[6], 10);
+
+        fileDate = new Date(year, month, day, hour, minute);
+
+        // **Armazenar a data do último backup para o login importado no localStorage**
+        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString()); // **NOVA LINHA**
+
+        atualizarDataUltimoBackup(); // **Chamada atualizada para passar login e data**
+    } else {
+        console.log("Nome do arquivo não corresponde ao formato esperado para extrair data e hora.");
+    }
+
     const reader = new FileReader();
     reader.onload = function (e) {
+        let importSuccess = false;
         try {
-            console.log("Conteúdo bruto do arquivo:", e.target.result); // **LOG DA ETAPA 1**
+            console.log("Conteúdo bruto do arquivo:", e.target.result);
             const importedData = JSON.parse(e.target.result);
-            console.log("Dados importados (parsed):", importedData); // **LOG DA ETAPA 2**
+            console.log("Dados importados (parsed):", importedData);
 
-            const importedLogin = importedData.login;
             const newPrayerTargets = importedData.prayerTargets || [];
             const newArchivedTargets = importedData.archivedTargets || [];
 
-            console.log("Login importado:", importedLogin); // **LOG DA ETAPA 3**
-            console.log("Novos alvos de oração importados:", newPrayerTargets); // **LOG DA ETAPA 4**
-            console.log("Novos alvos arquivados importados:", newArchivedTargets); // **LOG DA ETAPA 5**
+            console.log("Login importado:", importedLogin);
+            console.log("Novos alvos de oração importados:", newPrayerTargets);
+            console.log("Novos alvos arquivados importados:", newArchivedTargets);
 
             const currentLogin = localStorage.getItem('currentLogin');
 
@@ -233,8 +257,8 @@ function importData(event) {
             prayerTargets = rehydrateTargets(prayerTargets);
             archivedTargets = rehydrateTargets(archivedTargets);
 
-            console.log("prayerTargets após reidratação:", prayerTargets); // **LOG DA ETAPA 6**
-            console.log("archivedTargets após reidratação:", archivedTargets); // **LOG DA ETAPA 7**
+            console.log("prayerTargets após reidratação:", prayerTargets);
+            console.log("archivedTargets após reidratação:", archivedTargets);
 
             updateStorage();
 
@@ -248,17 +272,22 @@ function importData(event) {
             // Reassociar os eventos (Importante para que os botões funcionem)
             reattachEventListeners();
 
-            // Mostrar mensagem de sucesso
-            showSuccessMessage('importSuccessMessage');
+            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
+            importSuccess = true;
 
         } catch (error) {
-            console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
-            console.error("Stack trace do erro:", error.stack); // **LOG DA ETAPA 9**
+            console.error("Erro detalhado ao importar dados:", error);
+            console.error("Stack trace do erro:", error.stack);
             alert("Erro ao importar dados. Veja o console para mais detalhes.");
+        } finally {
+            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
+            if (importSuccess) {
+                showSuccessMessage('importSuccessMessage');
+            }
         }
     };
     reader.onerror = function (error) {
-        console.error("Erro ao ler o arquivo:", error); // **LOG DA ETAPA 10**
+        console.error("Erro ao ler o arquivo:", error);
     };
     reader.readAsText(file);
 }
@@ -277,6 +306,9 @@ function setLogin(login) {
     setTimeout(() => {
         message.classList.remove('show');
     }, 3000);
+
+    // Limpar o painel de último backup ao trocar de login
+    atualizarDataUltimoBackup(); // **CORREÇÃO AQUI**
 }
 
 // Função para carregar os dados correspondentes ao login atual
@@ -336,6 +368,9 @@ window.onload = function () {
         currentDeadlinePage = 1;
         renderDeadlineTargets();
     });
+
+    //  carregar a página
+    atualizarDataUltimoBackup();
 };
 // ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 // ==== INÍCIO SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
@@ -759,7 +794,9 @@ function exportData() {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const filename = `${login}_${year}${month}${day}.json`;
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const filename = `${login}_${year}${month}${day}_${hours}${minutes}.json`; // **FORMATO ATUALIZADO**
 
     const data = { login: localStorage.getItem('currentLogin'), prayerTargets, archivedTargets };
     const dataStr = JSON.stringify(data, null, 2);
@@ -770,114 +807,6 @@ function exportData() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-}
-
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) {
-        console.log("Nenhum arquivo selecionado.");
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        let importSuccess = false; // Flag para indicar se a importação foi bem-sucedida
-        try {
-            console.log("Conteúdo bruto do arquivo:", e.target.result); // **LOG DA ETAPA 1**
-            const importedData = JSON.parse(e.target.result);
-            console.log("Dados importados (parsed):", importedData); // **LOG DA ETAPA 2**
-
-            const importedLogin = importedData.login;
-            const newPrayerTargets = importedData.prayerTargets || [];
-            const newArchivedTargets = importedData.archivedTargets || [];
-
-            console.log("Login importado:", importedLogin); // **LOG DA ETAPA 3**
-            console.log("Novos alvos de oração importados:", newPrayerTargets); // **LOG DA ETAPA 4**
-            console.log("Novos alvos arquivados importados:", newArchivedTargets); // **LOG DA ETAPA 5**
-
-            const currentLogin = localStorage.getItem('currentLogin');
-
-            if (importedLogin !== currentLogin) {
-                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
-                    console.log("Importação cancelada devido à incompatibilidade de login.");
-                    return;
-                }
-            }
-
-            const allTargets = [...prayerTargets, ...archivedTargets];
-
-            // Verificar duplicatas com base no título, data e ID
-            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
-
-            newPrayerTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    prayerTargets.push(target);
-                } else {
-                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            newArchivedTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    archivedTargets.push(target);
-                } else {
-                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            // Reidratar os alvos (converter strings de data para objetos Date)
-            prayerTargets = rehydrateTargets(prayerTargets);
-            archivedTargets = rehydrateTargets(archivedTargets);
-
-            console.log("prayerTargets após reidratação:", prayerTargets); // **LOG DA ETAPA 6**
-            console.log("archivedTargets após reidratação:", archivedTargets); // **LOG DA ETAPA 7**
-
-            updateStorage();
-
-            // Atualizar a UI e reassociar event listeners
-            renderTargets();
-            renderArchivedTargets();
-            renderResolvedTargets();
-            renderDeadlineTargets();
-            refreshDailyTargets();
-
-            // Reassociar os eventos (Importante para que os botões funcionem)
-            reattachEventListeners();
-
-            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
-            importSuccess = true;
-
-        } catch (error) {
-            console.error("Erro detalhado ao importar dados:", error); // **LOG DA ETAPA 8**
-            console.error("Stack trace do erro:", error.stack); // **LOG DA ETAPA 9**
-            alert("Erro ao importar dados. Veja o console para mais detalhes.");
-        } finally {
-            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
-            if (importSuccess) {
-                showSuccessMessage('importSuccessMessage');
-            }
-        }
-    };
-    reader.onerror = function (error) {
-        console.error("Erro ao ler o arquivo:", error); // **LOG DA ETAPA 10**
-    };
-    reader.readAsText(file);
 }
 
 // Resetar todos os dados
@@ -954,7 +883,6 @@ function deleteArchivedTarget(targetId) {
     }
 }
 // ==== FIM SEÇÃO - EXCLUSÃO ====
-
 
 // ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
 document.getElementById('setLoginButton').addEventListener('click', () => {
@@ -1355,7 +1283,7 @@ function generateDailyViewHTML() {
     URL.revokeObjectURL(url);
 }
 
-// Função CORRIGIDA para gerar o HTML com os alvos respondidos, filtrando por data de resolução
+// Função para gerar o HTML com os alvos respondidos, filtrando por data de resolução
 function generateResolvedViewHTML(startDate, endDate) {
     // Converte as datas de início e fim para objetos Date
     const startDateObj = startDate ? new Date(startDate) : null;
@@ -1588,7 +1516,7 @@ function refreshDailyTargets() {
         const dailyDiv = document.createElement("div");
         dailyDiv.classList.add("target");
 
-        // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
+             // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
         const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
         let contentHTML = `
             <h3>${deadlineTag} ${target.title}</h3>
@@ -1689,5 +1617,26 @@ function checkExpiredDeadlines() {
             message += `- ${target.title}\n`;
         });
         alert(message);
+    }
+}
+
+// Função para atualizar a data do último backup
+function atualizarDataUltimoBackup() {
+    const ultimoBackupDiv = document.getElementById('ultimoBackup');
+    const currentLogin = localStorage.getItem('currentLogin');
+    const dataUltimoBackupString = localStorage.getItem(currentLogin + '_ultimoBackup'); 
+
+    if (dataUltimoBackupString) {
+        const dataUltimoBackup = new Date(dataUltimoBackupString);
+        const dia = dataUltimoBackup.getDate().toString().padStart(2, '0');
+        const mes = (dataUltimoBackup.getMonth() + 1).toString().padStart(2, '0');
+        const ano = dataUltimoBackup.getFullYear();
+        const hora = dataUltimoBackup.getHours().toString().padStart(2, '0');
+        const minuto = dataUltimoBackup.getMinutes().toString().padStart(2, '0');
+
+        ultimoBackupDiv.textContent = `Último backup: ${dia}/${mes}/${ano} ${hora}:${minuto}`;
+    } else {
+        // Se não houver informação de backup para o login atual, oculta o painel
+        ultimoBackupDiv.textContent = '';
     }
 }
