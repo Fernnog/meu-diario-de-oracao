@@ -169,13 +169,13 @@ function importData(event) {
 
     // Extrair data e hora do nome do arquivo
     const filename = file.name;
-    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/; // **REGEX ATUALIZADA para capturar o login**
+    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/;
     const match = filename.match(dateRegex);
     let fileDate = null;
-    let importedLogin = null; // **Variável para armazenar o login extraído do nome do arquivo**
+    let importedLogin = null; // Variável para armazenar o login extraído do nome do arquivo
 
     if (match) {
-        importedLogin = match[1]; // **Captura o login do nome do arquivo**
+        importedLogin = match[1]; // Captura o login do nome do arquivo
         const year = parseInt(match[2], 10);
         const month = parseInt(match[3], 10) - 1; // Mês começa em 0 (janeiro)
         const day = parseInt(match[4], 10);
@@ -184,10 +184,14 @@ function importData(event) {
 
         fileDate = new Date(year, month, day, hour, minute);
 
-        // **Armazenar a data do último backup para o login importado no localStorage**
-        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString()); // **NOVA LINHA**
+        // Armazenar a data do último backup para o login importado no localStorage
+        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString());
 
-        atualizarDataUltimoBackup(); // **Chamada atualizada para passar login e data**
+        // **CORREÇÃO: Atualizar a data do último backup para o login importado**
+        if (importedLogin === localStorage.getItem('currentLogin')) {
+            atualizarDataUltimoBackup();
+        }
+
     } else {
         console.log("Nome do arquivo não corresponde ao formato esperado para extrair data e hora.");
     }
@@ -308,7 +312,7 @@ function setLogin(login) {
     }, 3000);
 
     // Limpar o painel de último backup ao trocar de login
-    atualizarDataUltimoBackup(); // **CORREÇÃO AQUI**
+    atualizarDataUltimoBackup();
 }
 
 // Função para carregar os dados correspondentes ao login atual
@@ -531,6 +535,9 @@ function markAsResolvedDeadline(targetId) {
     currentDeadlinePage = 1;
     renderDeadlineTargets();
     refreshDailyTargets();
+
+    // **NOVA LINHA: Exportar dados após marcar como resolvido**
+    exportData();
 }
 
 function archiveTargetDeadline(targetId) {
@@ -549,6 +556,9 @@ function archiveTargetDeadline(targetId) {
     currentDeadlinePage = 1;
     renderDeadlineTargets();
     refreshDailyTargets();
+
+     // **NOVA LINHA: Exportar dados após arquivar um alvo**
+     exportData();
 }
 
 // Alterna a exibição do formulário de adição de observação (prazo de validade) e exibe o título do alvo
@@ -570,7 +580,7 @@ function saveObservationDeadline(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -592,6 +602,9 @@ function saveObservationDeadline(targetId) {
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
+
+        // **NOVA LINHA: Exportar dados após salvar uma observação**
+        exportData();
 
     } else {
         alert("Por favor, insira o texto da observação.");
@@ -676,7 +689,7 @@ function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000)); // **CORREÇÃO AQUI**
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
 
         const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
 
@@ -698,6 +711,9 @@ function saveObservation(targetId) {
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
+
+        // **NOVA LINHA: Exportar dados após salvar uma observação**
+        exportData();
 
     } else {
         alert("Por favor, insira o texto da observação.");
@@ -726,7 +742,7 @@ form.addEventListener("submit", (e) => {
         id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")), // CORREÇÃO AQUI
+        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")),
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
@@ -738,6 +754,9 @@ form.addEventListener("submit", (e) => {
     renderTargets();
     form.reset();
     refreshDailyTargets();
+
+    // **NOVA LINHA: Exportar dados após adicionar um alvo**
+    exportData();
 });
 
 // Marcar como Respondido
@@ -759,6 +778,9 @@ function markAsResolved(targetId) {
     currentPage = 1;
     renderTargets();
     refreshDailyTargets();
+
+    // **NOVA LINHA: Exportar dados após marcar como resolvido**
+    exportData();
 }
 
 // Arquivar Alvo
@@ -778,6 +800,9 @@ function archiveTarget(targetId) {
     currentPage = 1;
     renderTargets();
     refreshDailyTargets();
+
+    // **NOVA LINHA: Exportar dados após arquivar um alvo**
+    exportData();
 }
 
 // Atualizar LocalStorage
@@ -796,7 +821,7 @@ function exportData() {
     const day = String(now.getDate()).padStart(2, '0');
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    const filename = `${login}_${year}${month}${day}_${hours}${minutes}.json`; // **FORMATO ATUALIZADO**
+    const filename = `${login}_${year}${month}${day}_${hours}${minutes}.json`;
 
     const data = { login: localStorage.getItem('currentLogin'), prayerTargets, archivedTargets };
     const dataStr = JSON.stringify(data, null, 2);
@@ -807,6 +832,10 @@ function exportData() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+
+    // Atualizar a data e hora do último backup no localStorage
+    localStorage.setItem(login + '_ultimoBackup', now.toISOString());
+    atualizarDataUltimoBackup();
 }
 
 // Resetar todos os dados
@@ -1499,7 +1528,7 @@ function refreshDailyTargets() {
     // Filtrar alvos que não foram exibidos recentemente
     let availableTargets = prayerTargets.filter(target => !lastDisplayedTargets.includes(target));
 
-    // Se todos os alvos foram exibidos, reseta o histórico
+   // Se todos os alvos foram exibidos, reseta o histórico
     if (availableTargets.length === 0) {
         lastDisplayedTargets = [];
         availableTargets = prayerTargets.slice(); // Cria uma cópia da array para evitar modificação direta
@@ -1579,6 +1608,9 @@ function editDeadline(targetId) {
     renderDeadlineTargets();
 
     alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+
+    // **NOVA LINHA: Exportar dados após editar o prazo de validade**
+    exportData();
 }
 
 function isValidDate(dateString) {
