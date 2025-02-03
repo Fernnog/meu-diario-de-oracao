@@ -11,8 +11,7 @@ const targetsPerPage = 10;
 let currentSearchTermMain = '';
 let currentSearchTermArchived = '';
 let currentSearchTermResolved = '';
-let currentDeadlinePage = 1;
-let currentSearchTermDeadline = '';
+let showDeadlineOnly = false;
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
 // ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
@@ -112,21 +111,6 @@ function reattachEventListeners() {
         addObservationButton.onclick = () => toggleAddObservation(targetId);
     });
 
-    // Reassociar eventos aos botões dos alvos com prazo de validade
-    const deadlineTargetDivs = document.querySelectorAll("#deadlineList .target");
-    deadlineTargetDivs.forEach(targetDiv => {
-        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
-
-        const resolvedButton = targetDiv.querySelector(".resolved");
-        resolvedButton.onclick = () => markAsResolvedDeadline(targetId);
-
-        const archiveButton = targetDiv.querySelector(".archive");
-        archiveButton.onclick = () => archiveTargetDeadline(targetId);
-
-        const addObservationButton = targetDiv.querySelector(".add-observation");
-        addObservationButton.onclick = () => toggleAddObservationDeadline(targetId);
-    });
-
     // Reassociar eventos aos botões de alvos ARQUIVADOS (se necessário)
     const archivedTargetDivs = document.querySelectorAll("#archivedList .target");
     archivedTargetDivs.forEach(targetDiv => {
@@ -141,6 +125,27 @@ function reattachEventListeners() {
         // Aqui você pode adicionar lógica para associar eventos a botões
         // específicos dentro dos alvos resolvidos, se houver.
     });
+}
+
+// Função para atualizar a data do último backup
+function atualizarDataUltimoBackup() {
+    const ultimoBackupDiv = document.getElementById('ultimoBackup');
+    const currentLogin = localStorage.getItem('currentLogin');
+    const dataUltimoBackupString = localStorage.getItem(currentLogin + '_ultimoBackup');
+
+    if (dataUltimoBackupString) {
+        const dataUltimoBackup = new Date(dataUltimoBackupString);
+        const dia = dataUltimoBackup.getDate().toString().padStart(2, '0');
+        const mes = (dataUltimoBackup.getMonth() + 1).toString().padStart(2, '0');
+        const ano = dataUltimoBackup.getFullYear();
+        const hora = dataUltimoBackup.getHours().toString().padStart(2, '0');
+        const minuto = dataUltimoBackup.getMinutes().toString().padStart(2, '0');
+
+        ultimoBackupDiv.textContent = `Último backup: ${dia}/${mes}/${ano} ${hora}:${minuto}`;
+    } else {
+        // Se não houver informação de backup para o login atual, oculta o painel
+        ultimoBackupDiv.textContent = '';
+    }
 }
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
 
@@ -167,7 +172,7 @@ function importData(event) {
         return;
     }
 
-    // Extrair data e hora do nome do arquivo
+   // Extrair data e hora do nome do arquivo
     const filename = file.name;
     const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/;
     const match = filename.match(dateRegex);
@@ -187,7 +192,7 @@ function importData(event) {
         // Armazenar a data do último backup para o login importado no localStorage
         localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString());
 
-        // **CORREÇÃO: Atualizar a data do último backup para o login importado**
+        // Atualizar a data do último backup para o login importado
         if (importedLogin === localStorage.getItem('currentLogin')) {
             atualizarDataUltimoBackup();
         }
@@ -270,13 +275,12 @@ function importData(event) {
             renderTargets();
             renderArchivedTargets();
             renderResolvedTargets();
-            renderDeadlineTargets();
             refreshDailyTargets();
 
             // Reassociar os eventos (Importante para que os botões funcionem)
             reattachEventListeners();
 
-            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
+                      // Se chegou até aqui sem exceções, a importação foi bem-sucedida
             importSuccess = true;
 
         } catch (error) {
@@ -338,7 +342,6 @@ function loadData() {
     renderTargets();
     renderArchivedTargets();
     renderResolvedTargets();
-    renderDeadlineTargets();
     refreshDailyTargets();
 
     // Mostrar as seções principais
@@ -358,31 +361,31 @@ window.onload = function () {
     document.getElementById('searchMain').addEventListener('input', handleSearchMain);
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
-    document.getElementById('searchDeadline').addEventListener('input', handleSearchDeadline);
-    document.getElementById('showExpiredOnly').addEventListener('change', handleExpiredFilterChange);
-    document.getElementById('viewDeadlineButton').addEventListener('click', () => {
-        mainPanel.style.display = "none";
-        dailySection.style.display = "none";
-        archivedPanel.style.display = "none";
-        resolvedPanel.style.display = "none";
-        deadlinePanel.style.display = "block";
-        viewArchivedButton.style.display = "inline-block";
-        viewResolvedButton.style.display = "inline-block";
-        backToMainButton.style.display = "inline-block";
-        currentDeadlinePage = 1;
-        renderDeadlineTargets();
-    });
+    document.getElementById('showDeadlineOnly').addEventListener('change', handleDeadlineFilterChange);
+    document.getElementById('showExpiredOnlyMain').addEventListener('change', handleExpiredOnlyMainChange);
 
     //  carregar a página
     atualizarDataUltimoBackup();
 };
 // ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
+
 // ==== INÍCIO SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
-// Renderizar alvos principais
+// Renderizar alvos principais (Modificado para incluir botão "Editar Prazo")
 function renderTargets() {
     const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
-    const filteredTargets = filterTargets(prayerTargets, currentSearchTermMain);
+
+    let filteredTargets = prayerTargets;
+    if (showDeadlineOnly) {
+        filteredTargets = filteredTargets.filter(t => t.hasDeadline && !isDateExpired(t.deadlineDate));
+    }
+    const showExpiredOnlyMain = document.getElementById("showExpiredOnlyMain").checked;
+    if (showExpiredOnlyMain) {
+        filteredTargets = filteredTargets.filter(t => t.hasDeadline && isDateExpired(t.deadlineDate));
+    }
+
+    filteredTargets = filterTargets(filteredTargets, currentSearchTermMain);
+
     const startIndex = (currentPage - 1) * targetsPerPage;
     const endIndex = startIndex + targetsPerPage;
     const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
@@ -401,6 +404,7 @@ function renderTargets() {
             <button onclick="markAsResolved('${target.id}')" class="btn resolved">Marcar como Respondido</button>
             <button onclick="archiveTarget('${target.id}')" class="btn archive">Arquivar</button>
             <button onclick="toggleAddObservation('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            ${target.hasDeadline ? `<button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>` : ''}
             <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
                 <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
@@ -469,54 +473,7 @@ function renderResolvedTargets() {
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
-// Renderizar alvos com prazo de validade
-function renderDeadlineTargets() {
-    const deadlineList = document.getElementById("deadlineList");
-    deadlineList.innerHTML = "";
 
-    const showExpiredOnly = document.getElementById("showExpiredOnly").checked;
-
-    let filteredTargets = prayerTargets.filter(t => t.hasDeadline);
-    if (showExpiredOnly) {
-        filteredTargets = filteredTargets.filter(t => isDateExpired(t.deadlineDate));
-    }
-
-    filteredTargets = filterTargets(filteredTargets, currentSearchTermDeadline);
-
-    const startIndex = (currentDeadlinePage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
-
-    targetsToDisplay.forEach((target) => {
-        const formattedDate = formatDateForDisplay(target.date);
-        const deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>`;
-        const targetDiv = document.createElement("div");
-        targetDiv.classList.add("target");
-        targetDiv.innerHTML = `
-            <h3>${deadlineTag} ${target.title}</h3>
-            <p>${target.details}</p>
-            <p><strong>Data:</strong> ${formattedDate}</p>
-            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-            <p><strong>Status:</strong> Pendente</p>
-            <button onclick="markAsResolvedDeadline('${target.id}')" class="btn resolved">Marcar como Respondido</button>
-            <button onclick="archiveTargetDeadline('${target.id}')" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservationDeadline('${target.id}')" class="btn add-observation">Adicionar Observação</button>
-            <button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>
-            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
-                <h4 class="target-title"></h4>
-                <textarea placeholder="Escreva aqui a nova observação"></textarea>
-                <input type="date">
-                <button onclick="saveObservationDeadline('${target.id}')" class="btn">Salvar Observação</button>
-            </div>
-            <div class="observations-list">
-                ${renderObservations(target.observations)}
-            </div>
-        `;
-        deadlineList.appendChild(targetDiv);
-    });
-
-    renderPagination('deadlinePanel', currentDeadlinePage, filteredTargets);
-}
 function markAsResolvedDeadline(targetId) {
     const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
 
@@ -532,11 +489,9 @@ function markAsResolvedDeadline(targetId) {
     resolvedTargets.push(prayerTargets[targetIndex]);
     prayerTargets.splice(targetIndex, 1);
     updateStorage();
-    currentDeadlinePage = 1;
-    renderDeadlineTargets();
+    currentPage = 1;
+    renderTargets();
     refreshDailyTargets();
-
-    // **NOVA LINHA: Exportar dados após marcar como resolvido**
     exportData();
 }
 
@@ -553,12 +508,10 @@ function archiveTargetDeadline(targetId) {
     archivedTargets.push(prayerTargets[targetIndex]);
     prayerTargets.splice(targetIndex, 1);
     updateStorage();
-    currentDeadlinePage = 1;
-    renderDeadlineTargets();
+    currentPage = 1;
+    renderTargets();
     refreshDailyTargets();
-
-     // **NOVA LINHA: Exportar dados após arquivar um alvo**
-     exportData();
+    exportData();
 }
 
 // Alterna a exibição do formulário de adição de observação (prazo de validade) e exibe o título do alvo
@@ -597,13 +550,12 @@ function saveObservationDeadline(targetId) {
         prayerTargets[targetIndex].observations.push(newObservation);
         localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
 
-        renderDeadlineTargets();
+        renderTargets();
 
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
 
-        // **NOVA LINHA: Exportar dados após salvar uma observação**
         exportData();
 
     } else {
@@ -649,9 +601,6 @@ function renderPagination(panelId, page, targets) {
             } else if (panelId === 'resolvedPanel') {
                 currentResolvedPage = i;
                 renderResolvedTargets();
-            } else if (panelId === 'deadlinePanel') {
-                currentDeadlinePage = i;
-                renderDeadlineTargets();
             }
         });
         paginationDiv.appendChild(pageLink);
@@ -711,8 +660,6 @@ function saveObservation(targetId) {
         textarea.value = "";
         dateInput.value = "";
         form.style.display = "none";
-
-        // **NOVA LINHA: Exportar dados após salvar uma observação**
         exportData();
 
     } else {
@@ -720,13 +667,156 @@ function saveObservation(targetId) {
     }
 }
 
-// Função para lidar com a mudança no filtro de alvos vencidos
-function handleExpiredFilterChange() {
-    currentDeadlinePage = 1;
-    renderDeadlineTargets();
+// Função para lidar com a mudança no filtro de alvos por prazo
+function handleDeadlineFilterChange() {
+    showDeadlineOnly = document.getElementById("showDeadlineOnly").checked;
+    currentPage = 1;
+    renderTargets();
+}
+
+// Função para lidar com a mudança no filtro de alvos por prazo (filtro novo)
+function handleExpiredOnlyMainChange() {
+    currentPage = 1;
+    renderTargets();
 }
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
+
 // ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
+// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        console.log("Nenhum arquivo selecionado.");
+        return;
+    }
+
+    // Extrair data e hora do nome do arquivo
+    const filename = file.name;
+    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/;
+    const match = filename.match(dateRegex);
+    let fileDate = null;
+    let importedLogin = null; // Variável para armazenar o login extraído do nome do arquivo
+
+    if (match) {
+        importedLogin = match[1]; // Captura o login do nome do arquivo
+        const year = parseInt(match[2], 10);
+        const month = parseInt(match[3], 10) - 1; // Mês começa em 0 (janeiro)
+        const day = parseInt(match[4], 10);
+        const hour = parseInt(match[5], 10);
+        const minute = parseInt(match[6], 10);
+
+        fileDate = new Date(year, month, day, hour, minute);
+
+        // Armazenar a data do último backup para o login importado no localStorage
+        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString());
+
+        // Atualizar a data do último backup para o login importado
+        if (importedLogin === localStorage.getItem('currentLogin')) {
+            atualizarDataUltimoBackup();
+        }
+
+    } else {
+        console.log("Nome do arquivo não corresponde ao formato esperado para extrair data e hora.");
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        let importSuccess = false;
+        try {
+            console.log("Conteúdo bruto do arquivo:", e.target.result);
+            const importedData = JSON.parse(e.target.result);
+            console.log("Dados importados (parsed):", importedData);
+
+            const newPrayerTargets = importedData.prayerTargets || [];
+            const newArchivedTargets = importedData.archivedTargets || [];
+
+            console.log("Login importado:", importedLogin);
+            console.log("Novos alvos de oração importados:", newPrayerTargets);
+            console.log("Novos alvos arquivados importados:", newArchivedTargets);
+
+            const currentLogin = localStorage.getItem('currentLogin');
+
+            if (importedLogin !== currentLogin) {
+                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
+                    console.log("Importação cancelada devido à incompatibilidade de login.");
+                    return;
+                }
+            }
+
+            const allTargets = [...prayerTargets, ...archivedTargets];
+
+            // Verificar duplicatas com base no título, data e ID
+            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
+
+            newPrayerTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
+                        target.id = generateUniqueId();
+                    }
+                    prayerTargets.push(target);
+                } else {
+                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
+                }
+            });
+
+            newArchivedTargets.forEach(target => {
+                if (!isDuplicate(target)) {
+                    // Gerar novo ID se necessário
+                    if (!target.id) {
+                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
+                        target.id = generateUniqueId();
+                    } else if (allTargets.some(t => t.id === target.id)) {
+                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
+                        target.id = generateUniqueId();
+                    }
+                    archivedTargets.push(target);
+                } else {
+                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
+                }
+            });
+
+            // Reidratar os alvos (converter strings de data para objetos Date)
+            prayerTargets = rehydrateTargets(prayerTargets);
+            archivedTargets = rehydrateTargets(archivedTargets);
+
+            console.log("prayerTargets após reidratação:", prayerTargets);
+            console.log("archivedTargets após reidratação:", archivedTargets);
+
+            updateStorage();
+
+            // Atualizar a UI e reassociar event listeners
+            renderTargets();
+            renderArchivedTargets();
+            renderResolvedTargets();
+            refreshDailyTargets();
+
+            // Reassociar os eventos (Importante para que os botões funcionem)
+            reattachEventListeners();
+
+            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
+            importSuccess = true;
+
+        } catch (error) {
+            console.error("Erro detalhado ao importar dados:", error);
+            console.error("Stack trace do erro:", error.stack);
+            alert("Erro ao importar dados. Veja o console para mais detalhes.");
+        } finally {
+            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
+            if (importSuccess) {
+                showSuccessMessage('importSuccessMessage');
+            }
+        }
+    };
+    reader.onerror = function (error) {
+        console.error("Erro ao ler o arquivo:", error);
+    };
+    reader.readAsText(file);
+}
 // Adicionar alvo
 document.getElementById('hasDeadline').addEventListener('change', function() {
     const deadlineContainer = document.getElementById('deadlineContainer');
@@ -754,8 +844,6 @@ form.addEventListener("submit", (e) => {
     renderTargets();
     form.reset();
     refreshDailyTargets();
-
-    // **NOVA LINHA: Exportar dados após adicionar um alvo**
     exportData();
 });
 
@@ -778,8 +866,6 @@ function markAsResolved(targetId) {
     currentPage = 1;
     renderTargets();
     refreshDailyTargets();
-
-    // **NOVA LINHA: Exportar dados após marcar como resolvido**
     exportData();
 }
 
@@ -800,8 +886,6 @@ function archiveTarget(targetId) {
     currentPage = 1;
     renderTargets();
     refreshDailyTargets();
-
-    // **NOVA LINHA: Exportar dados após arquivar um alvo**
     exportData();
 }
 
@@ -840,8 +924,8 @@ function exportData() {
 
 // Resetar todos os dados
 function resetData() {
-    if (confirm("Tem certeza de que deseja resetar todos os alvos? Esta ação não pode ser desfeita.")) {
-        if (confirm("Você gostaria de exportar os alvos antes de resetar?")) {
+    if (confirm("Tem certeza de que deseja limpar a página? Esta ação não pode ser desfeita.")) {
+        if (confirm("Você gostaria de exportar os alvos antes de limpar?")) {
             exportData();
         }
 
@@ -853,10 +937,17 @@ function resetData() {
         renderArchivedTargets();
         renderResolvedTargets();
         refreshDailyTargets();
+
+        // Limpar a informação de último backup para o login atual
+        const currentLogin = localStorage.getItem('currentLogin');
+        localStorage.removeItem(currentLogin + '_ultimoBackup');
+        atualizarDataUltimoBackup();
+
         alert("Todos os alvos foram resetados.");
     }
 }
 // ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
+
 // ==== INÍCIO SEÇÃO - RENDERIZAÇÃO ====
 // Renderizar alvos arquivados
 function renderArchivedTargets() {
@@ -937,10 +1028,11 @@ document.getElementById('viewAllTargetsButton').addEventListener('click', () => 
     dailySection.style.display = "none";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "none";
-    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "inline-block";
+    showDeadlineOnly = false;
+    document.getElementById("showDeadlineOnly").checked = false;
     renderTargets();
 });
 
@@ -951,14 +1043,12 @@ const mainPanel = document.getElementById("mainPanel");
 const dailySection = document.getElementById("dailySection");
 const archivedPanel = document.getElementById("archivedPanel");
 const resolvedPanel = document.getElementById("resolvedPanel");
-const deadlinePanel = document.getElementById("deadlinePanel");
 
 viewArchivedButton.addEventListener("click", () => {
     mainPanel.style.display = "none";
     dailySection.style.display = "none";
     archivedPanel.style.display = "block";
     resolvedPanel.style.display = "none";
-    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "none";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "inline-block";
@@ -971,7 +1061,6 @@ viewResolvedButton.addEventListener("click", () => {
     dailySection.style.display = "none";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "block";
-    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "none";
     backToMainButton.style.display = "inline-block";
@@ -984,7 +1073,6 @@ backToMainButton.addEventListener("click", () => {
     dailySection.style.display = "block";
     archivedPanel.style.display = "none";
     resolvedPanel.style.display = "none";
-    deadlinePanel.style.display = "none";
     viewArchivedButton.style.display = "inline-block";
     viewResolvedButton.style.display = "inline-block";
     backToMainButton.style.display = "none";
@@ -1005,7 +1093,7 @@ copyDailyButton.addEventListener("click", function () {
         const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
         const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
 
-        const observations = Array.from(div.querySelectorAll('p'))
+               const observations = Array.from(div.querySelectorAll('p'))
             .slice(2)
             .map(p => p.textContent)
             .join('\n');
@@ -1059,6 +1147,7 @@ cancelDateRangeButton.addEventListener("click", () => {
     dateRangeModal.style.display = "none";
 });
 // ==== FIM SEÇÃO - EVENT LISTENERS ====
+
 // ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
 // Função para gerar o HTML com os alvos ativos
 function generateViewHTML() {
@@ -1456,12 +1545,6 @@ function handleSearchResolved(event) {
     renderResolvedTargets();
 }
 
-function handleSearchDeadline(event) {
-    currentSearchTermDeadline = event.target.value;
-    currentDeadlinePage = 1;
-    renderDeadlineTargets();
-}
-
 // ==== INÍCIO SEÇÃO - VERSÍCULOS BÍBLICOS ====
 const verses = [
     "Mateus 7:7-8: “Peçam, e será dado a vocês; busquem, e encontrarão; batam, e a porta será aberta a vocês. Pois todo o que pede recebe; o que busca encontra; e àquele que bate, a porta será aberta.”",
@@ -1604,12 +1687,10 @@ function editDeadline(targetId) {
     // Atualizar o localStorage
     updateStorage();
 
-    // Renderizar novamente os alvos com prazo de validade
-    renderDeadlineTargets();
+    // Renderizar novamente os alvos
+    renderTargets();
 
     alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
-
-    // **NOVA LINHA: Exportar dados após editar o prazo de validade**
     exportData();
 }
 
@@ -1672,3 +1753,4 @@ function atualizarDataUltimoBackup() {
         ultimoBackupDiv.textContent = '';
     }
 }
+
