@@ -56,6 +56,7 @@ h1 {
     /* Removido margin-bottom: 20px; */
     font-size: 2.5em;
 }
+
 /* ==== FIM SEÇÃO - ESTILOS GERAIS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS BOTÕES ==== */
@@ -117,14 +118,6 @@ h1 {
 
 .main-menu .action-btn:hover {
     background-color: #4a301a; /* Tom mais escuro no hover */
-}
-/* Novos botões prazo de validade em tom mais escuro */
-.main-menu button.deadline, .main-menu .btn.deadline {
-    background-color: #e29420;
-}
-
-.main-menu button.deadline:hover, .main-menu .btn.deadline:hover {
-    background-color: #ca7d1b; /* Tom mais escuro no hover */
 }
 
 /* Linhas de separação */
@@ -654,6 +647,14 @@ input[type="date"] {
     background-color: #4a77a5; /* Tom mais escuro no hover */
 }
 /* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
+/* ==== INÍCIO SEÇÃO - ESTILOS CENTRALIZAR BOTÕES ==== */
+.daily-buttons-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px; /* Espaço entre os botões */
+    margin-top: 10px; /* Espaço acima dos botões */
+}
+/* ==== FIM SEÇÃO - ESTILOS CENTRALIZAR BOTÕES ==== */
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
 /* Media query para telas menores */
 @media (max-width: 768px) {
