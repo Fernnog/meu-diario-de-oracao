@@ -34,20 +34,20 @@
     </div>
     <!-- ==== FIM SEÇÃO - LOGIN ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - MENU ==== -->
+ <!-- ==== INÍCIO SEÇÃO - MENU ==== -->
     <hr class="menu-separator">
     <div class="main-menu" id="mainMenu">
-        <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
-        <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
-        <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
-        <button id="viewDeadlineButton" class="btn deadline">Ver Alvos com Prazo</button> <button id="backToMainButton" class="btn">Voltar</button>
+       <button id="backToMainButton" class="btn">Página Inicial</button>
+       <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
+       <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
+       <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
     </div>
     <hr class="menu-separator dark">
         <div class="main-menu" id="mainMenu">
         <button id="exportData" class="btn action-btn">Exportar Alvos</button>
         <input type="file" id="importData" style="display: none;">
         <label for="importData" class="btn action-btn">Importar Alvos</label>
-        <button id="resetData" class="btn action-btn">Resetar Alvos</button>
+        <button id="resetData" class="btn action-btn">Limpar Página</button>
         <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Geral</button>
         <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos</button>
     </div>
@@ -112,6 +112,15 @@
     <hr class="title-separator"> <!-- Linha horizontal após o título -->
     <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
     <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <div class="filter-container">
+        <input type="checkbox" id="showDeadlineOnly" name="showDeadlineOnly">
+        <label for="showDeadlineOnly">Alvos de oração com prazo de vencimento</label>
+    </div>
+    <div class="filter-container">
+        <input type="checkbox" id="showExpiredOnlyMain" name="showExpiredOnlyMain">
+        <label for="showExpiredOnlyMain">Alvos de oração com prazo já vencido</label>
+    </div>
+    <hr class="filter-separator"> <!-- Linha horizontal após o filtro -->
     <div id="targetList"></div>
 </div>
 
