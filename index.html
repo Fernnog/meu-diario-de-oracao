@@ -11,7 +11,6 @@
 <body>
  <!-- ==== INÍCIO SEÇÃO - CABEÇALHO ==== -->
 <div class="top-bar">
-    <div id="ultimoBackup" class="ultimo-backup"></div>
 </div>
 <div class="logo-container">
     <img src="logo.png" alt="Logo" class="logo">
@@ -21,20 +20,27 @@
 </div>
 <!-- ==== FIM SEÇÃO - CABEÇALHO ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - LOGIN ==== -->
-    <div class="login-section" id="loginSection">
-        <div class="login-container">
-            <button id="setLoginButton" class="btn">Definir Login</button>
-            <input type="text" id="loginInput" placeholder="Ex.: file1">
+    <!-- ==== INÍCIO SEÇÃO - AUTENTICAÇÃO ==== -->
+    <div id="authSection" class="auth-section" style="display: block;">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Senha">
+        <div class="auth-buttons">
+            <button id="btnRegister" class="btn auth-btn">Registrar</button>
+            <button id="btnLogin" class="btn auth-btn">Entrar</button>
+            </div>
+        <div id="btnForgotPasswordContainer" class="forgot-password-container">
+            <button id="btnForgotPassword" class="btn forgot-password-btn">Esqueci minha senha?</button>
         </div>
-        <!-- Mensagem de confirmação -->
-        <div id="loginSuccessMessage" class="login-success-message">
-            Login alterado com sucesso!
+         <!-- Envolve o status e o botão em um container (para Flexbox) -->
+        <div class="auth-status-container">
+            <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
+            <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
         </div>
+        <div id="passwordResetMessage" class="password-reset-message" style="display:none;"></div>
     </div>
-    <!-- ==== FIM SEÇÃO - LOGIN ==== -->
+    <!-- ==== FIM SEÇÃO - AUTENTICAÇÃO ==== -->
 
- <!-- ==== INÍCIO SEÇÃO - MENU ==== -->
+    <!-- ==== INÍCIO SEÇÃO - MENU ==== -->
     <hr class="menu-separator">
     <div class="main-menu" id="mainMenu">
        <button id="backToMainButton" class="btn">Página Inicial</button>
@@ -43,19 +49,17 @@
        <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
     </div>
     <hr class="menu-separator dark">
-        <div class="main-menu" id="mainMenu">
-        <button id="exportData" class="btn action-btn">Exportar Alvos</button>
-        <input type="file" id="importData" style="display: none;">
-        <label for="importData" class="btn action-btn">Importar Alvos</label>
-        <button id="resetData" class="btn action-btn">Limpar Página</button>
+    <div class="main-menu" id="mainMenu">
         <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Geral</button>
         <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos</button>
+        <!-- ADICIONAR O BOTÃO DE RELATÓRIO AQUI -->
+        <button id="generateReportButton" class="btn action-btn">Conferir perseverança das oreações</button>
     </div>
     <hr class="menu-separator">
     <!-- ==== FIM SEÇÃO - MENU ==== -->
 
     <!-- ==== INÍCIO SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
-    <div class="form-section">
+    <div class="form-section" id="appContent" style="display: none;">
         <h2>Cadastrar Novo Alvo de Oração</h2>
         <form id="prayerForm">
             <label for="title">Título:</label>
@@ -80,10 +84,10 @@
     </div>
     <!-- ==== FIM SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
 
-    <hr class="section-separator">
+    <hr class="section-separator" id="sectionSeparator" style="display: none;">
 
     <!-- ==== INÍCIO SEÇÃO - ALVOS DO DIA ==== -->
-    <div class="daily-section" id="dailySection">
+    <div class="daily-section" id="dailySection" style="display: none;">
         <h2>
             Alvos de oração do dia
             <div class="daily-buttons-container">
@@ -109,9 +113,9 @@
    <!-- Painel Principal com Alvos Ativos -->
 <div class="targets-section" id="mainPanel" style="display: none;">
     <h2>Alvos de Oração</h2>
-    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <hr class="title-separator">
     <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
-    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <hr class="search-separator">
     <div class="filter-container">
         <input type="checkbox" id="showDeadlineOnly" name="showDeadlineOnly">
         <label for="showDeadlineOnly">Alvos de oração com prazo de vencimento</label>
@@ -120,41 +124,45 @@
         <input type="checkbox" id="showExpiredOnlyMain" name="showExpiredOnlyMain">
         <label for="showExpiredOnlyMain">Alvos de oração com prazo já vencido</label>
     </div>
-    <hr class="filter-separator"> <!-- Linha horizontal após o filtro -->
+    <hr class="filter-separator">
     <div id="targetList"></div>
+    <div id="pagination-mainPanel"></div>
 </div>
 
 <!-- Painel para Alvos Arquivados -->
 <div class="targets-section" id="archivedPanel" style="display: none;">
     <h2>Alvos Arquivados</h2>
-    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <hr class="title-separator">
     <input type="text" id="searchArchived" placeholder="Pesquisar alvos..." class="search-input">
-    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <hr class="search-separator">
     <div id="archivedList"></div>
+    <div id="pagination-archivedPanel"></div>
 </div>
 
 <!-- Painel para Alvos Respondidos -->
 <div class="targets-section" id="resolvedPanel" style="display: none;">
     <h2>Alvos Respondidos</h2>
-    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <hr class="title-separator">
     <input type="text" id="searchResolved" placeholder="Pesquisar alvos..." class="search-input">
-    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <hr class="search-separator">
     <div id="resolvedList"></div>
+    <div id="pagination-resolvedPanel"></div>
 </div>
 
 <!-- Painel para Alvos com Prazo de Validade -->
 <div class="targets-section" id="deadlinePanel" style="display: none;">
     <h2>Alvos com Prazo de Validade</h2>
-    <hr class="title-separator"> <!-- Linha horizontal após o título -->
+    <hr class="title-separator">
     <input type="text" id="searchDeadline" placeholder="Pesquisar alvos..." class="search-input">
-    <hr class="search-separator"> <!-- Linha horizontal após a caixa de pesquisa -->
+    <hr class="search-separator">
     <!-- Checkbox para filtrar alvos vencidos -->
     <div class="filter-container">
         <input type="checkbox" id="showExpiredOnly" name="showExpiredOnly">
-        <label for="showExpiredOnly">Vencidos</label> <!-- Texto alterado para "Vencidos" -->
+        <label for="showExpiredOnly">Vencidos</label>
     </div>
-    <hr class="filter-separator"> <!-- Linha horizontal após o filtro -->
+    <hr class="filter-separator">
     <div id="deadlineList"></div>
+    <div id="pagination-deadlinePanel"></div>
 </div>
 <!-- ==== FIM SEÇÃO - PAINÉIS DE ALVOS ==== -->
 
@@ -172,17 +180,8 @@
             <button id="cancelDateRange" class="btn">Cancelar</button>
         </div>
     </div>
-    <!-- ==== FIM SEÇÃO - MODAIS ==== →
+    <!-- ==== FIM SEÇÃO - MODAIS ==== -->
 
-<!-- ==== INÍCIO SEÇÃO - MENSAGENS DE CONFIRMAÇÃO ==== -->
-    <div id="importSuccessMessage" class="success-message">
-        Importação realizada com sucesso!
-    </div>
-    <div id="deleteSuccessMessage" class="delete-success-message">
-        Alvo excluído com sucesso!
-    </div>
-<!-- ==== FIM SEÇÃO - MENSAGENS DE CONFIRMAÇÃO ==== -->
-
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
