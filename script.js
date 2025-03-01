@@ -1,8 +1,28 @@
-// ==== INÍCIO SEÇÃO - VARIÁVEIS GLOBAIS ====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, increment } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
+    authDomain: "diario-de-oracao-268d3.firebaseapp.com",
+    projectId: "diario-de-oracao-268d3",
+    storageBucket: "diario-de-oracao-268d3.firebasestorage.app",
+    messagingSenderId: "561592831701",
+    appId: "1:561592831701:web:2a682317486837fd795c5c",
+    measurementId: "G-15YHNK7H2B"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth(app);
+const db = getFirestore(app); // Initialize Firestore
+
+// ==== VARIÁVEIS GLOBAIS ====
 let prayerTargets = [];
 let archivedTargets = [];
 let resolvedTargets = [];
-let localStorageKeyPrefix = '';
 let lastDisplayedTargets = [];
 let currentPage = 1;
 let currentArchivedPage = 1;
@@ -12,10 +32,10 @@ let currentSearchTermMain = '';
 let currentSearchTermArchived = '';
 let currentSearchTermResolved = '';
 let showDeadlineOnly = false;
+
 // ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
 
-// ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
-// Função para formatar data para o formato ISO (YYYY-MM-DD)
+// ==== FUNÇÕES UTILITÁRIAS ====
 function formatDateToISO(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -23,404 +43,240 @@ function formatDateToISO(date) {
     return `${year}-${month}-${day}`;
 }
 
-// Função para formatar data para exibição (DD/MM/YYYY)
 function formatDateForDisplay(dateString) {
-    // Verificar se dateString é um objeto Date e convertê-lo para string ISO, se necessário
     if (dateString instanceof Date) {
         dateString = formatDateToISO(dateString);
     }
-
     if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Data Inválida';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 }
 
-// Função para calcular o tempo decorrido
 function timeElapsed(date) {
     const now = new Date();
     const targetDate = new Date(date);
-    const elapsed = now - targetDate;
-
-    const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-
-    if (days < 7) {
-        return `${days} dia(s)`;
-    }
-    const weeks = Math.floor(days / 7);
-    return `${weeks} semana(s)`;
+    return Math.floor((now - targetDate) / (1000 * 60 * 60 * 24)) < 7
+        ? `${Math.floor((now - targetDate) / (1000 * 60 * 60 * 24))} dia(s)`
+        : `${Math.floor((now - targetDate) / (1000 * 60 * 60 * 24 * 7))} semana(s)`;
 }
 
-// Função para verificar se uma data está vencida em relação à data atual
 function isDateExpired(dateString) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Zerar horas, minutos, segundos e milissegundos
-    const date = new Date(dateString);
-    return date < today;
+    today.setHours(0, 0, 0, 0);
+    return new Date(dateString) < today;
 }
 
-// Função para gerar um ID único
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
+
 // ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
 
-// ==== INÍCIO SEÇÃO - FUNÇÕES AUXILIARES ====
-
-// Função para reidratar os alvos (converter strings de data para objetos Date)
+// ==== FUNÇÕES AUXILIARES ====
 function rehydrateTargets(targets) {
     return targets.map(target => {
-        // Converter strings de data para objetos Date
-        target.date = new Date(target.date);
-        if (target.archivedDate) {
-            target.archivedDate = new Date(target.archivedDate);
-        }
-        if (target.deadlineDate) {
-            target.deadlineDate = new Date(target.deadlineDate);
-        }
-        if (target.observations) {
-            target.observations.forEach(obs => {
-                obs.date = new Date(obs.date);
-            });
-        }
-
-        // Aqui você pode adicionar mais lógica para associar métodos,
-        // se necessário, por exemplo, usando uma classe ou um protótipo.
-
+        if (target.date) target.date = new Date(target.date);
+        if (target.archivedDate) target.archivedDate = new Date(target.archivedDate);
+        if (target.deadlineDate) target.deadlineDate = new Date(target.deadlineDate);
+        if (target.observations) target.observations.forEach(obs => obs.date = new Date(obs.date));
         return target;
     });
 }
 
-// Função para reassociar os eventos aos botões (CORRIGIDA)
-function reattachEventListeners() {
-    // Reassociar eventos aos botões dos alvos principais
-    const targetDivs = document.querySelectorAll("#targetList .target");
-    targetDivs.forEach(targetDiv => {
-        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
-
-        const resolvedButton = targetDiv.querySelector(".resolved");
-        resolvedButton.onclick = () => markAsResolved(targetId);
-
-        const archiveButton = targetDiv.querySelector(".archive");
-        archiveButton.onclick = () => archiveTarget(targetId);
-
-        const addObservationButton = targetDiv.querySelector(".add-observation");
-        addObservationButton.onclick = () => toggleAddObservation(targetId);
-    });
-
-    // Reassociar eventos aos botões de alvos ARQUIVADOS (se necessário)
-    const archivedTargetDivs = document.querySelectorAll("#archivedList .target");
-    archivedTargetDivs.forEach(targetDiv => {
-        // Aqui você pode adicionar lógica para associar eventos a botões
-        // específicos dentro dos alvos arquivados, se houver.
-        // Por exemplo, um botão para desarquivar.
-    });
-
-    // Reassociar eventos aos botões de alvos RESOLVIDOS (se necessário)
-    const resolvedTargetDivs = document.querySelectorAll("#resolvedList .target");
-    resolvedTargetDivs.forEach(targetDiv => {
-        // Aqui você pode adicionar lógica para associar eventos a botões
-        // específicos dentro dos alvos resolvidos, se houver.
-    });
-}
-
-// Função para atualizar a data do último backup
-function atualizarDataUltimoBackup() {
-    const ultimoBackupDiv = document.getElementById('ultimoBackup');
-    const currentLogin = localStorage.getItem('currentLogin');
-    const dataUltimoBackupString = localStorage.getItem(currentLogin + '_ultimoBackup');
-
-    if (dataUltimoBackupString) {
-        const dataUltimoBackup = new Date(dataUltimoBackupString);
-        const dia = dataUltimoBackup.getDate().toString().padStart(2, '0');
-        const mes = (dataUltimoBackup.getMonth() + 1).toString().padStart(2, '0');
-        const ano = dataUltimoBackup.getFullYear();
-        const hora = dataUltimoBackup.getHours().toString().padStart(2, '0');
-        const minuto = dataUltimoBackup.getMinutes().toString().padStart(2, '0');
-
-        ultimoBackupDiv.textContent = `Último backup: ${dia}/${mes}/${ano} ${hora}:${minuto}`;
-    } else {
-        // Se não houver informação de backup para o login atual, oculta o painel
-        ultimoBackupDiv.textContent = '';
-    }
-}
 // ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
 
-// ==== INÍCIO SEÇÃO - FUNÇÕES DE MENSAGEM DE CONFIRMAÇÃO ====
-// Função para mostrar a mensagem de sucesso
-function showSuccessMessage(messageId) {
-    const message = document.getElementById(messageId);
-    message.classList.add('show');
+// ==== FUNÇÃO PARA ATUALIZAR A UI DE AUTENTICAÇÃO ====
+function updateAuthUI(user) {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const btnRegister = document.getElementById('btnRegister');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const btnForgotPasswordContainer = document.getElementById('btnForgotPasswordContainer');
+    const authStatus = document.getElementById('authStatus');
+    const authStatusContainer = document.querySelector('.auth-status-container'); // Obtém o container
 
-    // Ocultar a mensagem após 3 segundos
-    setTimeout(() => {
-        message.classList.remove('show');
-    }, 3000);
-}
-
-// ==== FIM SEÇÃO - FUNÇÕES DE MENSAGEM DE CONFIRMAÇÃO ====
-
-// ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) {
-        console.log("Nenhum arquivo selecionado.");
-        return;
-    }
-
-   // Extrair data e hora do nome do arquivo
-    const filename = file.name;
-    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/;
-    const match = filename.match(dateRegex);
-    let fileDate = null;
-    let importedLogin = null; // Variável para armazenar o login extraído do nome do arquivo
-
-    if (match) {
-        importedLogin = match[1]; // Captura o login do nome do arquivo
-        const year = parseInt(match[2], 10);
-        const month = parseInt(match[3], 10) - 1; // Mês começa em 0 (janeiro)
-        const day = parseInt(match[4], 10);
-        const hour = parseInt(match[5], 10);
-        const minute = parseInt(match[6], 10);
-
-        fileDate = new Date(year, month, day, hour, minute);
-
-        // Armazenar a data do último backup para o login importado no localStorage
-        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString());
-
-        // Atualizar a data do último backup para o login importado
-        if (importedLogin === localStorage.getItem('currentLogin')) {
-            atualizarDataUltimoBackup();
-        }
+    if (user) {
+        authStatus.textContent = "Usuário autenticado: " + user.email;
+        authStatusContainer.style.display = 'flex'; // Mostra o container (e seu conteúdo)
+        btnLogout.style.display = 'inline-block'; //redundancia proposital, questão de segurança
+        emailInput.style.display = 'none';
+        passwordInput.style.display = 'none';
+        btnRegister.style.display = 'none';
+        btnLogin.style.display = 'none';
+        btnForgotPasswordContainer.style.display = 'none';
 
     } else {
-        console.log("Nome do arquivo não corresponde ao formato esperado para extrair data e hora.");
+        authStatus.textContent = "Nenhum usuário autenticado";
+        authStatusContainer.style.display = 'block'; // Certifique-se de que está visível
+        btnLogout.style.display = 'none';
+        emailInput.style.display = 'block';
+        passwordInput.style.display = 'block';
+        btnRegister.style.display = 'inline-block';
+        btnLogin.style.display = 'inline-block';
+        btnForgotPasswordContainer.style.display = 'block';
     }
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        let importSuccess = false;
-        try {
-            console.log("Conteúdo bruto do arquivo:", e.target.result);
-            const importedData = JSON.parse(e.target.result);
-            console.log("Dados importados (parsed):", importedData);
-
-            const newPrayerTargets = importedData.prayerTargets || [];
-            const newArchivedTargets = importedData.archivedTargets || [];
-
-            console.log("Login importado:", importedLogin);
-            console.log("Novos alvos de oração importados:", newPrayerTargets);
-            console.log("Novos alvos arquivados importados:", newArchivedTargets);
-
-            const currentLogin = localStorage.getItem('currentLogin');
-
-            if (importedLogin !== currentLogin) {
-                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
-                    console.log("Importação cancelada devido à incompatibilidade de login.");
-                    return;
-                }
-            }
-
-            const allTargets = [...prayerTargets, ...archivedTargets];
-
-            // Verificar duplicatas com base no título, data e ID
-            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
-
-            newPrayerTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    prayerTargets.push(target);
-                } else {
-                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            newArchivedTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    archivedTargets.push(target);
-                } else {
-                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            // Reidratar os alvos (converter strings de data para objetos Date)
-            prayerTargets = rehydrateTargets(prayerTargets);
-            archivedTargets = rehydrateTargets(archivedTargets);
-
-            console.log("prayerTargets após reidratação:", prayerTargets);
-            console.log("archivedTargets após reidratação:", archivedTargets);
-
-            updateStorage();
-
-            // Atualizar a UI e reassociar event listeners
-            renderTargets();
-            renderArchivedTargets();
-            renderResolvedTargets();
-            refreshDailyTargets();
-
-            // Reassociar os eventos (Importante para que os botões funcionem)
-            reattachEventListeners();
-
-                      // Se chegou até aqui sem exceções, a importação foi bem-sucedida
-            importSuccess = true;
-
-        } catch (error) {
-            console.error("Erro detalhado ao importar dados:", error);
-            console.error("Stack trace do erro:", error.stack);
-            alert("Erro ao importar dados. Veja o console para mais detalhes.");
-        } finally {
-            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
-            if (importSuccess) {
-                showSuccessMessage('importSuccessMessage');
-            }
-        }
-    };
-    reader.onerror = function (error) {
-        console.error("Erro ao ler o arquivo:", error);
-    };
-    reader.readAsText(file);
 }
 
-// ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
-// Função para definir o login e carregar os dados correspondentes
-function setLogin(login) {
-    localStorage.setItem('currentLogin', login);
-    loadData();
+// ==== FIM SEÇÃO - FUNÇÃO PARA ATUALIZAR A UI DE AUTENTICAÇÃO ====
 
-    // Mostrar mensagem de sucesso
-    const message = document.getElementById('loginSuccessMessage');
-    message.classList.add('show');
+// ==== INICIALIZAÇÃO E LOGIN/AUTENTICAÇÃO ====
+async function loadData(user) {
+    updateAuthUI(user); // Atualiza a UI de autenticação
 
-    // Ocultar a mensagem após 3 segundos
-    setTimeout(() => {
-        message.classList.remove('show');
-    }, 3000);
+    if (user) {
+        document.getElementById('appContent').style.display = 'block';
+        document.getElementById('dailySection').style.display = 'block';
+        document.getElementById('sectionSeparator').style.display = 'block';
+        document.getElementById('mainPanel').style.display = 'none';
+        // authSection já é controlado por updateAuthUI
 
-    // Limpar o painel de último backup ao trocar de login
-    atualizarDataUltimoBackup();
+        await fetchPrayerTargets(user.uid);
+        await fetchArchivedTargets(user.uid);
+        resolvedTargets = archivedTargets.filter(target => target.resolved);
+
+        checkExpiredDeadlines();
+        renderTargets();
+        renderArchivedTargets();
+        renderResolvedTargets();
+        refreshDailyTargets();
+    } else {
+        //usuário não logado
+        document.getElementById('appContent').style.display = 'none';
+        document.getElementById('dailySection').style.display = 'none';
+        document.getElementById('sectionSeparator').style.display = 'none';
+        document.getElementById('mainPanel').style.display = 'none';
+        // authSection já é controlado por updateAuthUI
+
+        prayerTargets = [];
+        archivedTargets = [];
+        resolvedTargets = [];
+        renderTargets();
+        renderArchivedTargets();
+        renderResolvedTargets();
+        refreshDailyTargets();
+    }
 }
 
-// Função para carregar os dados correspondentes ao login atual
-function loadData() {
-    const login = localStorage.getItem('currentLogin');
-    if (!login) {
-        alert("Por favor, defina um login.");
-        return;
-    }
-
-    // Atualizar o login global
-    localStorageKeyPrefix = login + '_';
-
-    // Carregar os dados do localStorage
-    prayerTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "prayerTargets")) || [];
-    archivedTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "archivedTargets")) || [];
-    resolvedTargets = archivedTargets.filter(target => target.resolved);
-
-    // Verificar prazos de validade vencidos
-    checkExpiredDeadlines();
-
-    // Renderizar os dados
-    renderTargets();
-    renderArchivedTargets();
-    renderResolvedTargets();
-    refreshDailyTargets();
-
-    // Mostrar as seções principais
-    document.querySelector('.daily-section').style.display = 'block';
-    document.querySelector('.form-section').style.display = 'block';
-    document.querySelector('.daily-buttons-container').style.display = 'flex';
-    document.getElementById('mainPanel').style.display = 'none';
+async function fetchPrayerTargets(uid) {
+    prayerTargets = [];
+    const targetsRef = collection(db, "users", uid, "prayerTargets");
+    const targetsSnapshot = await getDocs(query(targetsRef, orderBy("date", "desc"))); // Ordenar por data
+    targetsSnapshot.forEach((doc) => {
+        prayerTargets.push({...doc.data(), id: doc.id});
+    });
+    prayerTargets = rehydrateTargets(prayerTargets);
 }
 
-// Inicializar o login e carregar os dados ao carregar a página
-window.onload = function () {
-    const savedLogin = localStorage.getItem('currentLogin');
-    if (savedLogin) {
-        document.getElementById('loginInput').value = savedLogin;
-        loadData();
-    }
+async function fetchArchivedTargets(uid) {
+    archivedTargets = [];
+    const archivedRef = collection(db, "users", uid, "archivedTargets");
+    const archivedSnapshot = await getDocs(query(archivedRef, orderBy("archivedDate", "desc"))); // Ordenar por data de arquivo
+    archivedSnapshot.forEach((doc) => {
+        archivedTargets.push({...doc.data(), id: doc.id});
+    });
+     archivedTargets = rehydrateTargets(archivedTargets);
+}
+
+
+window.onload = () => {
+    onAuthStateChanged(auth, (user) => {
+        loadData(user); // loadData chama updateAuthUI
+    });
     document.getElementById('searchMain').addEventListener('input', handleSearchMain);
     document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
     document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
     document.getElementById('showDeadlineOnly').addEventListener('change', handleDeadlineFilterChange);
     document.getElementById('showExpiredOnlyMain').addEventListener('change', handleExpiredOnlyMainChange);
 
-    //  carregar a página
-    atualizarDataUltimoBackup();
+    // ADICIONAR O EVENT LISTENER DO BOTÃO DE RELATÓRIO AQUI
+    document.getElementById("generateReportButton").addEventListener('click', generateReport);
 };
-// ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
 
-// ==== INÍCIO SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
-// Renderizar alvos principais (Modificado para incluir botão "Editar Prazo")
+// ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN/AUTENTICAÇÃO ====
+
+// ==== FUNÇÕES DE RENDERIZAÇÃO ====
 function renderTargets() {
-    const targetList = document.getElementById("targetList");
-    targetList.innerHTML = "";
+  const targetList = document.getElementById("targetList");
+  targetList.innerHTML = "";
 
-    let filteredTargets = prayerTargets;
-    if (showDeadlineOnly) {
-        filteredTargets = filteredTargets.filter(t => t.hasDeadline && !isDateExpired(t.deadlineDate));
-    }
-    const showExpiredOnlyMain = document.getElementById("showExpiredOnlyMain").checked;
-    if (showExpiredOnlyMain) {
-        filteredTargets = filteredTargets.filter(t => t.hasDeadline && isDateExpired(t.deadlineDate));
-    }
+  let filteredTargets = prayerTargets;
+  if (showDeadlineOnly) {
+    filteredTargets = filteredTargets.filter(
+      (t) => t.hasDeadline && !isDateExpired(t.deadlineDate)
+    );
+  }
+  const showExpiredOnlyMain =
+    document.getElementById("showExpiredOnlyMain").checked;
+  if (showExpiredOnlyMain) {
+    filteredTargets = filteredTargets.filter(
+      (t) => t.hasDeadline && isDateExpired(t.deadlineDate)
+    );
+  }
 
-    filteredTargets = filterTargets(filteredTargets, currentSearchTermMain);
+  filteredTargets = filterTargets(filteredTargets, currentSearchTermMain);
 
-    const startIndex = (currentPage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * targetsPerPage;
+  const endIndex = startIndex + targetsPerPage;
+  const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
 
-    targetsToDisplay.forEach((target) => {
-        const formattedDate = formatDateForDisplay(target.date);
-        const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
-        const targetDiv = document.createElement("div");
-        targetDiv.classList.add("target");
-        targetDiv.innerHTML = `
+  targetsToDisplay.forEach((target) => {
+    const formattedDate = formatDateForDisplay(target.date);
+    const deadlineTag = target.hasDeadline
+      ? `<span class="deadline-tag ${
+          isDateExpired(target.deadlineDate) ? "expired" : ""
+        }">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>`
+      : "";
+    const targetDiv = document.createElement("div");
+    targetDiv.classList.add("target");
+    targetDiv.innerHTML = `
             <h3>${deadlineTag} ${target.title}</h3>
             <p>${target.details}</p>
             <p><strong>Data:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Pendente</p>
-            <button onclick="markAsResolved('${target.id}')" class="btn resolved">Marcar como Respondido</button>
-            <button onclick="archiveTarget('${target.id}')" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservation('${target.id}')" class="btn add-observation">Adicionar Observação</button>
-            ${target.hasDeadline ? `<button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>` : ''}
-            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
+            <button class="btn resolved">Marcar como Respondido</button>
+            <button class="btn archive">Arquivar</button>
+            <button class="btn add-observation">Adicionar Observação</button>
+            ${
+              target.hasDeadline
+                ? `<button class="btn edit-deadline">Editar Prazo</button>`
+                : ""
+            }
+            <div class="add-observation-form" data-target-id="${
+              target.id
+            }" style="display: none;">
                 <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
                 <input type="date" >
-                <button onclick="saveObservation('${target.id}')" class="btn">Salvar Observação</button>
+                <button class="btn save-observation-btn">Salvar Observação</button>
             </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
             </div>
         `;
-        targetList.appendChild(targetDiv);
-    });
-    renderPagination('mainPanel', currentPage, filteredTargets);
+    targetList.appendChild(targetDiv);
+
+    // Adicionando event listeners programaticamente
+    const resolvedButton = targetDiv.querySelector(".resolved");
+    const archiveButton = targetDiv.querySelector(".archive");
+    const addObservationButton = targetDiv.querySelector(".add-observation");
+    const editDeadlineButton = targetDiv.querySelector(".edit-deadline");
+    const saveObservationBtn = targetDiv.querySelector(".save-observation-btn");
+
+    resolvedButton.addEventListener('click', () => markAsResolved(target.id));
+    archiveButton.addEventListener('click', () => archiveTarget(target.id));
+    addObservationButton.addEventListener('click', () => toggleAddObservation(target.id));
+    if (editDeadlineButton) {
+        editDeadlineButton.addEventListener('click', () => editDeadline(target.id));
+    }
+    saveObservationBtn.addEventListener('click', () => saveObservation(target.id));
+
+  });
+  renderPagination("mainPanel", currentPage, filteredTargets);
 }
 
-// Renderizar alvos arquivados
 function renderArchivedTargets() {
     const archivedList = document.getElementById("archivedList");
     archivedList.innerHTML = "";
@@ -441,13 +297,17 @@ function renderArchivedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+             <button class="btn delete">Excluir</button>
         `;
         archivedList.appendChild(archivedDiv);
+
+        // Adicionando event listener para o botão "Excluir"
+        const deleteButton = archivedDiv.querySelector(".delete");
+        deleteButton.addEventListener('click', () => deleteArchivedTarget(target.id));
     });
     renderPagination('archivedPanel', currentArchivedPage, filteredTargets);
 }
 
-// Renderizar alvos respondidos
 function renderResolvedTargets() {
     const resolvedList = document.getElementById("resolvedList");
     resolvedList.innerHTML = "";
@@ -468,102 +328,17 @@ function renderResolvedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Respondido</p>
             <p><strong>Data de Resolução:</strong> ${resolvedDate}</p>
+             <button class="btn delete">Excluir</button>
         `;
         resolvedList.appendChild(resolvedDiv);
+
+        // Adicionando event listener para o botão "Excluir"
+        const deleteButton = resolvedDiv.querySelector(".delete");
+        deleteButton.addEventListener('click', () => deleteArchivedTarget(target.id));
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
 
-function markAsResolvedDeadline(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
-
-    if (targetIndex === -1) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
-
-    const formattedDate = formatDateToISO(new Date());
-    prayerTargets[targetIndex].resolved = true;
-    prayerTargets[targetIndex].archivedDate = formattedDate;
-    archivedTargets.push(prayerTargets[targetIndex]);
-    resolvedTargets.push(prayerTargets[targetIndex]);
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-    exportData();
-}
-
-function archiveTargetDeadline(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
-
-    if (targetIndex === -1) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
-
-    const formattedDate = formatDateToISO(new Date());
-    prayerTargets[targetIndex].archivedDate = formattedDate;
-    archivedTargets.push(prayerTargets[targetIndex]);
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-    exportData();
-}
-
-// Alterna a exibição do formulário de adição de observação (prazo de validade) e exibe o título do alvo
-function toggleAddObservationDeadline(targetId) {
-    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-
-    if (form.style.display === 'block') {
-        const target = prayerTargets.find(t => t.id === targetId);
-        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
-    }
-}
-
-function saveObservationDeadline(targetId) {
-    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
-    const textarea = form.querySelector('textarea');
-    const dateInput = form.querySelector('input[type="date"]');
-    const observationText = textarea.value.trim();
-    const observationDateValue = dateInput.value;
-
-    if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
-
-        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-
-        if (targetIndex === -1) {
-            console.error("Alvo não encontrado.");
-            return;
-        }
-
-        const newObservation = {
-            date: observationDate,
-            observation: observationText,
-        };
-
-        prayerTargets[targetIndex].observations.push(newObservation);
-        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-
-        renderTargets();
-
-        textarea.value = "";
-        dateInput.value = "";
-        form.style.display = "none";
-
-        exportData();
-
-    } else {
-        alert("Por favor, insira o texto da observação.");
-    }
-}
-
-// Função para renderizar a paginação
 function renderPagination(panelId, page, targets) {
     const totalPages = Math.ceil(targets.length / targetsPerPage);
     let paginationDiv = document.getElementById("pagination-" + panelId);
@@ -607,30 +382,20 @@ function renderPagination(panelId, page, targets) {
     }
 }
 
-// Renderizar as observações de um alvo
 function renderObservations(observations) {
     if (!observations || observations.length === 0) return '';
-
-    let observationsHTML = '<h4>Observações:</h4>';
-    observations.forEach(obs => {
-        observationsHTML += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
-    });
-    return observationsHTML;
+    return '<h4>Observações:</h4>' + observations.map(obs => `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`).join('');
 }
 
-// Função para alternar a exibição do formulário de adição de observação
 function toggleAddObservation(targetId) {
     const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
-
     if (form.style.display === 'block') {
-        const target = prayerTargets.find(t => t.id === targetId);
-        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
+        form.querySelector('.target-title').textContent = `Adicionando observação para: ${prayerTargets.find(t => t.id === targetId).title}`;
     }
 }
 
-// Função para salvar a observação
-function saveObservation(targetId) {
+async function saveObservation(targetId) {
     const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
@@ -639,400 +404,266 @@ function saveObservation(targetId) {
 
     if (observationText !== "") {
         let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
+        const userId = auth.currentUser.uid;
+        const targetRef = doc(db, "users", userId, "prayerTargets", targetId);
 
-        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
+        try {
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
 
-        if (targetIndex === -1) {
-            console.error("Alvo não encontrado.");
-            return;
+            if (targetDoc.exists()) {
+                const targetData = targetDoc.data();
+                let updatedObservations = targetData.observations || [];
+                updatedObservations.push({ date: observationDate, observation: observationText });
+
+                await updateDoc(targetRef, { observations: updatedObservations });
+                await fetchPrayerTargets(userId); // Refresh targets from Firestore
+                renderTargets();
+                textarea.value = "";
+                dateInput.value = "";
+                form.style.display = "none";
+            } else {
+                console.error("Alvo não encontrado no Firestore para adicionar observação.");
+                alert("Erro ao salvar observação. Alvo não encontrado.");
+            }
+        } catch (error) {
+             console.error("Erro ao adicionar observação no Firestore: ", error);
+             alert("Erro ao salvar observação. Verifique o console.");
         }
-
-        const newObservation = {
-            date: observationDate,
-            observation: observationText,
-        };
-
-        prayerTargets[targetIndex].observations.push(newObservation);
-        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-
-        renderTargets();
-
-        textarea.value = "";
-        dateInput.value = "";
-        form.style.display = "none";
-        exportData();
-
     } else {
         alert("Por favor, insira o texto da observação.");
     }
 }
 
-// Função para lidar com a mudança no filtro de alvos por prazo
+
 function handleDeadlineFilterChange() {
     showDeadlineOnly = document.getElementById("showDeadlineOnly").checked;
     currentPage = 1;
     renderTargets();
 }
 
-// Função para lidar com a mudança no filtro de alvos por prazo (filtro novo)
 function handleExpiredOnlyMainChange() {
     currentPage = 1;
     renderTargets();
 }
+
 // ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
 
-// ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
-// Importar dados de arquivo JSON (Melhorada - Com Diagnóstico Aprimorado e Mensagem de Sucesso)
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) {
-        console.log("Nenhum arquivo selecionado.");
-        return;
-    }
-
-    // Extrair data e hora do nome do arquivo
-    const filename = file.name;
-    const dateRegex = /^(.*?)_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/;
-    const match = filename.match(dateRegex);
-    let fileDate = null;
-    let importedLogin = null; // Variável para armazenar o login extraído do nome do arquivo
-
-    if (match) {
-        importedLogin = match[1]; // Captura o login do nome do arquivo
-        const year = parseInt(match[2], 10);
-        const month = parseInt(match[3], 10) - 1; // Mês começa em 0 (janeiro)
-        const day = parseInt(match[4], 10);
-        const hour = parseInt(match[5], 10);
-        const minute = parseInt(match[6], 10);
-
-        fileDate = new Date(year, month, day, hour, minute);
-
-        // Armazenar a data do último backup para o login importado no localStorage
-        localStorage.setItem(importedLogin + '_ultimoBackup', fileDate.toISOString());
-
-        // Atualizar a data do último backup para o login importado
-        if (importedLogin === localStorage.getItem('currentLogin')) {
-            atualizarDataUltimoBackup();
-        }
-
-    } else {
-        console.log("Nome do arquivo não corresponde ao formato esperado para extrair data e hora.");
-    }
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        let importSuccess = false;
-        try {
-            console.log("Conteúdo bruto do arquivo:", e.target.result);
-            const importedData = JSON.parse(e.target.result);
-            console.log("Dados importados (parsed):", importedData);
-
-            const newPrayerTargets = importedData.prayerTargets || [];
-            const newArchivedTargets = importedData.archivedTargets || [];
-
-            console.log("Login importado:", importedLogin);
-            console.log("Novos alvos de oração importados:", newPrayerTargets);
-            console.log("Novos alvos arquivados importados:", newArchivedTargets);
-
-            const currentLogin = localStorage.getItem('currentLogin');
-
-            if (importedLogin !== currentLogin) {
-                if (!confirm(`O login do arquivo importado (${importedLogin}) não corresponde ao login atual (${currentLogin}). Deseja continuar?`)) {
-                    console.log("Importação cancelada devido à incompatibilidade de login.");
-                    return;
-                }
-            }
-
-            const allTargets = [...prayerTargets, ...archivedTargets];
-
-            // Verificar duplicatas com base no título, data e ID
-            const isDuplicate = (target) => allTargets.some(item => item.id === target.id || (item.title === target.title && item.date === target.date));
-
-            newPrayerTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    prayerTargets.push(target);
-                } else {
-                    console.log(`Alvo duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            newArchivedTargets.forEach(target => {
-                if (!isDuplicate(target)) {
-                    // Gerar novo ID se necessário
-                    if (!target.id) {
-                        console.log(`Atribuindo novo ID para o alvo arquivado: ${target.title}`);
-                        target.id = generateUniqueId();
-                    } else if (allTargets.some(t => t.id === target.id)) {
-                        console.log(`Conflito de ID detectado para o alvo arquivado: ${target.title}. Gerando novo ID.`);
-                        target.id = generateUniqueId();
-                    }
-                    archivedTargets.push(target);
-                } else {
-                    console.log(`Alvo arquivado duplicado detectado e ignorado: ${target.title}`);
-                }
-            });
-
-            // Reidratar os alvos (converter strings de data para objetos Date)
-            prayerTargets = rehydrateTargets(prayerTargets);
-            archivedTargets = rehydrateTargets(archivedTargets);
-
-            console.log("prayerTargets após reidratação:", prayerTargets);
-            console.log("archivedTargets após reidratação:", archivedTargets);
-
-            updateStorage();
-
-            // Atualizar a UI e reassociar event listeners
-            renderTargets();
-            renderArchivedTargets();
-            renderResolvedTargets();
-            refreshDailyTargets();
-
-            // Reassociar os eventos (Importante para que os botões funcionem)
-            reattachEventListeners();
-
-            // Se chegou até aqui sem exceções, a importação foi bem-sucedida
-            importSuccess = true;
-
-        } catch (error) {
-            console.error("Erro detalhado ao importar dados:", error);
-            console.error("Stack trace do erro:", error.stack);
-            alert("Erro ao importar dados. Veja o console para mais detalhes.");
-        } finally {
-            // Mostrar mensagem de sucesso somente se a importação foi bem-sucedida
-            if (importSuccess) {
-                showSuccessMessage('importSuccessMessage');
-            }
-        }
-    };
-    reader.onerror = function (error) {
-        console.error("Erro ao ler o arquivo:", error);
-    };
-    reader.readAsText(file);
-}
-// Adicionar alvo
+// ==== MANIPULAÇÃO DE DADOS ====
 document.getElementById('hasDeadline').addEventListener('change', function() {
-    const deadlineContainer = document.getElementById('deadlineContainer');
-    deadlineContainer.style.display = this.checked ? 'block' : 'none';
+    document.getElementById('deadlineContainer').style.display = this.checked ? 'block' : 'none';
 });
 
-const form = document.getElementById("prayerForm");
-form.addEventListener("submit", (e) => {
+document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
-    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00")) : null;
+    const deadlineDate = hasDeadline
+        ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00"))
+        : null;
+
+    // Obtém o ID do usuário atual
+    const userId = auth.currentUser ? auth.currentUser.uid : null;
+    if (!userId) {
+        alert("Usuário não autenticado.");
+        return; // Impede a continuação se não houver usuário
+    }
+
     const newTarget = {
-        id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
         date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")),
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
-        deadlineDate: deadlineDate
+        deadlineDate: deadlineDate,
+        userId: userId, // Adiciona o userId ao novo alvo
     };
-    prayerTargets.push(newTarget);
-    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-    currentPage = 1;
-    renderTargets();
-    form.reset();
-    refreshDailyTargets();
-    exportData();
+
+    try {
+        const docRef = doc(collection(db, "users", userId, "prayerTargets")); // Firestore auto-generates ID
+        await setDoc(docRef, newTarget);
+        await fetchPrayerTargets(userId); // Refresh targets from Firestore
+        currentPage = 1;
+        renderTargets();
+        document.getElementById("prayerForm").reset();
+        refreshDailyTargets();
+    } catch (error) {
+        console.error("Erro ao adicionar alvo no Firestore: ", error);
+        alert("Erro ao adicionar alvo. Verifique o console.");
+    }
 });
 
-// Marcar como Respondido
-function markAsResolved(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
 
-    if (targetIndex === -1) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
 
-    const formattedDate = formatDateToISO(new Date());
-    prayerTargets[targetIndex].resolved = true;
-    prayerTargets[targetIndex].archivedDate = formattedDate;
-    archivedTargets.push(prayerTargets[targetIndex]);
-    resolvedTargets.push(prayerTargets[targetIndex]);
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-    exportData();
-}
+async function markAsResolved(targetId) {
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
 
-// Arquivar Alvo
-function archiveTarget(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
+             if (targetDoc.exists()) {
+                //Não precisa do userId aqui, já estamos na coleção do usuário correto
+                const resolvedTargetData = {...targetDoc.data(), resolved: true, archivedDate: formatDateToISO(new Date())};
+                const archivedRef = doc(collection(db, "users", user.uid, "archivedTargets")); // Usa o UID do usuário
+                await setDoc(archivedRef, resolvedTargetData); // Save to archivedTargets
 
-    if (targetIndex === -1) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
+                await deleteDoc(targetRef); // Delete from prayerTargets
+                await fetchPrayerTargets(user.uid);
+                await fetchArchivedTargets(user.uid);
+                resolvedTargets = archivedTargets.filter(target => target.resolved);
 
-    const formattedDate = formatDateToISO(new Date());
-    prayerTargets[targetIndex].archivedDate = formattedDate;
-    archivedTargets.push(prayerTargets[targetIndex]);
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-    exportData();
-}
-
-// Atualizar LocalStorage
-function updateStorage() {
-    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-    localStorage.setItem(localStorageKeyPrefix + "archivedTargets", JSON.stringify(archivedTargets));
-    resolvedTargets = archivedTargets.filter(target => target.resolved);
-}
-
-// Exportar dados para arquivo JSON
-function exportData() {
-    const login = localStorage.getItem('currentLogin');
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const filename = `${login}_${year}${month}${day}_${hours}${minutes}.json`;
-
-    const data = { login: localStorage.getItem('currentLogin'), prayerTargets, archivedTargets };
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    // Atualizar a data e hora do último backup no localStorage
-    localStorage.setItem(login + '_ultimoBackup', now.toISOString());
-    atualizarDataUltimoBackup();
-}
-
-// Resetar todos os dados
-function resetData() {
-    if (confirm("Tem certeza de que deseja limpar a página? Esta ação não pode ser desfeita.")) {
-        if (confirm("Você gostaria de exportar os alvos antes de limpar?")) {
-            exportData();
+                renderTargets();
+                renderArchivedTargets();
+                renderResolvedTargets();
+                refreshDailyTargets();
+            } else {
+                console.error("Alvo não encontrado no Firestore para marcar como resolvido.");
+                alert("Alvo não encontrado.");
+            }
+        } else {
+            alert("Usuário não autenticado.");
         }
-
-        prayerTargets = [];
-        archivedTargets = [];
-        resolvedTargets = [];
-        updateStorage();
-        renderTargets();
-        renderArchivedTargets();
-        renderResolvedTargets();
-        refreshDailyTargets();
-
-        // Limpar a informação de último backup para o login atual
-        const currentLogin = localStorage.getItem('currentLogin');
-        localStorage.removeItem(currentLogin + '_ultimoBackup');
-        atualizarDataUltimoBackup();
-
-        alert("Todos os alvos foram resetados.");
+    } catch (error) {
+        console.error("Erro ao marcar como resolvido no Firestore: ", error);
+        alert("Erro ao marcar como resolvido. Verifique o console.");
     }
 }
+
+
+async function archiveTarget(targetId) {
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
+
+            if (targetDoc.exists()) {
+                //Não precisa do userId aqui, já estamos na coleção do usuário correto
+                 const archivedTargetData = {...targetDoc.data(), archivedDate: formatDateToISO(new Date())};
+                const archivedRef = doc(collection(db, "users", user.uid, "archivedTargets"));// Usa o UID do usuário
+                await setDoc(archivedRef, archivedTargetData); // Save to archivedTargets
+
+                await deleteDoc(targetRef); // Delete from prayerTargets
+                await fetchPrayerTargets(user.uid);
+                await fetchArchivedTargets(user.uid);
+                renderTargets();
+                renderArchivedTargets();
+                refreshDailyTargets();
+            } else {
+                console.error("Alvo não encontrado no Firestore para arquivar.");
+                alert("Alvo não encontrado.");
+            }
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao arquivar no Firestore: ", error);
+        alert("Erro ao arquivar. Verifique o console.");
+    }
+}
+
+
+async function deleteArchivedTarget(targetId) {
+    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const targetRef = doc(db, "users", user.uid, "archivedTargets", targetId); //Usa UID do usuário
+                await deleteDoc(targetRef);
+                await fetchArchivedTargets(user.uid);
+                resolvedTargets = archivedTargets.filter(target => target.resolved);
+                renderArchivedTargets();
+                renderResolvedTargets();
+            } else {
+                alert("Usuário não autenticado.");
+            }
+        } catch (error) {
+            console.error("Erro ao excluir alvo arquivado do Firestore: ", error);
+            alert("Erro ao excluir alvo arquivado. Verifique o console.");
+        }
+    }
+}
+
 // ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
 
-// ==== INÍCIO SEÇÃO - RENDERIZAÇÃO ====
-// Renderizar alvos arquivados
-function renderArchivedTargets() {
-    const archivedList = document.getElementById("archivedList");
-    archivedList.innerHTML = "";
-    const filteredTargets = filterTargets(archivedTargets, currentSearchTermArchived);
-    const startIndex = (currentArchivedPage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+// ==== EVENT LISTENERS ====
+// Autenticação
+document.addEventListener('DOMContentLoaded', () => {
+    const btnRegister = document.getElementById('btnRegister');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const btnForgotPassword = document.getElementById('btnForgotPassword');
+    const passwordResetMessage = document.getElementById('passwordResetMessage');
 
-    targetsToDisplay.forEach((target) => {
-        const formattedDate = formatDateForDisplay(target.date);
-        const formattedArchivedDate = formatDateForDisplay(target.archivedDate);
-        const archivedDiv = document.createElement("div");
-        archivedDiv.classList.add("target");
-        archivedDiv.innerHTML = `
-            <h3>${target.title}</h3>
-            <p>${target.details}</p>
-            <p><strong>Data Original:</strong> ${formattedDate}</p>
-            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-            <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
-            <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
-            <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
-        `;
-        archivedList.appendChild(archivedDiv);
-    });
-    renderPagination('archivedPanel', currentArchivedPage, filteredTargets);
-}
-// ==== FIM SEÇÃO - RENDERIZAÇÃO ====
-// ==== INÍCIO SEÇÃO - EXCLUSÃO ====
-// Função para excluir permanentemente um alvo arquivado
-function deleteArchivedTarget(targetId) {
-    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
-        const targetIndex = archivedTargets.findIndex(target => target.id === targetId);
-
-        if (targetIndex === -1) {
-            console.error("Alvo não encontrado.");
-            return;
-        }
-
-        archivedTargets.splice(targetIndex, 1);
-        updateStorage();
-
-        // Atualizar a lista de alvos resolvidos
-        resolvedTargets = archivedTargets.filter(target => target.resolved);
-
-        // Renderizar novamente os alvos arquivados e os resolvidos
-        renderArchivedTargets();
-        renderResolvedTargets();
-
-        // Mostrar mensagem de sucesso
-        showSuccessMessage('deleteSuccessMessage');
+    if (btnRegister) {
+        btnRegister.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            if (!email || !password) { alert("Preencha email e senha para registrar."); return; }
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                loadData(userCredential.user);
+            } catch (error) {
+                console.error("Erro no registro:", error);
+                alert("Erro no registro: " + error.message);
+            }
+        });
     }
-}
-// ==== FIM SEÇÃO - EXCLUSÃO ====
 
-// ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
-document.getElementById('setLoginButton').addEventListener('click', () => {
-    const login = document.getElementById('loginInput').value.trim();
-    if (login) {
-        setLogin(login);
-    } else {
-        alert("Por favor, insira um login válido.");
+    if (btnLogin) {
+        btnLogin.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            if (!email || !password) { alert("Preencha email e senha para entrar."); return;}
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                loadData(userCredential.user);
+            } catch (error) {
+                console.error("Erro no login:", error);
+                alert("Erro no login: " + error.message);
+            }
+        });
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                loadData(null);
+            } catch (error) {
+                console.error("Erro ao sair:", error);
+            }
+        });
+    }
+
+    if (btnForgotPassword) {
+        btnForgotPassword.addEventListener('click', async () => {
+            const email = emailInput.value;
+            if (!email) { alert("Por favor, insira seu email para redefinir a senha."); return; }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                passwordResetMessage.textContent = "Email de redefinição enviado. Verifique sua caixa de entrada (e spam).";
+                passwordResetMessage.style.display = "block";
+                setTimeout(() => { passwordResetMessage.style.display = "none"; }, 5000);
+            } catch (error) {
+                console.error("Erro ao enviar email de redefinição:", error);
+                alert("Erro: " + error.message);
+                passwordResetMessage.textContent = "Erro ao enviar email. Tente novamente.";
+                passwordResetMessage.style.display = "block";
+            }
+        });
     }
 });
 
-const exportDataButton = document.getElementById("exportData");
-exportDataButton.addEventListener("click", exportData);
-
-const importDataInput = document.getElementById("importData");
-importDataInput.addEventListener("change", importData);
-
-const resetDataButton = document.getElementById("resetData");
-resetDataButton.addEventListener("click", resetData);
-
+//Navegação
 document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
     mainPanel.style.display = "block";
-    dailySection.style.display = "none";
-    archivedPanel.style.display = "none";
-    resolvedPanel.style.display = "none";
-    viewArchivedButton.style.display = "inline-block";
-    viewResolvedButton.style.display = "inline-block";
-    backToMainButton.style.display = "inline-block";
-    showDeadlineOnly = false;
-    document.getElementById("showDeadlineOnly").checked = false;
+    dailySection.style.display = "none";  archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none"; viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block"; backToMainButton.style.display = "inline-block";
+    showDeadlineOnly = false; document.getElementById("showDeadlineOnly").checked = false;
     renderTargets();
 });
 
@@ -1045,80 +676,50 @@ const archivedPanel = document.getElementById("archivedPanel");
 const resolvedPanel = document.getElementById("resolvedPanel");
 
 viewArchivedButton.addEventListener("click", () => {
-    mainPanel.style.display = "none";
-    dailySection.style.display = "none";
-    archivedPanel.style.display = "block";
-    resolvedPanel.style.display = "none";
-    viewArchivedButton.style.display = "none";
-    viewResolvedButton.style.display = "inline-block";
-    backToMainButton.style.display = "inline-block";
-    currentArchivedPage = 1;
+    mainPanel.style.display = "none";  dailySection.style.display = "none";
+    archivedPanel.style.display = "block"; resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "none"; viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block"; currentArchivedPage = 1;
     renderArchivedTargets();
 });
 
 viewResolvedButton.addEventListener("click", () => {
-    mainPanel.style.display = "none";
-    dailySection.style.display = "none";
-    archivedPanel.style.display = "none";
-    resolvedPanel.style.display = "block";
-    viewArchivedButton.style.display = "inline-block";
-    viewResolvedButton.style.display = "none";
-    backToMainButton.style.display = "inline-block";
-    currentResolvedPage = 1;
+    mainPanel.style.display = "none"; dailySection.style.display = "none";
+    archivedPanel.style.display = "none"; resolvedPanel.style.display = "block";
+    viewArchivedButton.style.display = "inline-block"; viewResolvedButton.style.display = "none";
+    backToMainButton.style.display = "inline-block"; currentResolvedPage = 1;
     renderResolvedTargets();
 });
 
 backToMainButton.addEventListener("click", () => {
-    mainPanel.style.display = "none";
-    dailySection.style.display = "block";
-    archivedPanel.style.display = "none";
-    resolvedPanel.style.display = "none";
-    viewArchivedButton.style.display = "inline-block";
-    viewResolvedButton.style.display = "inline-block";
-    backToMainButton.style.display = "none";
-    hideTargets();
+    mainPanel.style.display = "none"; dailySection.style.display = "block";
+    archivedPanel.style.display = "none"; resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block"; viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "none"; hideTargets();
     currentPage = 1;
 });
 
-const copyDailyButton = document.getElementById("copyDaily");
-copyDailyButton.addEventListener("click", function () {
+document.getElementById("copyDaily").addEventListener("click", function () {
     const dailyTargetsElement = document.getElementById("dailyTargets");
-    if (!dailyTargetsElement) {
-        alert("Não foi possível encontrar os alvos diários para copiar.");
-        return;
-    }
-
+    if (!dailyTargetsElement) { alert("Não foi possível encontrar os alvos diários."); return; }
     const dailyTargetsText = Array.from(dailyTargetsElement.children).map(div => {
         const title = div.querySelector('h3')?.textContent || '';
         const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
         const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
-
-               const observations = Array.from(div.querySelectorAll('p'))
-            .slice(2)
-            .map(p => p.textContent)
-            .join('\n');
-
+        const observations = Array.from(div.querySelectorAll('p')).slice(2).map(p => p.textContent).join('\n');
         let result = `${title}\n${details}\n${timeElapsed}`;
-        if (observations) {
-            result += `\nObservações:\n${observations}`;
-        }
+        if (observations) result += `\nObservações:\n${observations}`;
         return result;
     }).join('\n\n---\n\n');
-
     navigator.clipboard.writeText(dailyTargetsText).then(() => {
-        alert('Alvos diários copiados para a área de transferência!');
-    }, (err) => {
-        console.error('Erro ao copiar texto: ', err);
-        alert('Não foi possível copiar os alvos diários, por favor tente novamente.');
-    });
+        alert('Alvos diários copiados!');
+    }, (err) => { console.error('Erro ao copiar texto: ', err); alert('Não foi possível copiar.'); });
 });
 
 document.getElementById('generateViewButton').addEventListener('click', generateViewHTML);
 document.getElementById('viewDaily').addEventListener('click', generateDailyViewHTML);
 document.getElementById("viewResolvedViewButton").addEventListener("click", () => {
-    dateRangeModal.style.display = "block";
-    startDateInput.value = '';
-    endDateInput.value = '';
+    dateRangeModal.style.display = "block"; startDateInput.value = ''; endDateInput.value = '';
 });
 
 const dateRangeModal = document.getElementById("dateRangeModal");
@@ -1128,9 +729,7 @@ const cancelDateRangeButton = document.getElementById("cancelDateRange");
 const startDateInput = document.getElementById("startDate");
 const endDateInput = document.getElementById("endDate");
 
-closeDateRangeModalButton.addEventListener("click", () => {
-    dateRangeModal.style.display = "none";
-});
+closeDateRangeModalButton.addEventListener("click", () => { dateRangeModal.style.display = "none"; });
 
 generateResolvedViewButton.addEventListener("click", () => {
     const startDate = startDateInput.value;
@@ -1138,20 +737,16 @@ generateResolvedViewButton.addEventListener("click", () => {
     const today = new Date();
     const formattedToday = formatDateToISO(today);
     const adjustedEndDate = endDate || formattedToday;
-
     generateResolvedViewHTML(startDate, adjustedEndDate);
     dateRangeModal.style.display = "none";
 });
 
-cancelDateRangeButton.addEventListener("click", () => {
-    dateRangeModal.style.display = "none";
-});
+cancelDateRangeButton.addEventListener("click", () => { dateRangeModal.style.display = "none"; });
+
 // ==== FIM SEÇÃO - EVENT LISTENERS ====
 
-// ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
-// Função para gerar o HTML com os alvos ativos
+// ==== GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
 function generateViewHTML() {
-    // Captura o versículo atual exibido na página
     const verseElement = document.getElementById('dailyVerses');
     const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
 
@@ -1162,76 +757,25 @@ function generateViewHTML() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Alvos de Oração</title>
         <style>
-            body {
-                font-family: 'Playfair Display', serif;
-                margin: 10px;
-                padding: 10px;
-                background-color: #f9f9f9;
-                color: #333;
-                font-size: 16px;
-            }
-            h1 {
-                text-align: center;
-                color: #333;
-                margin-bottom: 20px;
-                font-size: 2.5em;
-            }
-            h2 {
-                color: #555;
-                font-size: 1.75em;
-                margin-bottom: 10px;
-            }
-            div {
-                margin-bottom: 20px;
-                padding: 15px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: #fff;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-            p {
-                margin: 5px 0;
-            }
-            hr {
-                margin-top: 30px;
-                margin-bottom: 30px;
-                border: 0;
-                border-top: 1px solid #ddd;
-            }
-            .verse-container {
-                font-style: italic;
-                text-align: center;
-                margin-bottom: 20px;
-                color: #555;
-            }
-            .deadline-tag {
-                background-color: #ffcc00;
-                color: #333;
-                padding: 5px 10px;
-                border-radius: 5px;
-                margin-left: 10px;
-                font-size: 0.8em;
-            }
-            .expired {
-                background-color: #ff6666;
-                color: #fff;
-            }
+            body { font-family: 'Playfair Display', serif; margin: 10px; padding: 10px; background-color: #f9f9f9; color: #333; font-size: 16px; }
+            h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 2.5em; }
+            h2 { color: #555; font-size: 1.75em; margin-bottom: 10px; }
+            div { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+            p { margin: 5px 0; }
+            hr { margin-top: 30px; margin-bottom: 30px; border: 0; border-top: 1px solid #ddd; }
+            .verse-container { font-style: italic; text-align: center; margin-bottom: 20px; color: #555; }
+            .deadline-tag { background-color: #ffcc00; color: #333; padding: 5px 10px; border-radius: 5px; margin-left: 10px; font-size: 0.8em; }
+            .expired { background-color: #ff6666; color: #fff; }
             @media (max-width: 768px) {
-                body {
-                    font-size: 14px;
-                }
-                h1 {
-                    font-size: 2em;
-                }
-                h2 {
-                    font-size: 1.5em;
-                }
+                body { font-size: 14px; }
+                h1 { font-size: 2em; }
+                h2 { font-size: 1.5em; }
             }
         </style>
     </head>
     <body>
         <h1>Alvos de Oração</h1>
-        <div class="verse-container">${currentVerse}</div> <!-- Inserindo o versículo aqui -->`;
+        <div class="verse-container">${currentVerse}</div>`;
 
     if (prayerTargets.length === 0) {
         htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
@@ -1264,14 +808,12 @@ function generateViewHTML() {
     const a = document.createElement('a');
     a.href = url;
     const now = new Date();
-    const filename = `Alvos de oração geral até o dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
-    a.download = filename;
+    a.download = `Alvos de oração geral até o dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
     a.click();
     URL.revokeObjectURL(url);
 }
-// Função para gerar o HTML com os alvos do dia
+
 function generateDailyViewHTML() {
-    // Captura o versículo atual exibido na página
     const verseElement = document.getElementById('dailyVerses');
     const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
 
@@ -1282,72 +824,19 @@ function generateDailyViewHTML() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Alvos de Oração do Dia</title>
         <style>
-            body {
-                font-family: 'Playfair Display', serif;
-                margin: 10px;
-                padding: 10px;
-                background-color: #f9f9f9;
-                color: #333;
-                font-size: 16px;
-            }
-            h1 {
-                text-align: center;
-                color: #333;
-                margin-bottom: 20px;
-                font-size: 2.5em;
-            }
-            h2 {
-                color: #555;
-                font-size: 1.75em;
-                margin-bottom: 10px;
-                display: inline-block; /* Para alinhar com a tag de prazo */
-            }
-            div {
-                margin-bottom: 20px;
-                padding: 15px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: #fff;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-            p {
-                margin: 5px 0;
-            }
-            hr {
-                margin-top: 30px;
-                margin-bottom: 30px;
-                border: 0;
-                border-top: 1px solid #ddd;
-            }
-            .verse-container {
-                font-style: italic;
-                text-align: center;
-                margin-bottom: 20px;
-                color: #555;
-            }
-            .deadline-tag {
-                background-color: #ffcc00;
-                color: #333;
-                padding: 5px 10px;
-                border-radius: 5px;
-                margin-right: 10px; /* Espaço à direita da tag */
-                font-size: 0.8em;
-            }
-            .title-container {
-                display: flex; /* Para alinhar título e tag na mesma linha */
-                align-items: center; /* Para alinhar verticalmente */
-                justify-content: flex-start; /* Alinha os itens à esquerda */
-            }
+            body { font-family: 'Playfair Display', serif; margin: 10px; padding: 10px; background-color: #f9f9f9; color: #333; font-size: 16px;}
+            h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 2.5em; }
+            h2 { color: #555; font-size: 1.75em; margin-bottom: 10px; display: inline-block;}
+            div { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);}
+            p { margin: 5px 0; }
+            hr { margin-top: 30px; margin-bottom: 30px; border: 0; border-top: 1px solid #ddd;}
+            .verse-container { font-style: italic; text-align: center; margin-bottom: 20px; color: #555;}
+            .deadline-tag { background-color: #ffcc00; color: #333; padding: 5px 10px; border-radius: 5px; margin-right: 10px; font-size: 0.8em;}
+            .title-container { display: flex; align-items: center; justify-content: flex-start; }
             @media (max-width: 768px) {
-                body {
-                    font-size: 14px;
-                }
-                h1 {
-                    font-size: 2em;
-                }
-                h2 {
-                    font-size: 1.5em;
-                }
+                body { font-size: 14px; }
+                h1 { font-size: 2em; }
+                h2 { font-size: 1.5em; }
             }
         </style>
     </head>
@@ -1360,10 +849,7 @@ function generateDailyViewHTML() {
         htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
     } else {
         Array.from(dailyTargetsElement.children).forEach(div => {
-            // Captura a tag de prazo separadamente
             const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
-
-            // Captura o título 
             const titleElement = div.querySelector('h3');
             let title = titleElement ? titleElement.textContent.trim() : '';
 
@@ -1395,36 +881,29 @@ function generateDailyViewHTML() {
     const a = document.createElement('a');
     a.href = url;
     const now = new Date();
-    const filename = `Alvos de oração do dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
-    a.download = filename;
+    a.download = `Alvos de oração do dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
-// Função para gerar o HTML com os alvos respondidos, filtrando por data de resolução
 function generateResolvedViewHTML(startDate, endDate) {
-    // Converte as datas de início e fim para objetos Date
     const startDateObj = startDate ? new Date(startDate) : null;
     const endDateObj = endDate ? new Date(endDate) : null;
 
-    // Filtra os alvos respondidos dentro do intervalo de datas especificado
     const filteredResolvedTargets = resolvedTargets.filter(target => {
         if (!target.resolved || !target.archivedDate) return false;
 
-        // Converte a data de resolução (archivedDate) para um objeto Date
         const resolvedDateObj = new Date(target.archivedDate);
 
-        // Verifica se a data de resolução está dentro do intervalo
         if (startDateObj && resolvedDateObj < startDateObj) return false;
         if (endDateObj) {
-            endDateObj.setHours(23, 59, 59); // Ajusta para o final do dia
+            endDateObj.setHours(23, 59, 59);
             if (resolvedDateObj > endDateObj) return false;
         }
 
         return true;
     });
 
-    // Monta o HTML para exibição
     let htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1432,52 +911,16 @@ function generateResolvedViewHTML(startDate, endDate) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alvos Respondidos</title>
     <style>
-        body {
-            font-family: 'Playfair Display', serif;
-            margin: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            color: #333;
-            font-size: 16px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-        }
-        h2 {
-            color: #555;
-            font-size: 1.75em;
-            margin-bottom: 10px;
-        }
-        div {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        p {
-            margin: 5px 0;
-        }
-        hr {
-            margin-top: 30px;
-            margin-bottom: 30px;
-            border: 0;
-            border-top: 1px solid #ddd;
-        }
+        body { font-family: 'Playfair Display', serif; margin: 10px; padding: 10px; background-color: #f9f9f9; color: #333; font-size: 16px; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 2.5em; }
+        h2 { color: #555; font-size: 1.75em; margin-bottom: 10px; }
+        div { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        p { margin: 5px 0; }
+        hr { margin-top: 30px; margin-bottom: 30px; border: 0; border-top: 1px solid #ddd; }
         @media (max-width: 768px) {
-            body {
-                font-size: 14px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            h2 {
-                font-size: 1.5em;
-            }
+            body { font-size: 14px; }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.5em; }
         }
     </style>
 </head>
@@ -1503,7 +946,6 @@ function generateResolvedViewHTML(startDate, endDate) {
 
     htmlContent += `</body></html>`;
 
-    // Cria um link para download do HTML gerado
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1544,6 +986,7 @@ function handleSearchResolved(event) {
     currentResolvedPage = 1;
     renderResolvedTargets();
 }
+// ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
 
 // ==== INÍCIO SEÇÃO - VERSÍCULOS BÍBLICOS ====
 const verses = [
@@ -1577,12 +1020,48 @@ function addPrayButtonFunctionality(dailyDiv, targetIndex) {
     const prayButton = document.createElement("button");
     prayButton.textContent = "Orei!";
     prayButton.classList.add("pray-button");
-    prayButton.onclick = () => {
-        dailyDiv.remove();
-        checkIfAllPrayersDone();
+    prayButton.onclick = async () => {
+        const targetId = dailyDiv.dataset.targetId;
+        const userId = auth.currentUser ? auth.currentUser.uid : null; // Obtém o ID do usuário
+
+        const db = getFirestore(app);
+        const clickCountsRef = doc(db, "prayerClickCounts", targetId); // Referência ao documento do alvo
+
+        try {
+            const docSnap = await getDoc(clickCountsRef);
+
+            const now = new Date();
+            const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const year = now.getFullYear().toString();
+
+            // Dados a serem atualizados/criados, incluindo o userId
+            const updateData = {
+                targetId: targetId,
+                userId: userId, // Adiciona o userId
+                totalClicks: increment(1),
+                [`monthlyClicks.${yearMonth}`]: increment(1),  // Atualiza o campo específico do mês
+                [`yearlyClicks.${year}`]: increment(1)  //Atualiza o campo específico do Ano
+            };
+
+
+            if (docSnap.exists()) {
+                // Atualizar documento existente
+                await updateDoc(clickCountsRef, updateData);
+            } else {
+                // Criar novo documento com os dados iniciais
+                await setDoc(clickCountsRef, updateData);
+            }
+
+            dailyDiv.remove();
+            checkIfAllPrayersDone();
+        } catch (error) {
+            console.error("Erro ao registrar clique:", error);
+            alert("Erro ao registrar clique. Verifique o console.");
+        }
     };
     dailyDiv.insertBefore(prayButton, dailyDiv.firstChild);
 }
+
 
 function checkIfAllPrayersDone() {
     const dailyTargets = document.getElementById("dailyTargets");
@@ -1601,6 +1080,71 @@ document.getElementById('closePopup').addEventListener('click', () => {
     document.getElementById('completionPopup').style.display = 'none';
 });
 // ==== FIM SEÇÃO - FUNCIONALIDADE DO BOTÃO "OREI!" ====
+
+// ==== INÍCIO SEÇAO - GERAR RELATÓRIO ====
+
+async function generateReport() {
+    const db = getFirestore(app);
+	const userId = auth.currentUser ? auth.currentUser.uid : null; //Obtem o id do usuário logado
+     if (!userId) {
+        alert("Usuário não autenticado. Relatório não pode ser gerado.");
+        return;
+    }
+    const clickCountsRef = collection(db, "prayerClickCounts");
+    const q = query(clickCountsRef, where("userId", "==", userId)); //Filtra por userId
+    const snapshot = await getDocs(q); //Usa a query 'q'
+
+
+    if (snapshot.empty) {
+        alert("Nenhum dado de clique encontrado.");
+        return;
+    }
+
+    let report = "Relatório de Cliques no Botão 'Orei!':\n\n";
+
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        const targetId = doc.id; // ou data.targetId, dependendo da sua escolha
+        const target = prayerTargets.find(t => t.id === targetId);  // Busca o alvo na lista local
+        const title = target ? target.title : `Alvo ID: ${targetId}`; // Título ou ID
+
+        report += `Alvo: ${title}\n`;
+        report += `  Total de cliques: ${data.totalClicks}\n`;
+        report += `  Cliques por Mês:\n`;
+        for (const yearMonth in data.monthlyClicks) {
+            report += `    ${yearMonth}: ${data.monthlyClicks[yearMonth]}\n`;
+        }
+
+            report += `  Cliques por Ano:\n`;
+        for (const year in data.yearlyClicks) {
+            report += `    ${year}: ${data.yearlyClicks[year]}\n`;
+        }
+
+        report += "\n";
+    });
+
+
+    displayReportModal(report); //Chama a função do modal
+}
+
+function displayReportModal(reportText){
+    const modal = document.createElement('div');
+    modal.classList.add('modal');
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-button" id="closeReportModal">×</span>
+            <h2>Relatório de Cliques</h2>
+            <pre>${reportText}</pre>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+
+    document.getElementById('closeReportModal').addEventListener('click', () => {
+        modal.remove();
+    });
+}
+// ==== FIM SEÇAO - GERAR RELATÓRIO ====
 
 // Atualizar os alvos diários
 function refreshDailyTargets() {
@@ -1627,6 +1171,7 @@ function refreshDailyTargets() {
     selectedTargets.forEach((target, index) => {
         const dailyDiv = document.createElement("div");
         dailyDiv.classList.add("target");
+        dailyDiv.dataset.targetId = target.id; // ADICIONA O DATA-TARGET-ID
 
              // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
         const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
@@ -1654,61 +1199,49 @@ function refreshDailyTargets() {
     // Exibir versículo aleatório
     displayRandomVerse();
 }
-// ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
-// ==== INÍCIO SEÇÃO - EDITAR PRAZO DE VALIDADE ====
-function editDeadline(targetId) {
+
+async function editDeadline(targetId) {
     const target = prayerTargets.find(t => t.id === targetId);
-    if (!target) {
-        console.error("Alvo não encontrado.");
-        return;
-    }
+    if (!target) { console.error("Alvo não encontrado."); return; }
 
-    // Obter a data atual do prazo (se houver)
     const currentDeadline = target.deadlineDate ? formatDateForDisplay(target.deadlineDate) : '';
-
-    // Usar um prompt para obter a nova data de prazo de validade
     const newDeadline = prompt("Insira a nova data de prazo de validade (DD/MM/YYYY):", currentDeadline);
 
-    // Se o usuário cancelar ou inserir uma data inválida, a função é encerrada
     if (newDeadline === null) return;
 
-    // Validar a nova data
     if (!isValidDate(newDeadline)) {
         alert("Data inválida. Por favor, use o formato DD/MM/YYYY.");
         return;
     }
 
-    // Converter a nova data para o formato ISO (YYYY-MM-DD)
-    const newDeadlineISO = convertToISO(newDeadline);
-
-    // Atualizar o prazo de validade do alvo
-    target.deadlineDate = newDeadlineISO;
-
-    // Atualizar o localStorage
-    updateStorage();
-
-    // Renderizar novamente os alvos
-    renderTargets();
-
-    alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
-    exportData();
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            await updateDoc(targetRef, { deadlineDate: convertToISO(newDeadline) });
+            await fetchPrayerTargets(user.uid); // Refresh targets from Firestore
+            renderTargets();
+            alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao editar prazo no Firestore: ", error);
+        alert("Erro ao editar prazo. Verifique o console.");
+    }
 }
+
 
 function isValidDate(dateString) {
     const parts = dateString.split('/');
     if (parts.length !== 3) return false;
-
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
-
     if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-
     if (month < 1 || month > 12) return false;
-
     const daysInMonth = new Date(year, month, 0).getDate();
     if (day < 1 || day > daysInMonth) return false;
-
     return true;
 }
 
@@ -1716,41 +1249,15 @@ function convertToISO(dateString) {
     const parts = dateString.split('/');
     return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
 }
-// ==== FIM SEÇÃO - EDITAR PRAZO DE VALIDADE ====
+
 function hideTargets(){
    const targetList = document.getElementById("targetList");
     targetList.innerHTML = "";
 }
-// Função para verificar e alertar sobre prazos de validade vencidos
+
 function checkExpiredDeadlines() {
     const expiredTargets = prayerTargets.filter(target => target.hasDeadline && isDateExpired(target.deadlineDate));
     if (expiredTargets.length > 0) {
-        let message = 'Os seguintes alvos estão com prazo de validade vencido:\n';
-        expiredTargets.forEach(target => {
-            message += `- ${target.title}\n`;
-        });
-        alert(message);
+        alert('Os seguintes alvos estão com prazo de validade vencido:\n' + expiredTargets.map(target => `- ${target.title}\n`).join(''));
     }
 }
-
-// Função para atualizar a data do último backup
-function atualizarDataUltimoBackup() {
-    const ultimoBackupDiv = document.getElementById('ultimoBackup');
-    const currentLogin = localStorage.getItem('currentLogin');
-    const dataUltimoBackupString = localStorage.getItem(currentLogin + '_ultimoBackup'); 
-
-    if (dataUltimoBackupString) {
-        const dataUltimoBackup = new Date(dataUltimoBackupString);
-        const dia = dataUltimoBackup.getDate().toString().padStart(2, '0');
-        const mes = (dataUltimoBackup.getMonth() + 1).toString().padStart(2, '0');
-        const ano = dataUltimoBackup.getFullYear();
-        const hora = dataUltimoBackup.getHours().toString().padStart(2, '0');
-        const minuto = dataUltimoBackup.getMinutes().toString().padStart(2, '0');
-
-        ultimoBackupDiv.textContent = `Último backup: ${dia}/${mes}/${ano} ${hora}:${minuto}`;
-    } else {
-        // Se não houver informação de backup para o login atual, oculta o painel
-        ultimoBackupDiv.textContent = '';
-    }
-}
-
