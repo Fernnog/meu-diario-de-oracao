@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Perseverança</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="orei.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="top-bar">
+    </div>
+    <div class="logo-container">
+        <img src="logo.png" alt="Logo" class="logo">
+    </div>
+    <div class="main-title">
+        <h1>Relatório de Perseverança</h1>
+    </div>
+
+    <hr class="menu-separator">
+    <div class="main-menu" id="mainMenu">
+        <button id="backToMainButton" class="btn">Página Inicial</button>
+        <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
+        <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
+        <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
+    </div>
+    <hr class="menu-separator dark">
+
+    <div class="report-container">
+        <input type="text" id="searchReport" placeholder="Pesquisar alvos..." class="search-input">
+        <div class="filter-options">
+            <label><input type="checkbox" id="filterAtivo" checked>Ativo</label>
+            <label><input type="checkbox" id="filterArquivado">Arquivado</label>
+            <label><input type="checkbox" id="filterRespondido">Respondido</label>
+        </div>
+        <hr class="filter-separator">  <!-- LINHA SEPARADORA -->
+        <div id="reportList" class="report-list">
+            <!-- Lista de relatórios será renderizada aqui por JavaScript -->
+        </div>
+        <div id="pagination" class="pagination">
+            <!-- A paginação será renderizada aqui -->
+        </div>
+    </div>
+
+    <script type="module" src="orei.js"></script>
+</body>
+</html>
