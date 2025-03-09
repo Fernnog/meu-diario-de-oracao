@@ -3,6 +3,9 @@ name: Limpar Repositório
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # Permissão para escrever no repositório
+
 jobs:
   limpeza:
     runs-on: ubuntu-latest
@@ -10,8 +13,17 @@ jobs:
       - name: Checkout do repositório
         uses: actions/checkout@v3
 
+      - name: Configurar Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
       - name: Remover arquivos e pastas (exceto .github)
         run: |
           find . -mindepth 1 -maxdepth 1 -not -path "./.github" -exec rm -rf {} +
-          git commit -m "Limpeza manual do repositório (preservando .github)"
+          
+      - name: Commit e push das mudanças
+        run: |
+          git add .
+          git commit -m "Limpeza manual do repositório (preservando .github)" || echo "Nenhuma mudança para commitar"
           git push origin HEAD --force
