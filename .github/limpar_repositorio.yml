@@ -1,0 +1,17 @@
+name: Limpar Repositório
+
+on:
+  workflow_dispatch:
+
+jobs:
+  limpeza:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      - name: Remover arquivos e pastas (exceto .github)
+        run: |
+          find . -mindepth 1 -maxdepth 1 -not -path "./.github" -exec rm -rf {} +
+          git commit -m "Limpeza manual do repositório (preservando .github)"
+          git push origin HEAD --force
