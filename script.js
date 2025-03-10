@@ -1,4 +1,3 @@
---- START OF FILE script.js ---
 // Seleção de elementos do DOM
 const vozInput = document.querySelector('#vozInput');
 const ativarVoz = document.querySelector('#ativarVoz');
@@ -556,4 +555,3 @@ function carregarDados() {
 
 // Estilos dinâmicos para animações
 vozFeedback.classList.add('fade-in');
---- END OF FILE script.js ---
