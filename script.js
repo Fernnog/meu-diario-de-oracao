@@ -1,4 +1,3 @@
---- START OF FILE script.js ---
 // Seleção de elementos do DOM
 const vozInput = document.querySelector('#vozInput');
 const ativarVoz = document.querySelector('#ativarVoz');
