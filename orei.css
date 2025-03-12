@@ -1,0 +1,97 @@
+/* orei.css - Estilos específicos para a página de relatório */
+.report-container {
+    padding: 20px;
+    font-family: 'Playfair Display', serif;
+    color: #333;
+    max-width: 960px;
+    margin: 20px auto;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.report-list {
+    margin-top: 20px;
+}
+
+.report-item {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+}
+
+.report-item:last-child {
+    border-bottom: none;
+}
+
+.report-item h3 {
+    margin-top: 0;
+}
+
+.report-item p {
+    margin: 5px 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin: 0;
+}
+
+/* Estilos para os checkboxes de filtro */
+.filter-options {
+    margin-bottom: 10px;
+    text-align: center; /* Centraliza os labels horizontalmente */
+    width: 100%;       /* Garante que o container ocupe a largura total */
+}
+
+.filter-options label {
+    margin: 0 10px; /* Espaçamento horizontal *entre* os labels */
+    cursor: pointer;
+    display: inline-block; /* Faz com que os labels fiquem lado a lado */
+     white-space: nowrap; /*Impedir quebra de linha*/
+}
+.filter-options label input[type="checkbox"]{
+ margin-right: 5px; /*espaço entre checkbox e label*/
+}
+
+
+/* Linha separadora */
+.filter-separator {
+    border: none;
+    border-top: 1px solid #ddd; /* Linha fina e cinza claro */
+    margin: 10px 0;          /* Espaço acima e abaixo da linha */
+    width: 100%;              /* Ocupa toda a largura */
+}
+
+
+/* Estilos para a paginação */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px; /* Espaço entre a lista e a paginação */
+}
+
+.pagination a {
+    padding: 8px 12px;
+    margin: 0 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+    background-color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+.pagination a:hover {
+    background-color: #f0f0f0;
+}
+
+.pagination a.active {
+    background-color: #f9a825; /* Cor do seu tema */
+    color: white;
+    border-color: #f9a825;
+}
