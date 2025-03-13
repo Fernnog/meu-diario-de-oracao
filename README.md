@@ -2,9 +2,15 @@
 
 ## Descrição
 
-Este projeto é um diário de oração digital pessoal, desenvolvido para ajudar você a registrar, organizar e acompanhar seus alvos de oração. ... **Inclui também uma barra de progresso "Perseverança na Intercessão" na página inicial para motivar a prática diária da oração e acompanhar a consistência na interação com o diário. Esta barra, visualmente aprimorada com um indicador de porcentagem à esquerda em fundo verde e a meta de dias à direita em fundo claro, oferece um acompanhamento motivador da sua jornada de oração.** Com um sistema de contas de usuário para privacidade, o aplicativo oferece um espaço dedicado para detalhar seus pedidos, definir prazos e acompanhar o progresso de suas orações.
+Este projeto é um diário de oração digital pessoal, desenvolvido para ajudar você a registrar, organizar e acompanhar seus alvos de oração. ... **Inclui agora duas ferramentas visuais motivadoras na página inicial para acompanhar a consistência na prática diária da oração: uma barra de progresso "Perseverança na Intercessão" e um quadro semanal "Sua Semana de Perseverança".**
 
-**Propósito:** Facilitar a prática consistente da oração, permitindo que você visualize e reflita sobre suas orações e as respostas divinas ao longo do tempo, e agora também, acompanhar visualmente sua perseverança na intercessão.
+**A barra de progresso "Perseverança na Intercessão", visualmente aprimorada com um indicador de porcentagem à esquerda em fundo verde e a meta de dias à direita em fundo claro, oferece um acompanhamento motivador da sua jornada de oração de longo prazo.**  Abaixo dela, o botão "Confirmar Perseverança" permite registrar sua interação diária com o diário.
+
+**Logo acima da barra de progresso, o novo quadro semanal "Sua Semana de Perseverança" exibe visualmente sua consistência nos últimos 7 dias.** Cada dia da semana é representado, e um "tick" verde aparece nos dias em que você confirmou a perseverança. Este quadro, que surge dinamicamente quando você inicia sua jornada de perseverança, oferece uma visão rápida e encorajadora do seu progresso semanal.
+
+Com um sistema de contas de usuário para privacidade, o aplicativo oferece um espaço dedicado para detalhar seus pedidos, definir prazos e acompanhar o progresso de suas orações.
+
+**Propósito:** Facilitar a prática consistente da oração, permitindo que você visualize e reflita sobre suas orações e as respostas divinas ao longo do tempo, e agora também, **acompanhar visualmente sua perseverança na intercessão tanto em uma perspectiva de longo prazo com a barra de progresso, quanto semanalmente com o novo quadro de dias da semana.**
 
 ## Funcionalidades Principais
 
@@ -23,8 +29,9 @@ Este projeto é um diário de oração digital pessoal, desenvolvido para ajudar
 *   **Geração de Visualizações e Relatórios:**
     *   Geração de visualizações gerais e de orações respondidas em formato HTML para compartilhamento e arquivamento.
     *   Relatório de "Perseverança nas Orações" que computa a frequência de cliques no botão "Orei!" por alvo, oferecendo uma visão da dedicação à oração.
-*   **Barra de Progresso "Perseverança na Intercessão":**  Um contador visual na página inicial que registra a interação diária com o diário de oração, incentivando a consistência e estabelecendo metas de perseverança.
-    *   **Design Aprimorado:** Apresenta visualmente o percentual de progresso à esquerda com fundo verde e a meta de dias à direita com fundo claro, além de um botão "Confirmar Perseverança" com estilo arredondado.
+*   **Barra de Progresso "Perseverança na Intercessão" e Quadro Semanal "Sua Semana de Perseverança":** Um conjunto de ferramentas visuais na página inicial que registram a interação diária com o diário de oração, incentivando a consistência e estabelecendo metas de perseverança.
+    *   **Barra de Progresso Aprimorada:** Apresenta visualmente o percentual de progresso à esquerda com fundo verde e a meta de dias à direita com fundo claro, além de um botão "Confirmar Perseverança" com estilo arredondado para registrar a interação diária.
+    *   **Novo Quadro Semanal "Sua Semana de Perseverança":** Exibe um quadro visual dos dias da semana, marcando com "ticks" os dias em que a perseverança foi confirmada, oferecendo uma visão rápida da consistência semanal.
 
 ## Tecnologias Utilizadas
 
@@ -73,10 +80,11 @@ Este é um aplicativo web frontend que utiliza o Firebase como backend. Para exe
     *   Preencha os campos "Título", "Observações", "Data" e, se desejar, marque "Este alvo tem prazo de validade?" e defina o "Prazo de Validade".
     *   Clique em "Adicionar Alvo" para salvar o novo pedido de oração.
 
-3.  **Interagir com os Alvos Diários e a Barra de Perseverança:**
-        *   Na seção "Alvos de oração do dia", você verá uma seleção de pedidos e a barra "Perseverança na Intercessão" com design visual aprimorado.
+3.  **Interagir com os Alvos Diários, a Barra de Perseverança e o Quadro Semanal:**
+        *   Na seção "Alvos de oração do dia", você verá uma seleção de pedidos e a barra "Perseverança na Intercessão" com design visual aprimorado, **e o novo quadro semanal "Sua Semana de Perseverança" acima.**
         *   Clique no botão "Orei!" para registrar sua oração por cada alvo diário.
         *   **Diariamente, clique no botão "Confirmar Perseverança" abaixo da barra de progresso "Perseverança na Intercessão" para registrar sua interação com o diário e avançar na barra de progresso. A barra exibe o seu progresso com o percentual em destaque à esquerda em um fundo verde e a meta de 100 dias (inicial) claramente indicada à direita em fundo claro.**
+        *   **Observe o quadro semanal "Sua Semana de Perseverança" acima da barra. Ele exibirá "ticks" verdes nos dias da semana em que você confirmar a perseverança. Este quadro oferece uma visão rápida de sua consistência nos últimos 7 dias.**
         *   Utilize os botões "Atualizar Alvos do Dia", "Copiar Alvos do Dia" e "Visualizar Alvos do Dia" para gerenciar e visualizar seus alvos diários.
 
 4.  **Gerenciar Todos os Alvos:**
@@ -88,4 +96,3 @@ Este é um aplicativo web frontend que utiliza o Firebase como backend. Para exe
 5.  **Gerar Visualizações e Relatórios:**
     *   Clique em "Gerar Visualização Geral" e "Visualizar Respondidos" no menu principal para exportar listas de oração em HTML.
     *   Clique em "Perseverança" para acessar a página de relatório (`orei.html`) e visualizar o relatório de frequência de oração ("Orei!").
-
