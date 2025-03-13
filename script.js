@@ -1,4 +1,3 @@
---- START OF FILE script.js ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
@@ -1443,4 +1442,3 @@ function resetPerseveranceUI() {
 
 
 // ==== FIM SEÇÃO - BARRA DE PROGRESSO PERSEVERANÇA ====
---- END OF FILE script.js ---
