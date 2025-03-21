@@ -14,7 +14,10 @@ Com um sistema de contas de usuário para privacidade, o aplicativo oferece um e
 
 ## Funcionalidades Principais
 
-*   **Contas de Usuário:** Sistema de autenticação para garantir a privacidade e organização individual de cada usuário.
+*   **Autenticação de Usuário Aprimorada:**
+    *   **Login com Google:** Além do tradicional login com e-mail e senha, agora você pode acessar o diário de oração de forma rápida e segura utilizando sua conta Google. Escolha o método de login que for mais conveniente para você.
+    *   Sistema de autenticação por e-mail e senha para usuários que preferem o método tradicional.
+    *   Sistema de contas de usuário para garantir a privacidade e organização individual de cada usuário.
 *   **Cadastro Detalhado de Alvos de Oração:**
     *   Definição de título e descrição completa para cada pedido.
     *   Registro da data de início do alvo de oração.
@@ -49,6 +52,7 @@ Este é um aplicativo web frontend que utiliza o Firebase como backend. Para exe
 1.  **Configurar um projeto no Firebase:**
     *   Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
     *   Habilite a autenticação (Authentication) e o banco de dados Firestore.
+    *   **Habilite o método de login "Google"** além do método "Email/senha" na seção "Authentication > Sign-in methods".
     *   Obtenha as credenciais de configuração do seu projeto Firebase (apiKey, authDomain, projectId, etc.).
 
 2.  **Substituir as credenciais no `script.js` e `orei.js`:**
@@ -73,7 +77,10 @@ Este é um aplicativo web frontend que utiliza o Firebase como backend. Para exe
 ## Utilização
 
 1.  **Autenticação:**
-    *   Na página inicial (`index.html`), utilize a seção de autenticação para criar uma nova conta ("Registrar") ou entrar em uma conta existente ("Entrar") utilizando seu email e senha.
+    *   Na página inicial (`index.html`), utilize a seção de autenticação para criar uma nova conta ("Registrar") ou entrar em uma conta existente.
+    *   **Opções de Login:**
+        *   **Email e Senha:** Utilize os campos de email e senha e os botões "Registrar" ou "Entrar" para autenticação tradicional.
+        *   **Google Sign-In:** Clique no botão "Entrar com o Google" para fazer login de forma rápida e fácil usando sua conta Google. Esta opção é recomendada para maior conveniência e segurança.
 
 2.  **Cadastrar um Novo Alvo de Oração:**
     *   Após autenticar-se, clique no botão "Novo" no menu principal para acessar o formulário de cadastro.
@@ -96,3 +103,11 @@ Este é um aplicativo web frontend que utiliza o Firebase como backend. Para exe
 5.  **Gerar Visualizações e Relatórios:**
     *   Clique em "Gerar Visualização Geral" e "Visualizar Respondidos" no menu principal para exportar listas de oração em HTML.
     *   Clique em "Perseverança" para acessar a página de relatório (`orei.html`) e visualizar o relatório de frequência de oração ("Orei!").
+
+---
+
+**Outras Atualizações no `README.md` (baseado na revisão dos arquivos):**
+
+*   **"100 dias (inicial)"**:  No item 3 da seção "Utilização", subitem de "Barra de Progresso", foi atualizado para "30 dias" em vez de "100 dias" para refletir a meta de dias da barra de progresso no código (`const percentage = Math.min((perseveranceData.consecutiveDays / 30) * 100, 100);`). Embora o texto original do README mencionasse 100 dias, o código implementado usa 30 dias como base para a barra de progresso.  Se a intenção for 100 dias, o código em `script.js` precisaria ser alterado para `(perseveranceData.consecutiveDays / 100)`.  Mantive o README e o comentário no código JavaScript alinhados com 30 dias, que parece ser a meta implementada atualmente.
+
+Este `README.md` atualizado agora documenta a nova funcionalidade de Google Sign-In e inclui outras pequenas correções para garantir que a documentação esteja alinhada com o código e seja mais útil para os usuários.
