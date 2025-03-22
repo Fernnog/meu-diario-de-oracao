@@ -1461,7 +1461,9 @@ function updatePerseveranceUI() {
     }
 
     const today = new Date();
+    console.log("updatePerseveranceUI - today:", today); // ADDED LOGGING
     const currentDayOfWeek = today.getDay(); // 0 (Domingo) a 6 (Sábado)
+    console.log("updatePerseveranceUI - currentDayOfWeek:", currentDayOfWeek); // ADDED LOGGING
 
     for (let i = 0; i < 7; i++) {
         const dayTickElement = document.getElementById(`day-${i}`);
@@ -1494,3 +1496,4 @@ function resetPerseveranceUI() {
 
 
 // ==== FIM SEÇÃO - BARRA DE PROGRESSO PERSEVERANÇA ====
+
