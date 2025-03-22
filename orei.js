@@ -233,57 +233,7 @@ function renderPagination() {
 
 
 // Event listeners (mantidos e corrigidos)
-document.getElementById('searchReport').addEventListener('input', (event) => {
-    currentSearchTermReport = event.target.value;
-     currentPage = 1; // Reseta para a primeira página ao pesquisar
-    renderReport();
-});
-
-document.getElementById('filterAtivo').addEventListener('change', () => {
-    currentPage = 1; // Reseta para a primeira página ao mudar filtros
-    renderReport();
-});
-document.getElementById('filterArquivado').addEventListener('change', () => {
-     currentPage = 1;// Reseta para a primeira página ao mudar filtros
-    renderReport();
-});
-document.getElementById('filterRespondido').addEventListener('change', () => {
-    currentPage = 1;// Reseta para a primeira página ao mudar filtros
-    renderReport();
-});
-
-document.getElementById('backToMainButton').addEventListener('click', () => {
-    window.location.href = 'index.html';
-});
-
-document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
-    window.location.href = 'index.html#mainPanel';
-});
-
-document.getElementById('viewArchivedButton').addEventListener('click', () => {
-    window.location.href = 'index.html#archivedPanel';
-});
-
-document.getElementById('viewResolvedButton').addEventListener('click', () => {
-    window.location.href = 'index.html#resolvedPanel';
-});
-
-// ==== GOOGLE LOGIN BUTTON EVENT LISTENER ====
-document.getElementById('btnGoogleLoginReport').addEventListener('click', signInWithGoogle);
-
-// ==== LOGOUT BUTTON EVENT LISTENER ====
-document.getElementById('btnLogoutReport').addEventListener('click', async () => {
-    try {
-        await signOut(auth);
-        updateAuthUI(null); // Update UI to logged out state
-        renderReport(); // Re-render the report (or clear it)
-    } catch (error) {
-        console.error("Erro ao sair:", error);
-        alert("Erro ao sair.");
-    }
-});
-
-
+// Move event listeners inside window.onload to ensure DOM is ready
 window.onload = () => {
     onAuthStateChanged(auth, (user) => {
         updateAuthUI(user); // Update auth UI on page load
@@ -300,6 +250,56 @@ window.onload = () => {
             allTargets = [];
             filteredTargets = [];
             renderReport(); // Renderiza um relatório vazio ou mensagem de login
+        }
+    });
+
+    document.getElementById('searchReport').addEventListener('input', (event) => {
+        currentSearchTermReport = event.target.value;
+         currentPage = 1; // Reseta para a primeira página ao pesquisar
+        renderReport();
+    });
+
+    document.getElementById('filterAtivo').addEventListener('change', () => {
+        currentPage = 1; // Reseta para a primeira página ao mudar filtros
+        renderReport();
+    });
+    document.getElementById('filterArquivado').addEventListener('change', () => {
+         currentPage = 1;// Reseta para a primeira página ao mudar filtros
+        renderReport();
+    });
+    document.getElementById('filterRespondido').addEventListener('change', () => {
+        currentPage = 1;// Reseta para a primeira página ao mudar filtros
+        renderReport();
+    });
+
+    document.getElementById('backToMainButton').addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+
+    document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
+        window.location.href = 'index.html#mainPanel';
+    });
+
+    document.getElementById('viewArchivedButton').addEventListener('click', () => {
+        window.location.href = 'index.html#archivedPanel';
+    });
+
+    document.getElementById('viewResolvedButton').addEventListener('click', () => {
+        window.location.href = 'index.html#resolvedPanel';
+    });
+
+    // ==== GOOGLE LOGIN BUTTON EVENT LISTENER ====
+    document.getElementById('btnGoogleLoginReport').addEventListener('click', signInWithGoogle);
+
+    // ==== LOGOUT BUTTON EVENT LISTENER ====
+    document.getElementById('btnLogoutReport').addEventListener('click', async () => {
+        try {
+            await signOut(auth);
+            updateAuthUI(null); // Update UI to logged out state
+            renderReport(); // Re-render the report (or clear it)
+        } catch (error) {
+            console.error("Erro ao sair:", error);
+            alert("Erro ao sair.");
         }
     });
 };
