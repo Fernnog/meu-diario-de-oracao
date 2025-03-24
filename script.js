@@ -1,3 +1,4 @@
+--- START OF FILE script.js ---
 document.addEventListener('DOMContentLoaded', () => {
     // Seleção de elementos do DOM
     const formPlano = document.getElementById('form-plano');
@@ -19,186 +20,148 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportarAgendaBtn = document.getElementById('exportar-agenda');
     const paginadorPlanosDiv = document.getElementById('paginador-planos');
     const inicioCadastroBtn = document.getElementById('inicio-cadastro');
+    const loginButton = document.getElementById('login-button');
+    const logoutButton = document.getElementById('logout-button');
+    const syncFirebaseButton = document.getElementById('sync-firebase');
 
 
-    // Estado inicial
-    let planos = carregarPlanosSalvos() || [];
+    // Configurações do Firebase (substitua pelos valores do seu projeto)
+    const firebaseConfig = {
+        apiKey: "SUA_API_KEY",
+        authDomain: "SEU_AUTH_DOMAIN",
+        projectId: "SEU_PROJECT_ID",
+        storageBucket: "SEU_STORAGE_BUCKET",
+        messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+        appId: "SEU_APP_ID"
+    };
+
+    // Inicializar o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Variáveis globais
+    let user = null;
+    let planos = []; // Inicializa planos como um array vazio aqui
     let planoEditandoIndex = -1;
 
-    // Renderizar planos ao carregar a página
-    renderizarPlanos();
-
-    // Alternância entre "Definir por Datas" e "Definir por Dias"
-    definirPorDatasRadio.addEventListener('change', function() {
-        periodoPorDatasDiv.style.display = 'block';
-        periodoPorDiasDiv.style.display = 'none';
-        document.getElementById('data-inicio').required = true;
-        document.getElementById('data-fim').required = true;
-        document.getElementById('data-inicio-dias').required = false;
-        document.getElementById('numero-dias').required = false;
-    });
-
-    definirPorDiasRadio.addEventListener('change', function() {
-        periodoPorDatasDiv.style.display = 'none';
-        periodoPorDiasDiv.style.display = 'block';
-        document.getElementById('data-inicio').required = false;
-        document.getElementById('data-fim').required = false;
-        document.getElementById('data-inicio-dias').required = true;
-        document.getElementById('numero-dias').required = true;
-    });
-
-    // Exibir/esconder seleção de dias da semana com base na periodicidade
-    periodicidadeSelect.addEventListener('change', function() {
-        diasSemanaSelecao.style.display = this.value === 'semanal' ? 'block' : 'none';
-    });
-
-
-    novoPlanoBtn.addEventListener('click', () => {
-        cadastroPlanoSection.style.display = 'block';
-        planosLeituraSection.style.display = 'none';
-        novoPlanoBtn.style.display = 'none';
-        inicioBtn.style.display = 'inline-block';
-        inicioBtn.style.cursor = 'pointer'; // Adiciona cursor de pointer
-        novoPlanoBtn.style.cursor = 'default'; // Reseta cursor do botão Novo para default
-    });
-
-    inicioBtn.addEventListener('click', () => {
-        cadastroPlanoSection.style.display = 'none';
-        planosLeituraSection.style.display = 'block';
-        novoPlanoBtn.style.display = 'inline-block';
-        inicioBtn.style.display = 'none';
-        novoPlanoBtn.style.cursor = 'pointer'; // Adiciona cursor de pointer
-        inicioBtn.style.cursor = 'default'; // Reseta cursor do botão Inicio para default
-    });
-
-    inicioCadastroBtn.addEventListener('click', () => {
-        cadastroPlanoSection.style.display = 'none';
-        planosLeituraSection.style.display = 'block';
-        novoPlanoBtn.style.display = 'inline-block';
-        inicioBtn.style.display = 'none';
-        novoPlanoBtn.style.cursor = 'pointer'; // Adiciona cursor de pointer
-        inicioBtn.style.cursor = 'default'; // Reseta cursor do botão Inicio para default
-    });
-
-    // Submissão do formulário
-    formPlano.addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const titulo = document.getElementById('titulo-livro').value;
-        const paginaInicio = parseInt(document.getElementById('pagina-inicio').value);
-        const paginaFim = parseInt(document.getElementById('pagina-fim').value);
-        let dataInicio, dataFim;
-
-        // Validação das páginas
-        if (paginaFim < paginaInicio) {
-            alert("A página de fim deve ser maior ou igual à página de início.");
-            return;
-        }
-
-        // Determina as datas com base no método de definição
-        if (definirPorDatasRadio.checked) {
-            dataInicio = new Date(document.getElementById('data-inicio').value);
-            dataFim = new Date(document.getElementById('data-fim').value);
-            if (dataFim <= dataInicio) {
-                alert("A data de fim deve ser posterior à data de início.");
-                return;
-            }
-        } else {
-            dataInicio = new Date(document.getElementById('data-inicio-dias').value);
-            const numeroDias = parseInt(document.getElementById('numero-dias').value);
-            if (isNaN(numeroDias) || numeroDias < 1) {
-                alert("Número de dias inválido.");
-                return;
-            }
-            dataFim = new Date(dataInicio);
-            dataFim.setDate(dataInicio.getDate() + numeroDias - 1);
-        }
-
-        const periodicidade = periodicidadeSelect.value;
-        const diasSemana = periodicidade === 'semanal' ?
-            Array.from(document.querySelectorAll('input[name="dia-semana"]:checked')).map(cb => parseInt(cb.value)) : [];
-
-        if (periodicidade === 'semanal' && diasSemana.length === 0) {
-            alert("Selecione pelo menos um dia da semana.");
-            return;
-        }
-
-        // Cria ou atualiza o plano
-        const plano = criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana);
-        if (plano) {
-            if (planoEditandoIndex > -1) {
-                planos[planoEditandoIndex] = plano;
-                planoEditandoIndex = -1;
-                formPlano.querySelector('button[type="submit"]').textContent = 'Salvar Plano';
-            } else {
-                planos.push(plano);
-            }
-            salvarPlanos(planos);
-            renderizarPlanos();
-            formPlano.reset();
-            periodoPorDatasDiv.style.display = 'block';
-            periodoPorDiasDiv.style.display = 'none';
-            definirPorDatasRadio.checked = true;
-            definirPorDiasRadio.checked = false;
-            diasSemanaSelecao.style.display = 'none';
-            inicioBtn.click(); // Simula clique no botão "Início" para voltar para a tela de planos
-        }
-    });
-
-    // Função para criar um plano de leitura
-    function criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana) {
-        const totalPaginas = paginaFim - paginaInicio + 1;
-        let dataAtual = new Date(dataInicio);
-        dataAtual.setHours(0, 0, 0, 0);
-        const diasPlano = [];
-
-        while (dataAtual <= dataFim) {
-            const diaSemana = dataAtual.getDay();
-            if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
-                diasPlano.push({
-                    data: new Date(dataAtual),
-                    paginaInicioDia: 0,
-                    paginaFimDia: 0,
-                    paginas: 0,
-                    lido: false
-                });
-            }
-            dataAtual.setDate(dataAtual.getDate() + 1);
-        }
-
-        if (diasPlano.length === 0) {
-            alert("Não há dias de leitura válidos no período selecionado.");
-            return null;
-        }
-
-        const paginasPorDia = Math.floor(totalPaginas / diasPlano.length);
-        const resto = totalPaginas % diasPlano.length;
-        let paginaAtual = paginaInicio;
-
-        diasPlano.forEach((dia, index) => {
-            const paginasDia = index < resto ? paginasPorDia + 1 : paginasPorDia;
-            dia.paginaInicioDia = paginaAtual;
-            dia.paginaFimDia = paginaAtual + paginasDia - 1;
-            dia.paginas = paginasDia;
-            paginaAtual = dia.paginaFimDia + 1;
-        });
-
-        return {
-            id: Date.now(),
-            titulo,
-            paginaInicio,
-            paginaFim,
-            totalPaginas,
-            dataInicio,
-            dataFim,
-            periodicidade,
-            diasSemana,
-            diasPlano,
-            paginasLidas: 0
-        };
+    // Função para inicializar a autenticação e carregar dados
+    function initApp() {
+        initAuth();
     }
 
-    // Função para renderizar os planos
+    // Função para inicializar a autenticação
+    function initAuth() {
+        auth.onAuthStateChanged((currentUser) => {
+            user = currentUser;
+            if (user) {
+                // Usuário está logado
+                loginButton.style.display = 'none';
+                logoutButton.style.display = 'block';
+                syncFirebaseButton.style.display = 'block';
+                // Sincronizar automaticamente ao logar e depois renderizar os planos
+                syncWithFirebase(() => {
+                    renderizarPlanos();
+                });
+            } else {
+                // Usuário não está logado
+                loginButton.style.display = 'block';
+                logoutButton.style.display = 'none';
+                syncFirebaseButton.style.display = 'none';
+                // Carregar planos locais se não estiver logado
+                planos = carregarPlanosSalvos() || [];
+                renderizarPlanos();
+            }
+        });
+    }
+
+    // Função para fazer login com Google
+    function login() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider)
+            .then((result) => {
+                console.log('Usuário logado:', result.user);
+            })
+            .catch((error) => {
+                console.error('Erro ao fazer login:', error);
+                alert('Erro ao fazer login. Tente novamente.');
+            });
+    }
+
+    // Função para fazer logout
+    function logout() {
+        auth.signOut()
+            .then(() => {
+                console.log('Usuário deslogado');
+                // Limpar planos locais ao deslogar para evitar confusão
+                planos = [];
+                localStorage.removeItem('planosLeitura');
+                renderizarPlanos(); // Renderiza a tela inicial novamente
+            })
+            .catch((error) => {
+                console.error('Erro ao fazer logout:', error);
+                alert('Erro ao fazer logout. Tente novamente.');
+            });
+    }
+
+    // Função para sincronizar com o Firebase
+    function syncWithFirebase(callback) {
+        if (!user) {
+            alert('Você precisa estar logado para sincronizar com o Firebase.');
+            return;
+        }
+
+        const userId = user.uid;
+        const docRef = db.collection('users').doc(userId);
+
+        // Obter os dados locais
+        const localData = carregarPlanosSalvos() || [];
+
+        // Obter os dados do Firestore
+        docRef.get()
+            .then((doc) => {
+                if (doc.exists) {
+                    const cloudData = doc.data().planos || []; // Pega o array de planos do documento
+                    // Fundir ou substituir dados conforme necessário. Aqui, vamos substituir completamente os locais pelos da nuvem.
+                    planos = cloudData;
+                    salvarPlanosLocal(planos); // Atualiza localStorage com dados da nuvem
+                    if (callback) callback();
+                    alert('Planos sincronizados com sucesso do Firebase.');
+                } else {
+                    // Se não existe documento no Firestore, cria com os dados locais atuais
+                    uploadPlanosParaFirebase(callback);
+                }
+            })
+            .catch((error) => {
+                console.error('Erro ao obter dados do Firestore:', error);
+                alert('Erro ao sincronizar com o Firebase. Tente novamente.');
+            });
+    }
+
+    function uploadPlanosParaFirebase(callback) {
+        if (!user) {
+            alert('Você precisa estar logado para sincronizar com o Firebase.');
+            return;
+        }
+
+        const userId = user.uid;
+        const docRef = db.collection('users').doc(userId);
+        const localPlanos = carregarPlanosSalvos() || [];
+
+        docRef.set({ planos: localPlanos }) // Salva um objeto com a chave 'planos' e o array de planos
+            .then(() => {
+                console.log('Planos sincronizados com o Firebase com sucesso!');
+                if (callback) callback();
+                alert('Planos sincronizados e salvos no Firebase.');
+            })
+            .catch((error) => {
+                console.error('Erro ao salvar dados no Firestore:', error);
+                alert('Erro ao sincronizar com o Firebase. Tente novamente.');
+            });
+    }
+
+
+    // Renderizar planos ao carregar a página e/ou após sincronização
     function renderizarPlanos() {
         // Limpa o paginador e a lista de planos
         paginadorPlanosDiv.innerHTML = '';
@@ -285,6 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
         planos[planoIndex].diasPlano[diaIndex].lido = lido;
         atualizarPaginasLidas(planoIndex);
         salvarPlanos(planos);
+        if (user) { // Sincroniza com Firebase após marcar como lido
+            uploadPlanosParaFirebase();
+        }
 
         // Adiciona/remove a classe 'lido' ao elemento pai (div.dia-leitura)
         const diaLeituraElement = document.getElementById(`dia-${planoIndex}-${diaIndex}`).parentElement;
@@ -444,6 +410,9 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarPaginasLidas(index);
 
         salvarPlanos(planos);
+        if (user) { // Sincroniza com Firebase após recalcular
+            uploadPlanosParaFirebase();
+        }
         renderizarPlanos();
     };
 
@@ -479,12 +448,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm("Tem certeza que deseja excluir este plano?")) {
             planos.splice(index, 1);
             salvarPlanos(planos);
+            if (user) { // Sincroniza com Firebase após excluir
+                uploadPlanosParaFirebase();
+            }
             renderizarPlanos();
         }
     };
 
     // Salva planos no localStorage
-    function salvarPlanos(planos) {
+    function salvarPlanosLocal(planos) {
         localStorage.setItem('planosLeitura', JSON.stringify(planos));
     }
 
@@ -503,6 +475,135 @@ document.addEventListener('DOMContentLoaded', () => {
             return plano;
         });
     }
+
+    // Salva planos localmente ou no Firebase dependendo do estado de login
+    function salvarPlanos(planosParaSalvar) {
+        if (user) {
+            uploadPlanosParaFirebase(); // Sincroniza com Firebase se usuário logado
+        } else {
+            salvarPlanosLocal(planosParaSalvar); // Salva localmente se não logado
+        }
+    }
+
+
+    // Submissão do formulário
+    formPlano.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const titulo = document.getElementById('titulo-livro').value;
+        const paginaInicio = parseInt(document.getElementById('pagina-inicio').value);
+        const paginaFim = parseInt(document.getElementById('pagina-fim').value);
+        let dataInicio, dataFim;
+
+        // Validação das páginas
+        if (paginaFim < paginaInicio) {
+            alert("A página de fim deve ser maior ou igual à página de início.");
+            return;
+        }
+
+        // Determina as datas com base no método de definição
+        if (definirPorDatasRadio.checked) {
+            dataInicio = new Date(document.getElementById('data-inicio').value);
+            dataFim = new Date(document.getElementById('data-fim').value);
+            if (dataFim <= dataInicio) {
+                alert("A data de fim deve ser posterior à data de início.");
+                return;
+            }
+        } else {
+            dataInicio = new Date(document.getElementById('data-inicio-dias').value);
+            const numeroDias = parseInt(document.getElementById('numero-dias').value);
+            if (isNaN(numeroDias) || numeroDias < 1) {
+                alert("Número de dias inválido.");
+                return;
+            }
+            dataFim = new Date(dataInicio);
+            dataFim.setDate(dataInicio.getDate() + numeroDias - 1);
+        }
+
+        const periodicidade = periodicidadeSelect.value;
+        const diasSemana = periodicidade === 'semanal' ?
+            Array.from(document.querySelectorAll('input[name="dia-semana"]:checked')).map(cb => parseInt(cb.value)) : [];
+
+        if (periodicidade === 'semanal' && diasSemana.length === 0) {
+            alert("Selecione pelo menos um dia da semana.");
+            return;
+        }
+
+        // Cria ou atualiza o plano
+        const plano = criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana);
+        if (plano) {
+            if (planoEditandoIndex > -1) {
+                planos[planoEditandoIndex] = plano;
+                planoEditandoIndex = -1;
+                formPlano.querySelector('button[type="submit"]').textContent = 'Salvar Plano';
+            } else {
+                planos.push(plano);
+            }
+            salvarPlanos(planos); // Salva no localStorage ou Firebase dependendo do login
+            renderizarPlanos();
+            formPlano.reset();
+            periodoPorDatasDiv.style.display = 'block';
+            periodoPorDiasDiv.style.display = 'none';
+            definirPorDatasRadio.checked = true;
+            definirPorDiasRadio.checked = false;
+            diasSemanaSelecao.style.display = 'none';
+            inicioBtn.click(); // Simula clique no botão "Início" para voltar para a tela de planos
+        }
+    });
+
+    // Função para criar um plano de leitura
+    function criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana) {
+        const totalPaginas = paginaFim - paginaInicio + 1;
+        let dataAtual = new Date(dataInicio);
+        dataAtual.setHours(0, 0, 0, 0);
+        const diasPlano = [];
+
+        while (dataAtual <= dataFim) {
+            const diaSemana = dataAtual.getDay();
+            if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
+                diasPlano.push({
+                    data: new Date(dataAtual),
+                    paginaInicioDia: 0,
+                    paginaFimDia: 0,
+                    paginas: 0,
+                    lido: false
+                });
+            }
+            dataAtual.setDate(dataAtual.getDate() + 1);
+        }
+
+        if (diasPlano.length === 0) {
+            alert("Não há dias de leitura válidos no período selecionado.");
+            return null;
+        }
+
+        const paginasPorDia = Math.floor(totalPaginas / diasPlano.length);
+        const resto = totalPaginas % diasPlano.length;
+        let paginaAtual = paginaInicio;
+
+        diasPlano.forEach((dia, index) => {
+            const paginasDia = index < resto ? paginasPorDia + 1 : paginasPorDia;
+            dia.paginaInicioDia = paginaAtual;
+            dia.paginaFimDia = paginaAtual + paginasDia - 1;
+            dia.paginas = paginasDia;
+            paginaAtual = dia.paginaFimDia + 1;
+        });
+
+        return {
+            id: Date.now(),
+            titulo,
+            paginaInicio,
+            paginaFim,
+            totalPaginas,
+            dataInicio,
+            dataFim,
+            periodicidade,
+            diasSemana,
+            diasPlano,
+            paginasLidas: 0
+        };
+    }
+
 
     // Exporta planos para JSON
     exportarPlanosBtn.addEventListener('click', function() {
@@ -559,6 +660,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm("Tem certeza que deseja limpar todos os dados?")) {
             planos = [];
             localStorage.removeItem('planosLeitura');
+            if (user) { // Limpa também no Firebase ao limpar dados localmente
+                uploadPlanosParaFirebase(); // Envia um array de planos vazio para o Firebase
+            }
             renderizarPlanos();
         }
      });
@@ -781,4 +885,12 @@ document.addEventListener('DOMContentLoaded', () => {
         salvarPlanos(planos);
         renderizarPlanos();
     }
+
+    // Inicializar a aplicação
+    initApp();
+
+    // Eventos de clique para login e logout
+    loginButton.addEventListener('click', login);
+    logoutButton.addEventListener('click', logout);
+    syncFirebaseButton.addEventListener('click', () => syncWithFirebase(renderizarPlanos));
 });
