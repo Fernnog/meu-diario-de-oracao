@@ -1,3 +1,7 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+
 document.addEventListener('DOMContentLoaded', () => {
     // Seleção de elementos do DOM
     const formPlano = document.getElementById('form-plano');
@@ -26,18 +30,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configurações do Firebase (substitua pelos valores do seu projeto)
     const firebaseConfig = {
-        apiKey: "AIzaSyCzLjQrE3KhneuwZZXIost5oghVjOTmZQE",
-        authDomain: "plano-leitura.firebaseapp.com",
-        projectId: "plano-leitura",
-        storageBucket: "plano-leitura.firebasestorage.app",
-        messagingSenderId: "589137978493",
-        appId: "1:589137978493:web:f7305bca602383fe14bd14"
+        apiKey: "SUA_API_KEY",
+        authDomain: "SEU_AUTH_DOMAIN",
+        projectId: "SEU_PROJECT_ID",
+        storageBucket: "SEU_STORAGE_BUCKET",
+        messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+        appId: "SEU_APP_ID"
     };
 
     // Inicializar o Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // Variáveis globais
     let user = null;
@@ -51,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para inicializar a autenticação
     function initAuth() {
-        auth.onAuthStateChanged((currentUser) => {
+        onAuthStateChanged(auth, (currentUser) => {
             user = currentUser;
             if (user) {
                 // Usuário está logado
@@ -76,8 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para fazer login com Google
     function login() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider)
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider)
             .then((result) => {
                 console.log('Usuário logado:', result.user);
             })
@@ -89,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para fazer logout
     function logout() {
-        auth.signOut()
+        signOut(auth)
             .then(() => {
                 console.log('Usuário deslogado');
                 // Limpar planos locais ao deslogar para evitar confusão
@@ -111,16 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const userId = user.uid;
-        const docRef = db.collection('users').doc(userId);
+        const docRef = doc(db, 'users', userId);
 
         // Obter os dados locais
         const localData = carregarPlanosSalvos() || [];
 
         // Obter os dados do Firestore
-        docRef.get()
-            .then((doc) => {
-                if (doc.exists) {
-                    const cloudData = doc.data().planos || []; // Pega o array de planos do documento
+        getDoc(docRef)
+            .then((docSnap) => {
+                if (docSnap.exists()) {
+                    const cloudData = docSnap.data().planos || []; // Pega o array de planos do documento
                     // Fundir ou substituir dados conforme necessário. Aqui, vamos substituir completamente os locais pelos da nuvem.
                     planos = cloudData;
                     salvarPlanosLocal(planos); // Atualiza localStorage com dados da nuvem
@@ -144,10 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const userId = user.uid;
-        const docRef = db.collection('users').doc(userId);
+        const docRef = doc(db, 'users', userId);
         const localPlanos = carregarPlanosSalvos() || [];
 
-        docRef.set({ planos: localPlanos }) // Salva um objeto com a chave 'planos' e o array de planos
+        setDoc(docRef, { planos: localPlanos }) // Salva um objeto com a chave 'planos' e o array de planos
             .then(() => {
                 console.log('Planos sincronizados com o Firebase com sucesso!');
                 if (callback) callback();
