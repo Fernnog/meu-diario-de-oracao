@@ -27,12 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configurações do Firebase (substitua pelos valores do seu projeto)
     const firebaseConfig = {
-        apiKey: "SUA_API_KEY",
-        authDomain: "SEU_AUTH_DOMAIN",
-        projectId: "SEU_PROJECT_ID",
-        storageBucket: "SEU_STORAGE_BUCKET",
-        messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-        appId: "SEU_APP_ID"
+        apiKey: "AIzaSyCzLjQrE3KhneuwZZXIost5oghVjOTmZQE",
+        authDomain: "plano-leitura.firebaseapp.com",
+        projectId: "plano-leitura",
+        storageBucket: "plano-leitura.firebasestorage.app",
+        messagingSenderId: "589137978493",
+        appId: "1:589137978493:web:f7305bca602383fe14bd14"
     };
 
     // Inicializar o Firebase
