@@ -56,21 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função para inicializar a autenticação - SIMPLIFICADA PARA DEBUG
+    // Função para inicializar a autenticação - COM SETTIMEOUT PARA TESTE
     function initAuth() {
         onAuthStateChanged(auth, (currentUser) => {
-            user = currentUser;
-            console.log("Estado de Autenticação Mudou:", user); // Log simplificado
-            if (user) {
-                loginButton.style.display = 'none';
-                logoutButton.style.display = 'block';
-                syncFirebaseButton.style.display = 'none';
-            } else {
-                loginButton.style.display = 'block';
-                logoutButton.style.display = 'none';
-                syncFirebaseButton.style.display = 'none';
-                // Removido temporariamente planos = []; e renderizarPlanos();
-            }
+            setTimeout(() => { // ADDED setTimeout (for testing ONLY)
+                user = currentUser;
+                console.log("Estado de Autenticação Mudou (delayed):", user);
+                if (user) {
+                    loginButton.style.display = 'none';
+                    logoutButton.style.display = 'block';
+                    syncFirebaseButton.style.display = 'none';
+                } else {
+                    loginButton.style.display = 'block';
+                    logoutButton.style.display = 'none';
+                    syncFirebaseButton.style.display = 'none';
+                    // Removido temporariamente planos = []; e renderizarPlanos();
+                }
+            }, 50); // 50ms delay - adjust if needed, try small values
         });
     }
 
