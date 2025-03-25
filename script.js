@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const syncFirebaseButton = document.getElementById('sync-firebase');
 
-  // Configurações do Firebase
+    // Configurações do Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyCzLjQrE3KhneuwZZXIost5oghVjOTmZQE", // Substitua com a sua API Key real
         authDomain: "plano-leitura.firebaseapp.com", // Substitua com o seu Auth Domain real
@@ -161,8 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (dia.data) dia.data.setHours(0, 0, 0, 0);
                         });
                     }
-                    setDoc(docRef, { planos: [] });
-                }
+                });
                 console.log('Planos carregados do Firestore:', planosDoFirestore);
                 if (callback) callback(planosDoFirestore);
                 return planosDoFirestore;
