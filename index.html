@@ -63,17 +63,17 @@
             <form id="form-plano">
                 <div class="form-group">
                     <label for="titulo-livro">Título do Livro:</label>
-                    <input type="text" id="titulo-livro" required title="Digite o nome do livro que você deseja ler">
+                    <input type="text" id="titulo-livro" name="titulo-livro" required title="Digite o nome do livro que você deseja ler">
                 </div>
 
                 <div class="form-group">
                     <label for="pagina-inicio">Página de Início:</label>
-                    <input type="number" id="pagina-inicio" min="1" required title="Página onde você começará a leitura">
+                    <input type="number" id="pagina-inicio" name="pagina-inicio" min="1" required title="Página onde você começará a leitura">
                 </div>
 
                 <div class="form-group">
                     <label for="pagina-fim">Página de Fim:</label>
-                    <input type="number" id="pagina-fim" min="1" required title="Página onde você terminará a leitura">
+                    <input type="number" id="pagina-fim" name="pagina-fim" min="1" required title="Página onde você terminará a leitura">
                 </div>
 
                 <div class="form-group">
@@ -89,30 +89,32 @@
                 <div id="periodo-por-datas" style="display: block;">
                     <div class="form-group">
                         <label for="data-inicio">Data de Início:</label>
-                        <input type="date" id="data-inicio" required title="Escolha a data em que você começará a leitura">
+                        <input type="date" id="data-inicio" name="data-inicio" required title="Escolha a data em que você começará a leitura">
                     </div>
 
                     <div class="form-group">
                         <label for="data-fim">Data de Fim:</label>
-                        <input type="date" id="data-fim" required title="Escolha a data em que você planeja terminar">
+                        <input type="date" id="data-fim" name="data-fim" required title="Escolha a data em que você planeja terminar">
                     </div>
                 </div>
 
                 <div id="periodo-por-dias" style="display: none;">
                     <div class="form-group">
                         <label for="data-inicio-dias">Data de Início:</label>
-                        <input type="date" id="data-inicio-dias" title="Data inicial para o plano baseado em dias">
+                        <!-- Alteração: Adicionado name, required e ajustado title -->
+                        <input type="date" id="data-inicio-dias" name="data-inicio-dias" required title="Escolha a data em que você começará a leitura">
                     </div>
 
                     <div class="form-group">
                         <label for="numero-dias">Número de Dias:</label>
-                        <input type="number" id="numero-dias" min="1" title="Quantos dias você quer levar para completar a leitura">
+                        <!-- Alteração: Adicionado name, required e ajustado title -->
+                        <input type="number" id="numero-dias" name="numero-dias" min="1" required title="Quantos dias você planeja levar para completar a leitura">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="periodicidade">Periodicidade:</label>
-                    <select id="periodicidade" required title="Selecione a frequência de leitura">
+                    <select id="periodicidade" name="periodicidade" required title="Selecione a frequência de leitura">
                         <option value="diario">Diariamente</option>
                         <option value="semanal">Dias da Semana (Selecionar)</option>
                     </select>
@@ -171,7 +173,7 @@
         <p>© 2025 Gerenciador de Planos de Leitura</p>
     </footer>
 
-   <script src="script.js" type="module"></script>
+    <script src="script.js" type="module"></script>
     <!-- Cloudflare Web Analytics -->
     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0a493b5498044ca993e9b84094285849"}'></script>
     <!-- End Cloudflare Web Analytics -->
@@ -182,6 +184,38 @@
                 if(b){
                     var d=b.createElement('script');
                     d.innerHTML="window.__CF$cv$params={r:'925870f39d1a3715',t:'MTc0Mjg0MzEzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+                    b.getElementsByTagName('head')[0].appendChild(d)
+                }
+            }
+            if(document.body){
+                var a=document.createElement('iframe');
+                a.height=1;
+                a.width=1;
+                a.style.position='absolute';
+                a.style.top=0;
+                a.style.left=0;
+                a.style.border='none';
+                a.style.visibility='hidden';
+                document.body.appendChild(a);
+                if('loading'!==document.readyState)c();
+                else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);
+                else{
+                    var e=document.onreadystatechange||function(){};
+                    document.onreadystatechange=function(b){
+                        e(b);
+                        'loading'!==document.readyState&&(document.onreadystatechange=e,c())
+                    }
+                }
+            }
+        })();
+    </script>
+    <script>
+        (function(){
+            function c(){
+                var b=a.contentDocument||a.contentWindow.document;
+                if(b){
+                    var d=b.createElement('script');
+                    d.innerHTML="window.__CF$cv$params={r:'9260d6a5be46bcfe',t:'MTc0MjkzMTE5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
                     b.getElementsByTagName('head')[0].appendChild(d)
                 }
             }
