@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const syncFirebaseButton = document.getElementById('sync-firebase');
 
-  // Configurações do Firebase
+    // Configurações do Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyCzLjQrE3KhneuwZZXIost5oghVjOTmZQE", // Substitua com a sua API Key real
         authDomain: "plano-leitura.firebaseapp.com", // Substitua com o seu Auth Domain real
@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         messagingSenderId: "589137978493", // Substitua com o seu Messaging Sender ID real
         appId: "1:589137978493:web:f7305bca602383fe14bd14" // Substitua com o seu App ID real
     };
-
 
     // Inicializar o Firebase
     const app = initializeApp(firebaseConfig);
@@ -139,14 +138,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (docSnap.exists()) {
                     planosDoFirestore = docSnap.data().planos || [];
                     planosDoFirestore = planosDoFirestore.map(plano => {
+                        const [inicioAno, inicioMes, inicioDia] = plano.dataInicio ? plano.dataInicio.split('-').map(Number) : [null, null, null];
+                        const [fimAno, fimMes, fimDia] = plano.dataFim ? plano.dataFim.split('-').map(Number) : [null, null, null];
                         return {
                             ...plano,
-                            dataInicio: plano.dataInicio ? new Date(plano.dataInicio) : null,
-                            dataFim: plano.dataFim ? new Date(plano.dataFim) : null,
-                            diasPlano: plano.diasPlano ? plano.diasPlano.map(dia => ({
-                                ...dia,
-                                data: dia.data ? new Date(dia.data) : null
-                            })) : []
+                            dataInicio: plano.dataInicio ? new Date(inicioAno, inicioMes - 1, inicioDia) : null,
+                            dataFim: plano.dataFim ? new Date(fimAno, fimMes - 1, fimDia) : null,
+                            diasPlano: plano.diasPlano ? plano.diasPlano.map(dia => {
+                                const [diaAno, diaMes, diaDia] = dia.data ? dia.data.split('-').map(Number) : [null, null, null];
+                                return {
+                                    ...dia,
+                                    data: dia.data ? new Date(diaAno, diaMes - 1, diaDia) : null
+                                };
+                            }) : []
                         };
                     });
                 } else {
@@ -180,11 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const planosParaFirestore = planosParaSalvar.map(plano => {
             return {
                 ...plano,
-                dataInicio: plano.dataInicio ? plano.dataInicio.toISOString() : null,
-                dataFim: plano.dataFim ? plano.dataFim.toISOString() : null,
+                dataInicio: plano.dataInicio ? plano.dataInicio.toLocaleDateString('en-CA') : null, // 'YYYY-MM-DD'
+                dataFim: plano.dataFim ? plano.dataFim.toLocaleDateString('en-CA') : null,         // 'YYYY-MM-DD'
                 diasPlano: plano.diasPlano ? plano.diasPlano.map(dia => ({
                     ...dia,
-                    data: dia.data ? dia.data.toISOString() : null
+                    data: dia.data ? dia.data.toLocaleDateString('en-CA') : null                   // 'YYYY-MM-DD'
                 })) : []
             };
         });
@@ -743,8 +747,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gerar dias do plano por datas
     function gerarDiasPlanoPorDatas(dataInicio, dataFim, periodicidade, diasSemana) {
         const dias = [];
-        let dataAtual = new Date(dataInicio);
-        while (dataAtual <= dataFim) {
+        let dataAtual = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate()); // Hora zerada localmente
+        const dataFimSemHora = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate());   // Hora zerada localmente
+        while (dataAtual <= dataFimSemHora) {
             const diaSemana = dataAtual.getDay();
             if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
                 dias.push({
