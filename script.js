@@ -56,55 +56,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função para inicializar a autenticação
+    // Função para inicializar a autenticação - SIMPLIFICADA PARA DEBUG
     function initAuth() {
         onAuthStateChanged(auth, (currentUser) => {
             user = currentUser;
+            console.log("Estado de Autenticação Mudou:", user); // Log simplificado
             if (user) {
-                // Usuário está logado
                 loginButton.style.display = 'none';
                 logoutButton.style.display = 'block';
-                syncFirebaseButton.style.display = 'none'; // Esconde o botão de sincronizar, já que agora é automático
+                syncFirebaseButton.style.display = 'none';
             } else {
-                // Usuário não está logado
                 loginButton.style.display = 'block';
                 logoutButton.style.display = 'none';
                 syncFirebaseButton.style.display = 'none';
-                planos = []; // Garante que a lista de planos esteja vazia para usuários deslogados
-                renderizarPlanos();
+                // Removido temporariamente planos = []; e renderizarPlanos();
             }
         });
     }
 
-    // Função para fazer login com Google
+    // Função para fazer login com Google - COM LOGGING DETALHADO
     function login() {
+        console.log("Função login() iniciada"); // Log no início
         const provider = new GoogleAuthProvider();
         signInWithPopup(auth, provider)
             .then((result) => {
-                console.log('Usuário logado:', result.user);
+                console.log('Login bem-sucedido:', result.user); // Log de sucesso
                 carregarPlanosSalvos((planosCarregados) => {
                     planos = planosCarregados || [];
                     renderizarPlanos();
                 });
             })
             .catch((error) => {
-                console.error('Erro ao fazer login:', error);
+                console.error('Erro ao fazer login:', error); // Log de erro
                 alert('Erro ao fazer login. Tente novamente.');
             });
+        console.log("Função login() finalizada"); // Log no final
     }
 
-    // Função para fazer logout
+    // Função para fazer logout - COM LOGGING DETALHADO
     function logout() {
+        console.log("Função logout() iniciada"); // Log no início
         signOut(auth)
             .then(() => {
-                console.log('Usuário deslogado');
-                planos = []; // Limpa os planos locais na memória
+                console.log('Logout bem-sucedido'); // Log de sucesso
+                planos = [];
                 renderizarPlanos();
             })
             .catch((error) => {
-                console.error('Erro ao fazer logout:', error);
+                console.error('Erro ao fazer logout:', error); // Log de erro
                 alert('Erro ao fazer logout. Tente novamente.');
             });
+        console.log("Função logout() finalizada"); // Log no final
     }
 
     // Carrega planos do Firebase Firestore
