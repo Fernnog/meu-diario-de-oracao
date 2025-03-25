@@ -56,12 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função para inicializar a autenticação - COM SETTIMEOUT PARA TESTE
+    // Função para inicializar a autenticação - COM SETTIMEOUT AUMENTADO PARA TESTE (1000ms)
     function initAuth() {
         onAuthStateChanged(auth, (currentUser) => {
-            setTimeout(() => { // ADDED setTimeout (for testing ONLY)
+            setTimeout(() => { // AUMENTADO setTimeout para 1000ms (1 segundo) - PARA TESTE
                 user = currentUser;
-                console.log("Estado de Autenticação Mudou (delayed):", user);
+                console.log("Estado de Autenticação Mudou (delayed - 1000ms):", user); // Log atualizado para indicar o delay
                 if (user) {
                     loginButton.style.display = 'none';
                     logoutButton.style.display = 'block';
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     syncFirebaseButton.style.display = 'none';
                     // Removido temporariamente planos = []; e renderizarPlanos();
                 }
-            }, 50); // 50ms delay - adjust if needed, try small values
+            }, 1000); // Delay de 1000ms (1 segundo)
         });
     }
 
@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const windowHeight = window.innerHeight;
 
         if (rect.bottom <= windowHeight && rect.bottom > windowHeight - paginadorHeight) {
-            if (!paginador.classList.contains('hidden')) {
+            if (paginador.classList.contains('hidden')) {
                 paginador.classList.add('hidden');
             }
         } else {
