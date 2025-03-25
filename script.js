@@ -147,13 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ...dia,
                                 data: dia.data ? new Date(dia.data) : null
                             })) : []
-                            ...plano,
-                            dataInicio: plano.dataInicio ? new Date(plano.dataInicio) : null,
-                            dataFim: plano.dataFim ? new Date(plano.dataFim) : null,
-                            diasPlano: plano.diasPlano ? plano.diasPlano.map(dia => ({
-                                ...dia,
-                                data: dia.data ? new Date(dia.data) : null
-                            })) : []
                         };
                     });
                 } else {
@@ -761,7 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function gerarDiasPlanoPorDatas(dataInicio, dataFim, periodicidade, diasSemana) {
         const dias = [];
         let dataAtual = new Date(dataInicio);
-+       dataAtual.setHours(0, 0, 0, 0); // Ensure start date is at midnight
+        dataAtual.setHours(0, 0, 0, 0); // Ensure start date is at midnight
 
         while (dataAtual <= dataFim) {
             const diaSemana = dataAtual.getDay();
@@ -783,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function gerarDiasPlanoPorDias(dataInicio, numeroDias, periodicidade, diasSemana) {
         const dias = [];
         let dataAtual = new Date(dataInicio);
-+       dataAtual.setHours(0, 0, 0, 0); // Ensure start date is at midnight
+        dataAtual.setHours(0, 0, 0, 0); // Ensure start date is at midnight
         for (let i = 0; i < numeroDias; i++) {
             const diaSemana = dataAtual.getDay();
             if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
@@ -880,13 +873,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let dataInicio, dataFim, diasPlano = [];
         if (definicaoPeriodo === 'datas') {
             dataInicio = dataInicioDatas;
-+           dataInicio.setHours(0,0,0,0);
+            dataInicio.setHours(0,0,0,0);
             dataFim = dataFimDatas;
-+           dataFim.setHours(0,0,0,0);
+            dataFim.setHours(0,0,0,0);
             diasPlano = gerarDiasPlanoPorDatas(dataInicio, dataFim, periodicidade, diasSemana);
         } else {
             dataInicio = dataInicioDias;
-+           dataInicio.setHours(0,0,0,0);
+            dataInicio.setHours(0,0,0,0);
             dataFim = calcularDataFimPorDias(dataInicio, numeroDias);
             diasPlano = gerarDiasPlanoPorDias(dataInicio, numeroDias, periodicidade, diasSemana);
         }
