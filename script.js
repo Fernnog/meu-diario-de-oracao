@@ -847,26 +847,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const paginaInicio = parseInt(document.getElementById('pagina-inicio').value);
         const paginaFim = parseInt(document.getElementById('pagina-fim').value);
         const definicaoPeriodo = document.querySelector('input[name="definicao-periodo"]:checked').value;
-        const dataInicioDatas = document.getElementById('data-inicio').valueAsDate;
-        const dataFimDatas = document.getElementById('data-fim').valueAsDate;
-        const dataInicioDias = document.getElementById('data-inicio-dias').valueAsDate;
-        const numeroDias = parseInt(document.getElementById('numero-dias').value);
+        let dataInicio, dataFim, diasPlano = [];
+        if (definicaoPeriodo === 'datas') {
+            const startDateInputValue = document.getElementById('data-inicio').value;
+            const endDateInputValue = document.getElementById('data-fim').value;
+
+            if (startDateInputValue && endDateInputValue) {
+                const [startYear, startMonth, startDay] = startDateInputValue.split('-').map(Number);
+                const [endYear, endMonth, endDay] = endDateInputValue.split('-').map(Number);
+
+                // Months in JavaScript Date are 0-indexed, so subtract 1
+                dataInicio = new Date(startYear, startMonth - 1, startDay);
+                dataFim = new Date(endYear, endMonth - 1, endDay);
+            }
+
+            diasPlano = gerarDiasPlanoPorDatas(dataInicio, dataFim, periodicidade, diasSemana);
+        } else {
+            const startDateDaysInputValue = document.getElementById('data-inicio-dias').value;
+            numeroDias = parseInt(document.getElementById('numero-dias').value);
+            if (startDateDaysInputValue) {
+                const [startDaysYear, startDaysMonth, startDaysDay] = startDateDaysInputValue.split('-').map(Number);
+                dataInicio = new Date(startDaysYear, startDaysMonth - 1, startDaysDay);
+            }
+            dataFim = calcularDataFimPorDias(dataInicio, numeroDias);
+            diasPlano = gerarDiasPlanoPorDias(dataInicio, numeroDias, periodicidade, diasSemana);
+        }
         const periodicidade = document.getElementById('periodicidade').value;
         const diasSemana = [];
         document.querySelectorAll('input[name="dia-semana"]:checked').forEach(cb => {
             diasSemana.push(parseInt(cb.value));
         });
 
-        let dataInicio, dataFim, diasPlano = [];
-        if (definicaoPeriodo === 'datas') {
-            dataInicio = dataInicioDatas;
-            dataFim = dataFimDatas;
-            diasPlano = gerarDiasPlanoPorDatas(dataInicio, dataFim, periodicidade, diasSemana);
-        } else {
-            dataInicio = dataInicioDias;
-            dataFim = calcularDataFimPorDias(dataInicio, numeroDias);
-            diasPlano = gerarDiasPlanoPorDias(dataInicio, numeroDias, periodicidade, diasSemana);
-        }
 
         const novoPlano = {
             id: crypto.randomUUID(),
