@@ -27,7 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const syncFirebaseButton = document.getElementById('sync-firebase');
 
-  // Configurações do Firebase
+    // Seleção dos campos de data para gerenciar o atributo required
+    const dataInicio = document.getElementById('data-inicio');
+    const dataFim = document.getElementById('data-fim');
+    const dataInicioDias = document.getElementById('data-inicio-dias');
+    const numeroDias = document.getElementById('numero-dias');
+
+    // Configurações do Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyCzLjQrE3KhneuwZZXIost5oghVjOTmZQE", // Substitua com a sua API Key real
         authDomain: "plano-leitura.firebaseapp.com", // Substitua com o seu Auth Domain real
@@ -36,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         messagingSenderId: "589137978493", // Substitua com o seu Messaging Sender ID real
         appId: "1:589137978493:web:f7305bca602383fe14bd14" // Substitua com o seu App ID real
     };
-
 
     // Inicializar o Firebase
     const app = initializeApp(firebaseConfig);
@@ -203,6 +208,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    // Função para atualizar os atributos required com base na opção selecionada
+    function updateRequiredAttributes() {
+        if (definirPorDatasRadio.checked) {
+            // Opção "Datas de Início e Fim" selecionada
+            dataInicio.required = true;
+            dataFim.required = true;
+            dataInicioDias.required = false;
+            numeroDias.required = false;
+        } else {
+            // Opção "Data de Início e Número de Dias" selecionada
+            dataInicio.required = false;
+            dataFim.required = false;
+            dataInicioDias.required = true;
+            numeroDias.required = true;
+        }
+    }
+
+    // Chamar a função inicialmente para definir o estado inicial
+    updateRequiredAttributes();
+
     // Renderizar planos na interface
     function renderizarPlanos() {
         paginadorPlanosDiv.innerHTML = '';
@@ -339,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         formPlano.querySelector('button[type="submit"]').textContent = 'Salvar Plano';
         novoPlanoBtn.click();
+        updateRequiredAttributes(); // Atualiza os atributos ao editar
     };
 
     // Mostrar opções de recálculo
@@ -764,7 +790,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function gerarDiasPlanoPorDias(dataInicio, numeroDias, periodicidade, diasSemana) {
         const dias = [];
         let dataAtual = new Date(dataInicio);
-        for (let i = 0; i < numeroDias; i++) {
+        let diasAdicionados = 0;
+
+        while (diasAdicionados < numeroDias) {
             const diaSemana = dataAtual.getDay();
             if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
                 dias.push({
@@ -774,8 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     paginas: 0,
                     lido: false
                 });
-            } else {
-                i--;
+                diasAdicionados++;
             }
             dataAtual.setDate(dataAtual.getDate() + 1);
         }
@@ -803,6 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formPlano.reset();
         planoEditandoIndex = -1;
         formPlano.querySelector('button[type="submit"]').textContent = 'Salvar Plano';
+        updateRequiredAttributes(); // Atualiza os atributos após resetar
     });
 
     inicioBtn.addEventListener('click', function() {
@@ -816,11 +844,13 @@ document.addEventListener('DOMContentLoaded', () => {
     definirPorDatasRadio.addEventListener('change', function() {
         periodoPorDatasDiv.style.display = 'block';
         periodoPorDiasDiv.style.display = 'none';
+        updateRequiredAttributes(); // Atualiza os atributos quando a opção muda
     });
 
     definirPorDiasRadio.addEventListener('change', function() {
         periodoPorDatasDiv.style.display = 'none';
         periodoPorDiasDiv.style.display = 'block';
+        updateRequiredAttributes(); // Atualiza os atributos quando a opção muda
     });
 
     periodicidadeSelect.addEventListener('change', function() {
