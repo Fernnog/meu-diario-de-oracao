@@ -152,8 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Salva planos no Firebase Firestore
     function salvarPlanos(planosParaSalvar, callback) {
+        console.log('Função salvarPlanos iniciada...', { planosParaSalvar }); // LOG INÍCIO DA FUNÇÃO SALVARPLANOS
+
         if (!user) {
-            console.error('Usuário não logado, não é possível salvar no Firebase.');
+            console.error('  - Usuário não logado, não é possível salvar no Firebase.'); // LOG USUÁRIO NÃO LOGADO
             alert('Você precisa estar logado para salvar os planos.');
             if (callback) callback(false);
             return false;
@@ -174,18 +176,21 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
+        console.log('  - Planos convertidos para formato Firestore:', planosParaFirestore); // LOG PLANOS CONVERTIDOS
+
         setDoc(docRef, { planos: planosParaFirestore })
             .then(() => {
-                console.log('Planos salvos no Firebase Firestore com sucesso!');
+                console.log('  - setDoc (Firebase) THEN block executado. Planos salvos no Firestore com sucesso!'); // LOG THEN BLOCK
                 if (callback) callback(true);
                 return true;
             })
             .catch((error) => {
-                console.error('Erro ao salvar planos no Firestore:', error);
+                console.error('  - setDoc (Firebase) CATCH block executado. Erro ao salvar planos no Firestore:', error); // LOG CATCH BLOCK (ERRO)
                 alert('Erro ao salvar planos no Firebase. Consulte o console para detalhes.');
                 if (callback) callback(false);
                 return false;
             });
+             console.log('Fim da função salvarPlanos.'); // LOG FINAL DA FUNÇÃO SALVARPLANOS
     }
 
     // Renderizar planos
@@ -803,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('  - Fim da função do botão "Novo Plano"'); // LOG FINAL - VERIFICAR SE A FUNÇÃO COMPLETA
     });
 
-    // Evento de clique para o botão "Início" - MANTIDO INALTERADO
+    // Evento de clique para o botão "Início"
     inicioBtn.addEventListener('click', function() {
         planosLeituraSection.style.display = 'block';
         cadastroPlanoSection.style.display = 'none';
@@ -811,4 +816,171 @@ document.addEventListener('DOMContentLoaded', () => {
         novoPlanoBtn.style.display = 'block';
         inicioCadastroBtn.style.display = 'none';
     });
+
+    definirPorDatasRadio.addEventListener('change', function() {
+        console.log('Radio "Definir por Datas" alterado para:', definirPorDatasRadio.checked); // LOG RADIO DATAS
+        periodoPorDatasDiv.style.display = 'block';
+        periodoPorDiasDiv.style.display = 'none';
+    });
+
+    definirPorDiasRadio.addEventListener('change', function() {
+        console.log('Radio "Definir por Dias" alterado para:', definirPorDiasRadio.checked); // LOG RADIO DIAS
+        periodoPorDatasDiv.style.display = 'none';
+        periodoPorDiasDiv.style.display = 'block';
+    });
+
+    periodicidadeSelect.addEventListener('change', function() {
+        console.log('Select "Periodicidade" alterado para:', periodicidadeSelect.value); // LOG SELECT PERIODICIDADE
+        diasSemanaSelecao.style.display = this.value === 'semanal' ? 'block' : 'none';
+        console.log('  - diasSemanaSelecao.style.display:', diasSemanaSelecao.style.display); // LOG DISPLAY DIASSEMANASELECAO
+    });
+
+    // Submissão do formulário (MODIFICADA com logs para debug de salvamento)
+    formPlano.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        console.log('Formulário de plano submetido!'); // LOG INICIAL DE SUBMISSÃO
+
+        const titulo = document.getElementById('titulo-livro').value;
+        const paginaInicio = parseInt(document.getElementById('pagina-inicio').value);
+        const paginaFim = parseInt(document.getElementById('pagina-fim').value);
+        let dataInicio, dataFim;
+
+        console.log('  - Dados do formulário coletados:', { titulo, paginaInicio, paginaFim }); // LOG DOS DADOS COLETADOS
+
+        if (paginaFim < paginaInicio) { alert("A página de fim deve ser maior ou igual à página de início."); return; }
+
+        if (definirPorDatasRadio.checked) {
+            dataInicio = new Date(document.getElementById('data-inicio').value);
+            dataFim = new Date(document.getElementById('data-fim').value);
+            if (dataFim <= dataInicio) { alert("A data de fim deve ser posterior à data de início."); return; }
+        } else {
+            dataInicio = new Date(document.getElementById('data-inicio-dias').value);
+            const numeroDias = parseInt(document.getElementById('numero-dias').value);
+            if (isNaN(numeroDias) || numeroDias < 1) { alert("Número de dias inválido."); return; }
+            dataFim = new Date(dataInicio);
+            dataFim.setDate(dataInicio.getDate() + numeroDias - 1);
+        }
+
+        const periodicidade = periodicidadeSelect.value;
+        const diasSemana = periodicidade === 'semanal' ? Array.from(document.querySelectorAll('input[name="dia-semana"]:checked')).map(cb => parseInt(cb.value)) : [];
+        if (periodicidade === 'semanal' && diasSemana.length === 0) { alert("Selecione pelo menos um dia da semana."); return; }
+
+        const plano = criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana);
+        if (plano) {
+            console.log('  - Plano criado com sucesso:', plano); // LOG DO PLANO CRIADO
+
+            if (planoEditandoIndex > -1) {
+                planos[planoEditandoIndex] = plano;
+                planoEditandoIndex = -1;
+                formPlano.querySelector('button[type="submit"]').textContent = 'Salvar Plano';
+            } else {
+                planos.push(plano);
+            }
+            console.log('  - Planos antes de salvar:', planos); // LOG DOS PLANOS ANTES DE SALVAR
+
+            salvarPlanos(planos, (salvoComSucesso) => { // Usa salvarPlanos com callback
+                if (salvoComSucesso) {
+                    console.log('  - Plano salvo no Firebase com sucesso (callback true). Renderizando planos.'); // LOG CALLBACK SUCESSO
+                    formPlano.reset();
+                    periodoPorDatasDiv.style.display = 'block';
+                    periodoPorDiasDiv.style.display = 'none';
+                    definirPorDatasRadio.checked = true;
+                    definirPorDiasRadio.checked = false;
+                    diasSemanaSelecao.style.display = 'none';
+                    inicioBtn.click();
+                } else {
+                    console.error('  - Falha ao salvar novo plano no Firebase (callback false).'); // LOG CALLBACK FALHA
+                    alert('Falha ao salvar plano. Tente novamente.'); // Feedback de erro para o usuário
+                }
+            });
+        } else {
+            console.error('  - Falha ao criar plano (criarPlanoLeitura retornou null/undefined).'); // LOG FALHA NA CRIAÇÃO DO PLANO
+        }
+        console.log('Fim da função de submissão do formulário.'); // LOG FINAL DA SUBMISSÃO
+    });
+
+    // Criar Plano de Leitura
+    function criarPlanoLeitura(titulo, paginaInicio, paginaFim, dataInicio, dataFim, periodicidade, diasSemana) {
+        const totalPaginas = paginaFim - paginaInicio + 1;
+        let dataAtual = new Date(dataInicio);
+        dataAtual.setHours(0, 0, 0, 0);
+        const diasPlano = [];
+
+        while (dataAtual <= dataFim) {
+            const diaSemana = dataAtual.getDay();
+            if (periodicidade === 'diario' || (periodicidade === 'semanal' && diasSemana.includes(diaSemana))) {
+                diasPlano.push({
+                    data: new Date(dataAtual),
+                    paginaInicioDia: 0,
+                    paginaFimDia: 0,
+                    paginas: 0,
+                    lido: false
+                });
+            }
+            dataAtual.setDate(dataAtual.getDate() + 1);
+        }
+
+        if (diasPlano.length === 0) {
+            alert("Não há dias de leitura válidos no período selecionado.");
+            return null;
+        }
+
+        const paginasPorDia = Math.floor(totalPaginas / diasPlano.length);
+        const resto = totalPaginas % diasPlano.length;
+        let paginaAtual = paginaInicio;
+
+        diasPlano.forEach((dia, index) => {
+            const paginasDia = index < resto ? paginasPorDia + 1 : paginasPorDia;
+            dia.paginaInicioDia = paginaAtual;
+            dia.paginaFimDia = paginaAtual + paginasDia - 1;
+            dia.paginas = paginasDia;
+            paginaAtual = dia.paginaFimDia + 1;
+        });
+
+        return {
+            id: Date.now(),
+            titulo,
+            paginaInicio,
+            paginaFim,
+            totalPaginas,
+            dataInicio,
+            dataFim,
+            periodicidade,
+            diasSemana,
+            diasPlano,
+            paginasLidas: 0
+        };
+    }
+
+    // Exportar/Importar JSON
+    exportarPlanosBtn.addEventListener('click', function() { /* ... mesmo código exportar JSON ... */ });
+    importarPlanosBtn.addEventListener('click', () => importarPlanosInput.click());
+    importarPlanosInput.addEventListener('change', function(event) { /* ... mesmo código importar JSON ... */ });
+
+    // Limpar todos os dados LOCALMENTE (JSON)
+    limparDadosBtn.addEventListener('click', function() { /* ... mesmo código limpar dados ... */ });
+
+    exportarAgendaBtn.addEventListener('click', () => { /* ... mesmo código exportar agenda ... */ });
+    function exportarParaAgenda(plano) { /* ... mesmo código exportar agenda ... */ }
+    function gerarICS(plano, horarioInicio, horarioFim) { /* ... mesmo código gerarICS ... */ }
+    function downloadICSFile(icsContent, planoTitulo) { /* ... mesmo código downloadICSFile ... */ }
+
+    // Paginator Visibility
+    function togglePaginatorVisibility() { /* ... mesmo código paginator visibility ... */ }
+    window.addEventListener('scroll', togglePaginatorVisibility);
+    window.addEventListener('resize', togglePaginatorVisibility);
+    const originalRenderizarPlanos = renderizarPlanos;
+    renderizarPlanos = function() { originalRenderizarPlanos(); togglePaginatorVisibility(); };
+
+    function distribuirPaginasPlano(plano) { /* ... mesmo código distribuirPaginasPlano ... */ }
+    function recalcularPlanoNovaData(index, novaDataFim) { /* ... mesmo código recalcularPlanoNovaData ... */ }
+
+    // Inicializar a aplicação
+    initApp();
+
+    // Eventos de clique para login e logout
+    loginButton.addEventListener('click', login);
+    logoutButton.addEventListener('click', logout);
+    syncFirebaseButton.addEventListener('click', () => syncWithFirebase(renderizarPlanos));
 });
