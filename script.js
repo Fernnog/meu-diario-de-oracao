@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Renderizar planos na interface
     function renderizarPlanos() {
         paginadorPlanosDiv.innerHTML = '';
-        listaPlanos.innerHTML = planos.length === 0 ? '<p>Nenhum plano de leitura cadastrado ainda.</p>' : '';
+        listaPlanos.innerHTML = planos.length === 0 ? (user ? '<p>Nenhum plano de leitura cadastrado ainda.</p>' : '<p>Faça login para visualizar seus planos de leitura.</p>') : '';
 
         const paginador = document.getElementById('paginador-planos');
         if (paginador.classList.contains('hidden')) {
