@@ -134,9 +134,17 @@ function atualizarListaMembros() {
     const lista = document.getElementById('listaMembros');
     // Ordena os membros alfabeticamente antes de exibir
     membros.sort((a, b) => a.nome.localeCompare(b.nome));
-    lista.innerHTML = membros.map((m, index) =>
-        `<li>${m.nome} <span class="gender-icon gender-${m.genero === 'M' ? 'male' : 'female'}">${m.genero === 'M' ? '♂️' : '♀️'}</span> ${m.conjuge ? '- Cônjuge: ' + m.conjuge : ''}
-        <button onclick="excluirMembro(${index})">Excluir</button></li>`).join('');
+    lista.innerHTML = membros.map((m, index) => `
+        <li>
+            <div>
+                <span class="member-name gender-${m.genero === 'M' ? 'male' : 'female'}">${m.nome}</span>
+            </div>
+            <div class="member-details">
+                <span class="gender-icon">${m.genero === 'M' ? '♂️' : '♀️'}</span>
+                ${m.conjuge ? `<span class="spouse-info">- Cônjuge: ${m.conjuge}</span>` : ''}
+            </div>
+            <button onclick="excluirMembro(${index})">Excluir</button>
+        </li>`).join('');
 }
 
 function excluirMembro(index) {
