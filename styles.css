@@ -263,25 +263,61 @@ button:active {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Estilo para gênero nos cadastros */
+/* Estilo para gênero nos cadastros (MODIFICADO) */
 .gender-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 25px;
-    height: 25px;
+    width: 22px; /* Reduzir um pouco o tamanho */
+    height: 22px; /* Reduzir um pouco o tamanho */
     border-radius: 50%;
-    margin-left: 5px;
-    color: #fff;
-    font-size: 16px;
+    margin-right: 5px; /* Mover margem para a direita para espaçamento após o ícone */
+    color: #495057;
+    font-size: 14px; /* Reduzir um pouco o tamanho da fonte do ícone */
 }
 
 .gender-male {
-    background-color: #add8e6; /* Azul pastel */
+    background-color: #e0f7fa; /* Azul pastel MUITO claro */
 }
 
 .gender-female {
-    background-color: #ffb6c1; /* Rosa pastel */
+    background-color: #fce4ec; /* Rosa pastel MUITO claro */
+}
+
+.member-name {
+    display: inline-block;
+    padding: 0; /* Remover o padding do nome */
+    border-radius: 0; /* Remover bordas arredondadas do nome */
+    font-weight: normal; /* Remover negrito do nome, se desejar, ou mantenha 'bold' */
+    color: #1a3850; /* Garante que a cor do nome seja consistente */
+}
+
+.member-details {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 3px;
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.spouse-info {
+    margin-left: 5px;
+}
+
+.member-list-summary { /* Estilo para o container do resumo */
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 0.95em;
+    color: #343a40;
+}
+
+.member-list-summary p { /* Estilo para cada linha do resumo */
+    margin: 5px 0;
 }
 
 
