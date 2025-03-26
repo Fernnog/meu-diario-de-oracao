@@ -132,19 +132,32 @@ document.getElementById('logout').addEventListener('click', () => {
 // Funções de Membros
 function atualizarListaMembros() {
     const lista = document.getElementById('listaMembros');
-    // Ordena os membros alfabeticamente antes de exibir
     membros.sort((a, b) => a.nome.localeCompare(b.nome));
-    lista.innerHTML = membros.map((m, index) => `
-        <li>
-            <div>
-                <span class="member-name gender-${m.genero === 'M' ? 'male' : 'female'}">${m.nome}</span>
-            </div>
-            <div class="member-details">
-                <span class="gender-icon">${m.genero === 'M' ? '♂️' : '♀️'}</span>
-                ${m.conjuge ? `<span class="spouse-info">- Cônjuge: ${m.conjuge}</span>` : ''}
-            </div>
-            <button onclick="excluirMembro(${index})">Excluir</button>
-        </li>`).join('');
+
+    let maleCount = 0;
+    let femaleCount = 0;
+
+    lista.innerHTML = membros.map((m, index) => {
+        if (m.genero === 'M') maleCount++;
+        else if (m.genero === 'F') femaleCount++;
+
+        const genderSymbol = m.genero === 'M' ? '♂️' : '♀️';
+        return `
+            <li>
+                <div>
+                    <span class="gender-icon gender-${m.genero === 'M' ? 'male' : 'female'}">(${genderSymbol})</span>
+                    <span class="member-name">${m.nome}</span>
+                </div>
+                <div class="member-details">
+                    ${m.conjuge ? `<span class="spouse-info">- Cônjuge: ${m.conjuge}</span>` : ''}
+                </div>
+                <button onclick="excluirMembro(${index})">Excluir</button>
+            </li>`;
+    }).join('');
+
+    document.getElementById('maleCount').textContent = maleCount;
+    document.getElementById('femaleCount').textContent = femaleCount;
+    document.getElementById('totalCount').textContent = membros.length;
 }
 
 function excluirMembro(index) {
