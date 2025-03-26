@@ -81,6 +81,11 @@
             </div>
             <button type="submit" class="secondary-button">Cadastrar</button> <!-- Botão secundário -->
         </form>
+        <div class="member-list-summary" id="memberSummary"> <!-- Container para o resumo -->
+            <p>Masculino: <span id="maleCount">0</span></p>
+            <p>Feminino: <span id="femaleCount">0</span></p>
+            <p>Total: <span id="totalCount">0</span></p>
+        </div>
         <h3>Membros Cadastrados</h3>
         <ul id="listaMembros"></ul>
     </div>
@@ -193,6 +198,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
