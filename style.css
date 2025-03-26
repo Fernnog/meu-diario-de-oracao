@@ -1,5 +1,3 @@
---- START OF FILE style.css ---
-
 /* Importando fontes do Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Ubuntu:wght@700&display=swap');
 
@@ -422,5 +420,3 @@ footer {
     background-image: linear-gradient(to right, #ff0000, #ff69b4, #800080, #0000ff); /* Gradiente do logo no hover */
     color: #fff; /* Texto branco para contraste */
 }
-
---- END OF FILE style.css ---
