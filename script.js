@@ -1,4 +1,3 @@
---- START OF FILE script.js ---
 // Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDIXuruqM4M9oA_Rz3PSxVsXM1EEVVbprw",
@@ -480,4 +479,3 @@ auth.onAuthStateChanged((user) => {
         showTab('auth');
     }
 });
---- END OF FILE script.js ---
