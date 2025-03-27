@@ -141,7 +141,7 @@ hr.section-separator {
 /* ==== FIM SEÇÃO - ESTILOS DOS BOTÕES ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DAS SEÇÕES ==== */
-.form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart {
+.form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .completed-daily-targets-section {
     margin-bottom: 20px;
     padding: 15px;
     border: 1px solid #ddd;
@@ -903,6 +903,39 @@ input[type="date"] {
     display: block;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO QUADRO DE DIAS DA SEMANA PERSEVERANÇA ==== */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DOS ALVOS CONCLUÍDOS DIARIAMENTE ==== */
+.completed-daily-targets-section {
+    margin-top: 20px; /* Espaço acima da seção de concluídos */
+    padding: 10px;
+    border-top: 1px solid #ddd; /* Linha separadora */
+}
+
+.completed-daily-targets-section h3 {
+    text-align: center;
+    color: #777; /* Cor mais suave para o título */
+    font-size: 1.1em;
+    margin-bottom: 10px;
+}
+
+.completed-target {
+    background-color: #f0f0f0; /* Fundo cinza claro para alvos concluídos */
+    color: #777; /* Cor do texto mais suave */
+    border-left: 3px solid #9cbe4a; /* Barra lateral verde para indicar conclusão */
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 3px;
+}
+
+.completed-target h3 {
+    color: #777; /* Garante que o título também tenha a cor mais suave */
+}
+
+.completed-target .deadline-tag {
+    background-color: #e0e0e0; /* Tom mais claro para tag em alvos concluídos */
+    color: #999;
+}
+/* ==== FIM SEÇÃO - ESTILOS DOS ALVOS CONCLUÍDOS DIARIAMENTE ==== */
 
 
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
