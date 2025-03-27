@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, increment, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, increment, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // Firebase configuration (as before)
 const firebaseConfig = {
@@ -43,7 +43,22 @@ function isDateExpired(dateString) { /* ... */ }
 function generateUniqueId() { /* ... */ }
 function rehydrateTargets(targets) { /* ... */ }
 function updateAuthUI(user) { /* ... */ }
-async function signInWithGoogle() { /* ... */ }
+
+// ==== MODIFIED FUNCTION: signInWithGoogle (DEBUGGING CONSOLE LOGS ADDED) ====
+async function signInWithGoogle() {
+    console.log("signInWithGoogle function CALLED!"); // ADDED: Debugging log
+    const provider = new GoogleAuthProvider();
+    try {
+        const userCredential = await signInWithPopup(auth, provider);
+        // User signed in with Google!
+        const user = userCredential.user;
+        loadData(user); // Load data for the logged-in user
+    } catch (error) {
+        console.error("Erro ao entrar com o Google:", error);
+        console.error("Error Object:", error); // ADDED: Log full error object
+        alert("Erro ao entrar com o Google: " + error.message);
+    }
+}
 
 // ==== ENHANCED FUNCTION: generateDailyTargets ====
 async function generateDailyTargets(userId, dateStr) {
@@ -74,7 +89,7 @@ async function generateDailyTargets(userId, dateStr) {
         const targets = [];
 
         // Batch update to efficiently update lastPresentedDate for all selected targets
-        const batch = db.batch();
+        const batch = writeBatch(db);
         selectedTargets.forEach(target => {
             const targetRef = doc(db, "users", userId, "prayerTargets", target.id);
             batch.update(targetRef, { lastPresentedDate: Timestamp.fromDate(new Date()) });
@@ -172,6 +187,7 @@ function renderDailyTargets(pendingTargets, completedTargets) {
 
     if (completedTargets.length > 0) {
         completedDailyTargetsDiv.style.display = 'block'; // Show completed section if there are completed targets
+        completedDailyTargetsDiv.innerHTML += "<h3>Concluídos Hoje</h3>"; // Re-add the heading
         completedTargets.forEach((dailyTarget) => {
             const target = prayerTargets.find(t => t.id === dailyTarget.targetId);
             if (!target) return;
@@ -189,6 +205,7 @@ function renderDailyTargets(pendingTargets, completedTargets) {
         });
     } else {
         completedDailyTargetsDiv.style.display = 'none'; // Hide if no completed targets
+        completedDailyTargetsDiv.innerHTML = ""; // Ensure heading is also cleared when hiding
     }
 }
 
@@ -286,7 +303,18 @@ async function loadData(user) {
     }
 }
 
-async function fetchPrayerTargets(uid) { /* ... */ }
+async function fetchPrayerTargets(uid) {
+    prayerTargets = [];
+    const targetsRef = collection(db, "users", uid, "prayerTargets");
+    const targetsSnapshot = await getDocs(query(targetsRef, orderBy("date", "desc"))); // Ordenar por data
+    targetsSnapshot.forEach((doc) => {
+        const targetData = {...doc.data(), id: doc.id};
+        console.log("Data fetched from Firestore for target ID:", doc.id, "Date (Timestamp):", targetData.date); //Log Timestamp from Firestore
+        prayerTargets.push(targetData);
+    });
+    prayerTargets = rehydrateTargets(prayerTargets);
+    console.log("Rehydrated Prayer Targets:", prayerTargets); // Log after rehydration
+}
 async function fetchArchivedTargets(uid) { /* ... */ }
 
 
