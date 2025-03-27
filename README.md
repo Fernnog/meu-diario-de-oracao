@@ -1,99 +1,172 @@
-# Diário de Oração Digital - Meus Alvos de Oração
+# Meus Alvos de Oração
 
-## Descrição
+Bem-vindo ao **Meus Alvos de Oração**, uma aplicação web desenvolvida para ajudar usuários a gerenciar e acompanhar seus alvos de oração de forma organizada e espiritual. Com esta ferramenta, você pode adicionar, editar, arquivar e orar por seus alvos, além de acompanhar seu progresso diário com o painel "Alvos de Oração do Dia".
 
-Este projeto é um diário de oração digital pessoal, desenvolvido para ajudar você a registrar, organizar e acompanhar seus alvos de oração. ... **Inclui agora duas ferramentas visuais motivadoras na página inicial para acompanhar a consistência na prática diária da oração: uma barra de progresso "Perseverança na Intercessão" e um quadro semanal "Sua Semana de Perseverança".**
+Este projeto foi construído com HTML, CSS e JavaScript, utilizando o **Firebase** como backend para autenticação, armazenamento de dados e persistência em tempo real.
 
-**A barra de progresso "Perseverança na Intercessão", visualmente aprimorada com um indicador de porcentagem à esquerda em fundo verde e a meta de dias à direita em fundo claro, oferece um acompanhamento motivador da sua jornada de oração de longo prazo.**  Abaixo dela, o botão "Confirmar Perseverança" permite registrar sua interação diária com o diário.
+## Funcionalidades
 
-**Logo acima da barra de progresso, o novo quadro semanal "Sua Semana de Perseverança" exibe visualmente sua consistência nos últimos 7 dias.** Cada dia da semana é representado, e um "tick" verde aparece nos dias em que você confirmou a perseverança. Este quadro, que surge dinamicamente quando você inicia sua jornada de perseverança, oferece uma visão rápida e encorajadora do seu progresso semanal.
+- **Gerenciamento de Alvos de Oração**:
+  - Adicione novos alvos com título, detalhes, data de criação e prazo (opcional).
+  - Edite ou remova alvos existentes.
+  - Arquive alvos concluídos ou não mais relevantes, com a opção de marcá-los como "resolvidos".
+  - Acompanhe o tempo decorrido desde a criação de cada alvo.
 
-Com um sistema de autenticação simplificado via **Google Sign-In**, o aplicativo oferece um espaço dedicado para detalhar seus pedidos, definir prazos e acompanhar o progresso de suas orações.
+- **Alvos de Oração do Dia** (Atualizado!):
+  - Um painel que exibe até 10 alvos de oração aleatórios por dia.
+  - **Nova funcionalidade**: Os alvos diários agora são persistidos no Firebase, garantindo que a lista do dia permaneça consistente mesmo após recarregamentos ou navegações.
+  - Clique em "Orei!" para marcar um alvo como concluído no dia. O estado é salvo no Firebase, e apenas os alvos pendentes são exibidos ao recarregar.
+  - Alvos não concluídos retornam ao pool geral para serem exibidos em dias futuros.
+  - O ciclo de alvos reinicia automaticamente quando todos os alvos disponíveis forem apresentados.
 
-**Propósito:** Facilitar a prática consistente da oração, permitindo que você visualize e reflita sobre suas orações e as respostas divinas ao longo do tempo, e agora também, **acompanhar visualmente sua perseverança na intercessão tanto em uma perspectiva de longo prazo com a barra de progresso, quanto semanalmente com o novo quadro de dias da semana.**
+- **Versículos Inspiradores**:
+  - Exibe um versículo bíblico aleatório ao lado dos alvos diários para inspirar sua oração.
 
-## Funcionalidades Principais
+- **Autenticação**:
+  - Login e logout seguros via Firebase Authentication (e-mail/senha ou provedores como Google).
 
-*   **Autenticação via Google Sign-In:** Acesso simplificado e seguro ao seu diário de oração utilizando sua conta Google.
-*   **Cadastro Detalhado de Alvos de Oração:**
-    *   Definição de título e descrição completa para cada pedido.
-    *   Registro da data de início do alvo de oração.
-    *   Opção de definir datas de validade para pedidos com prazos específicos.
-*   **Seção "Alvos de Oração do Dia":** Exibe uma seleção rotativa diária de até 10 pedidos, incentivando a oração focada e variada.
-    *   Botão interativo "Orei!" para registrar a prática da oração diária para cada alvo.
-*   **Gestão e Revisão de Pedidos:**
-    *   Visualização de todos os alvos em uma lista completa.
-    *   Funcionalidades para arquivar e marcar alvos como "Respondidos".
-    *   Seções dedicadas para "Ver Arquivados" e "Ver Respondidos" para organizar orações passadas.
-    *   Ferramentas de busca e paginação para facilitar a localização de pedidos específicos.
-*   **Geração de Visualizações e Relatórios:**
-    *   Geração de visualizações gerais e de orações respondidas em formato HTML para compartilhamento e arquivamento.
-    *   Relatório de "Perseverança nas Orações" que computa a frequência de cliques no botão "Orei!" por alvo, oferecendo uma visão da dedicação à oração.
-*   **Barra de Progresso "Perseverança na Intercessão" e Quadro Semanal "Sua Semana de Perseverança":** Um conjunto de ferramentas visuais na página inicial que registram a interação diária com o diário de oração, incentivando a consistência e estabelecendo metas de perseverança.
-    *   **Barra de Progresso Aprimorada:** Apresenta visualmente o percentual de progresso à esquerda com fundo verde e a meta de dias à direita com fundo claro, além de um botão "Confirmar Perseverança" com estilo arredondado para registrar a interação diária.
-    *   **Novo Quadro Semanal "Sua Semana de Perseverança":** Exibe um quadro visual dos dias da semana, marcando com "ticks" os dias em que a perseverança foi confirmada, oferecendo uma visão rápida da consistência semanal.
+- **Persistência e Sincronização**:
+  - Todos os dados (alvos, alvos arquivados, alvos diários e contagem de orações) são salvos no Firebase Firestore, garantindo sincronização em tempo real e acesso de qualquer dispositivo.
+
+- **Acompanhamento de Progresso**:
+  - Contagem de cliques em "Orei!" por alvo, com estatísticas mensais e anuais.
+  - Notificações visuais para prazos expirados e alvos concluídos.
 
 ## Tecnologias Utilizadas
 
-*   **Frontend:** HTML, CSS, JavaScript
-*   **Framework CSS:** Custom CSS (`styles.css`, `orei.css`)
-*   **Fontes:** Google Fonts (Playfair Display)
-*   **Backend e Banco de Dados:** Firebase (Authentication, Firestore)
-*   **Bibliotecas JavaScript (CDN):**
-    *   Firebase JS SDK (App, Analytics, Auth, Firestore)
+- **Frontend**:
+  - HTML5, CSS3, JavaScript (ES6+)
+  - Interface responsiva e amigável
 
-## Configuração e Execução
+- **Backend**:
+  - Firebase Authentication (autenticação de usuários)
+  - Firebase Firestore (banco de dados NoSQL para armazenamento de alvos e estados)
+  - Firebase Hosting (hospedagem da aplicação)
 
-Este é um aplicativo web frontend que utiliza o Firebase como backend. Para executar este projeto, você precisará:
+## Como Configurar o Projeto Localmente
 
-1.  **Configurar um projeto no Firebase:**
-    *   Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
-    *   Habilite a autenticação (Authentication) e o banco de dados Firestore.
-    *   Habilite o provedor de autenticação **Google Sign-In** na seção "Authentication" > "Sign-in methods".
-    *   Obtenha as credenciais de configuração do seu projeto Firebase (apiKey, authDomain, projectId, etc.).
+### Pré-requisitos
+- Node.js instalado (para gerenciar dependências, se necessário)
+- Conta no Firebase (para configurar autenticação e banco de dados)
+- Um editor de código (ex.: VS Code)
 
-2.  **Substituir as credenciais no `script.js` e `orei.js`:**
-    *   Abra os arquivos `script.js` e `orei.js`.
-    *   Localize o objeto `firebaseConfig` e substitua os valores de exemplo pelas credenciais do seu projeto Firebase que você obteve no passo anterior.
+### Passos para Configuração
 
-    ```javascript
-    const firebaseConfig = {
-        apiKey: "SUA_API_KEY",
-        authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-        projectId: "SEU_PROJECT_ID",
-        storageBucket: "SEU_PROJECT_ID.firebasestorage.app",
-        messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-        appId: "SEU_APP_ID",
-        measurementId: "SEU_MEASUREMENT_ID"
-    };
-    ```
+1. **Clone o Repositório**:
+   ```bash
+   git clone https://github.com/seu-usuario/meus-alvos-de-oracao.git
+   cd meus-alvos-de-oracao
+   ```
 
-3.  **Abrir `index.html` (ou `orei.html` para o relatório) no navegador:**
-    *   Após configurar o Firebase e substituir as credenciais, você pode simplesmente abrir o arquivo `index.html` (ou `orei.html`) no seu navegador web para utilizar o aplicativo. Ao acessar a página pela primeira vez, você será solicitado a fazer login com sua conta Google.
+2. **Configure o Firebase**:
+   - Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
+   - Habilite o **Firebase Authentication** (ative o provedor de e-mail/senha e, opcionalmente, outros como Google).
+   - Habilite o **Firestore Database** e crie um banco de dados no modo de produção ou teste.
+   - Copie as credenciais do Firebase (API Key, Auth Domain, etc.) do seu projeto.
 
-## Utilização
+3. **Adicione as Credenciais do Firebase**:
+   - Abra o arquivo `script.js` e localize a configuração do Firebase (próxima ao início do arquivo).
+   - Substitua as credenciais pela configuração do seu projeto:
+     ```javascript
+     const firebaseConfig = {
+       apiKey: "SUA_API_KEY",
+       authDomain: "SEU_AUTH_DOMAIN",
+       projectId: "SEU_PROJECT_ID",
+       storageBucket: "SEU_STORAGE_BUCKET",
+       messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+       appId: "SEU_APP_ID"
+     };
+     ```
 
-1.  **Autenticação com Google Sign-In:**
-    *   Na página inicial (`index.html`), utilize o botão **"Entrar com o Google"** para fazer login com sua conta Google. Se você não tiver uma conta, o Firebase Authentication criará uma conta para você na primeira vez que você fizer login com o Google.
+4. **Estrutura do Firestore**:
+   O projeto utiliza as seguintes coleções no Firestore:
+   - `prayerTargets`: Armazena os alvos de oração ativos.
+   - `archivedTargets`: Armazena os alvos arquivados.
+   - `prayerClickCounts`: Registra a contagem de cliques em "Orei!" por alvo.
+   - `dailyPrayerTargets`: (Nova!) Armazena os alvos diários por usuário e data, no formato `userId_date` (ex.: `user123_2025-03-27`).
+     - Estrutura de documento:
+       ```json
+       {
+         "userId": "user123",
+         "date": "2025-03-27",
+         "targets": [
+           { "targetId": "abc123", "completed": true },
+           { "targetId": "def456", "completed": false }
+         ],
+         "completedAt": null
+       }
+       ```
 
-2.  **Cadastrar um Novo Alvo de Oração:**
-    *   Após autenticar-se, clique no botão "Novo" no menu principal para acessar o formulário de cadastro.
-    *   Preencha os campos "Título", "Observações", "Data" e, se desejar, marque "Este alvo tem prazo de validade?" e defina o "Prazo de Validade".
-    *   Clique em "Adicionar Alvo" para salvar o novo pedido de oração.
+5. **Hospede Localmente**:
+   - Se você estiver usando o Firebase Hosting, instale o Firebase CLI:
+     ```bash
+     npm install -g firebase-tools
+     ```
+   - Faça login no Firebase:
+     ```bash
+     firebase login
+     ```
+   - Inicialize o servidor local:
+     ```bash
+     firebase emulators:start
+     ```
+   - Acesse a aplicação em `http://localhost:5000`.
 
-3.  **Interagir com os Alvos Diários, a Barra de Perseverança e o Quadro Semanal:**
-        *   Na seção "Alvos de oração do dia", você verá uma seleção de pedidos e a barra "Perseverança na Intercessão" com design visual aprimorado, **e o novo quadro semanal "Sua Semana de Perseverança" acima.**
-        *   Clique no botão "Orei!" para registrar sua oração por cada alvo diário.
-        *   **Diariamente, clique no botão "Confirmar Perseverança" abaixo da barra de progresso "Perseverança na Intercessão" para registrar sua interação com o diário e avançar na barra de progresso. A barra exibe o seu progresso com o percentual em destaque à esquerda em um fundo verde e a meta de 100 dias (inicial) claramente indicada à direita em fundo claro.**
-        *   **Observe o quadro semanal "Sua Semana de Perseverança" acima da barra. Ele exibirá "ticks" verdes nos dias da semana em que você confirmar a perseverança. Este quadro oferece uma visão rápida de sua consistência nos últimos 7 dias.**
-        *   Utilize os botões "Atualizar Alvos do Dia", "Copiar Alvos do Dia" e "Visualizar Alvos do Dia" para gerenciar e visualizar seus alvos diários.
+6. **Teste a Aplicação**:
+   - Abra o navegador e acesse a URL local.
+   - Faça login (ou crie uma conta) e comece a adicionar alvos de oração.
+   - Verifique o painel "Alvos de Oração do Dia" e teste a persistência ao recarregar a página.
 
-4.  **Gerenciar Todos os Alvos:**
-    *   Clique em "Ver Todos os Alvos" para acessar a lista completa de pedidos ativos.
-    *   Utilize os botões "Marcar como Respondido", "Arquivar", "Adicionar Observação" e "Editar Prazo" (quando aplicável) para gerenciar seus alvos.
-    *   Explore as seções "Ver Arquivados" e "Ver Respondidos" através do menu principal para revisar orações passadas.
-    *   Utilize a barra de pesquisa para encontrar alvos específicos.
+## Como Usar
 
-5.  **Gerar Visualizações e Relatórios:**
-    *   Clique em "Gerar Visualização Geral" e "Visualizar Respondidos" no menu principal para exportar listas de oração em HTML.
-    *   Clique em "Perseverança" para acessar a página de relatório (`orei.html`) e visualizar o relatório de frequência de oração ("Orei!").
+1. **Faça Login**:
+   - Use seu e-mail e senha ou faça login com o Google.
+   - Se for seu primeiro acesso, crie uma conta.
+
+2. **Adicione Alvos de Oração**:
+   - Clique em "Adicionar Alvo" e preencha os campos (título, detalhes, prazo, etc.).
+   - Os alvos aparecerão na seção principal.
+
+3. **Use o Painel "Alvos de Oração do Dia"**:
+   - A cada dia, o sistema seleciona automaticamente até 10 alvos aleatórios.
+   - Clique em "Orei!" para marcar um alvo como concluído no dia.
+   - O estado é salvo no Firebase, e os alvos concluídos não reaparecem no mesmo dia, mesmo após recarregar a página.
+   - No dia seguinte, uma nova lista de alvos será gerada.
+
+4. **Arquive ou Edite Alvos**:
+   - Use os botões de edição ou arquivamento para gerenciar seus alvos.
+   - Alvos arquivados podem ser marcados como "resolvidos" e são exibidos em uma seção separada.
+
+5. **Acompanhe o Progresso**:
+   - Veja a contagem de orações por alvo e o tempo decorrido.
+   - Receba notificações visuais para prazos expirados.
+
+## Contribuindo
+
+Se você deseja contribuir para o projeto, siga os passos abaixo:
+
+1. **Fork o Repositório**:
+   - Clique em "Fork" no GitHub para criar uma cópia do repositório no seu perfil.
+
+2. **Clone e Faça Alterações**:
+   - Clone seu fork e crie uma nova branch para suas alterações:
+     ```bash
+     git checkout -b minha-nova-funcionalidade
+     ```
+
+3. **Teste Suas Alterações**:
+   - Certifique-se de que suas mudanças não quebram funcionalidades existentes.
+   - Teste localmente com o Firebase Emulator.
+
+4. **Envie um Pull Request**:
+   - Faça o commit das suas alterações e envie para o repositório original:
+     ```bash
+     git push origin minha-nova-funcionalidade
+     ```
+   - Abra um Pull Request descrevendo suas mudanças.
+
+### Sugestões de Melhorias
+- Adicionar relatórios detalhados de progresso (ex.: número de alvos concluídos por semana).
+- Implementar notificações push para lembrar o usuário de orar.
+- Criar um sistema de categorias ou tags para organizar os alvos.
+- Adicionar suporte a múltiplos idiomas.
