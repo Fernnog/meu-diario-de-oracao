@@ -5,13 +5,13 @@ import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, q
 
 // Firebase configuration (as before)
 const firebaseConfig = {
-    apiKey: "AIzaSyA-j6VX_hZHLcVrW6-KMXf2BvHelyq3yGU",
-    authDomain: "alvos-de-oracao.firebaseapp.com",
-    projectId: "alvos-de-oracao",
-    storageBucket: "alvos-de-oracao.firebasestorage.app",
-    messagingSenderId: "303318178934",
-    appId: "1:303318178934:web:19ff045c501b5907435357",
-    measurementId: "G-RCDW5SR4LZ"
+  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk",
+  authDomain: "meu-diario-de-oracao.firebaseapp.com",
+  projectId: "meu-diario-de-oracao",
+  storageBucket: "meu-diario-de-oracao.firebasestorage.app",
+  messagingSenderId: "718315400702",
+  appId: "1:718315400702:web:eaabc0bfbf6b88e6a5e4af",
+  measurementId: "G-G0838BBW07"
 };
 
 const app = initializeApp(firebaseConfig);
