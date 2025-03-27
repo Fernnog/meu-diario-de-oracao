@@ -22,6 +22,18 @@
 
     <!-- ==== INÍCIO SEÇÃO - AUTENTICAÇÃO ==== -->
     <div id="authSection" class="auth-section">
+        <div class="auth-form" id="emailPasswordAuthForm">
+            <input type="email" id="email" placeholder="Seu e-mail" required>
+            <input type="password" id="password" placeholder="Sua senha" required>
+            <div class="auth-buttons">
+                <button id="btnEmailSignUp" class="btn auth-btn">Cadastrar</button>
+                <button id="btnEmailSignIn" class="btn auth-btn">Entrar</button>
+            </div>
+            <div class="forgot-password-container">
+                <button id="btnForgotPassword" class="forgot-password-btn">Esqueci minha senha</button>
+            </div>
+        </div>
+
         <div class="auth-buttons">
             <button id="btnGoogleLogin" class="btn auth-btn">Entrar com o Google</button> <!-- Botão Google Sign-In -->
         </div>
@@ -141,16 +153,13 @@
         <h2>
             Alvos de oração do dia
             <div class="daily-buttons-container">
+                <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
                 <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
                 <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
             </div>
         </h2>
         <div id="dailyVerses" class="daily-verses"></div>
         <div id="dailyTargets"></div>
-        <!-- Seção para Alvos Concluídos Hoje -->
-        <div id="completedDailyTargets" class="completed-daily-targets-section" style="display: none;">
-            <h3>Concluídos Hoje</h3>
-        </div>
         <!-- Popup de Conclusão -->
         <div id="completionPopup" class="popup">
             <div class="popup-content">
