@@ -46,9 +46,10 @@ function formatDateToISO(date) {
 function formatDateForDisplay(dateString) {
     if (dateString instanceof Date) {
         dateString = dateString;
-    }
-    if (dateString instanceof Timestamp) {
+    } else if (dateString instanceof Timestamp) {
         dateString = dateString.toDate();
+    } else if (typeof dateString !== 'string') { // CHECK: Handle non-string dateString
+        return 'Data Inválida';
     }
     if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
     const date = new Date(dateString);
@@ -90,16 +91,50 @@ function generateUniqueId() {
 }
 
 function rehydrateTargets(targets) {
-    return targets.map(target => ({
-        ...target,
-        date: target.date ? target.date.toDate() : new Date(),
-        deadlineDate: target.deadlineDate instanceof Timestamp ? target.deadlineDate.toDate() : (target.deadlineDate ? new Date(target.deadlineDate) : null),
-        lastPresentedDate: target.lastPresentedDate instanceof Timestamp ? target.lastPresentedDate.toDate() : (target.lastPresentedDate ? new Date(target.lastPresentedDate) : null),
-        observations: target.observations ? target.observations.map(obs => ({
-            ...obs,
-            date: obs.date instanceof Timestamp ? obs.date.toDate() : new Date(obs.date)
-        })) : []
-    }));
+    return targets.map(target => {
+        let date = target.date;
+        if (target.date && typeof target.date.toDate === 'function') { // CHECK: Ensure target.date is Timestamp before toDate()
+            date = target.date.toDate();
+        } else {
+            console.warn("Data inconsistente encontrada para 'date', usando new Date():", target.date);
+            date = new Date(); // Fallback para evitar erro
+        }
+        let deadlineDate = target.deadlineDate;
+        if (target.deadlineDate && typeof target.deadlineDate.toDate === 'function') {
+            deadlineDate = target.deadlineDate.toDate();
+        } else if (target.deadlineDate) {
+            deadlineDate = new Date(target.deadlineDate); // Try to parse as Date if not Timestamp
+        } else {
+            deadlineDate = null;
+        }
+        let lastPresentedDate = target.lastPresentedDate;
+        if (target.lastPresentedDate && typeof target.lastPresentedDate.toDate === 'function') {
+            lastPresentedDate = target.lastPresentedDate.toDate();
+        } else if (target.lastPresentedDate) {
+            lastPresentedDate = new Date(target.lastPresentedDate);
+        } else {
+            lastPresentedDate = null;
+        }
+        const observations = target.observations ? target.observations.map(obs => {
+            let obsDate = obs.date;
+            if (obs.date && typeof obs.date.toDate === 'function') {
+                obsDate = obs.date.toDate();
+            } else if (obs.date) {
+                obsDate = new Date(obs.date);
+            } else {
+                obsDate = new Date();
+            }
+            return {...obs, date: obsDate};
+        }) : [];
+
+        return {
+            ...target,
+            date: date,
+            deadlineDate: deadlineDate,
+            lastPresentedDate: lastPresentedDate,
+            observations: observations
+        };
+    });
 }
 
 // ==== MODIFIED FUNCTION: updateAuthUI (SUPORTA AMBOS OS METODOS DE AUTENTICAÇÃO) ====
@@ -126,27 +161,15 @@ function updateAuthUI(user) {
     } else {
         authStatusContainer.style.display = 'block';
         btnLogout.style.display = 'none';
-        btnGoogleLogin.style.display = 'inline-block'; // Mostra o botão de login Google para fazer login
+        btnGoogleLogin.style.display = 'none'; // REMOVE GOOGLE SIGN-IN BUTTON
         emailPasswordAuthForm.style.display = 'block'; // Mostra o form de email/senha
         authStatus.textContent = "Nenhum usuário autenticado";
     }
 }
 
 // ==== MODIFIED FUNCTION: signInWithGoogle (DEBUGGING CONSOLE LOGS ADDED) ====
-async function signInWithGoogle() {
-    console.log("signInWithGoogle function CALLED!"); // ADDED: Debugging log
-    const provider = new GoogleAuthProvider();
-    try {
-        const userCredential = await signInWithPopup(auth, provider);
-        // User signed in with Google!
-        const user = userCredential.user;
-        loadData(user); // Load data for the logged-in user
-    } catch (error) {
-        console.error("Erro ao entrar com o Google:", error);
-        console.error("Error Object:", error); // ADDED: Log full error object
-        alert("Erro ao entrar com o Google: " + error.message);
-    }
-}
+// REMOVE GOOGLE SIGN-IN FUNCTION
+// ==== END REMOVE GOOGLE SIGN-IN FUNCTION
 
 // ==== NEW FUNCTION: signUpWithEmailPassword ====
 async function signUpWithEmailPassword() {
@@ -473,8 +496,9 @@ window.onload = () => {
     document.getElementById('showExpiredOnlyMain').addEventListener('change', handleExpiredOnlyMainChange);
     document.getElementById('confirmPerseveranceButton').addEventListener('click', confirmPerseverance);
     document.getElementById("viewReportButton").addEventListener('click', () => { window.location.href = 'orei.html'; });
-    const btnGoogleLogin = document.getElementById('btnGoogleLogin');
-    if (btnGoogleLogin) { btnGoogleLogin.addEventListener('click', signInWithGoogle); }
+    // REMOVE GOOGLE SIGN-IN EVENT LISTENER
+    // const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    // if (btnGoogleLogin) { btnGoogleLogin.addEventListener('click', signInWithGoogle); }
 
     // ==== NEW EVENT LISTENERS ====
     const btnEmailSignUp = document.getElementById('btnEmailSignUp');
