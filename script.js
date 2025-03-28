@@ -97,16 +97,32 @@ function generateUniqueId() {
 }
 
 function rehydrateTargets(targets) {
-    return targets.map(target => ({
-        ...target,
-        date: target.date ? target.date.toDate() : new Date(),
-        deadlineDate: target.deadlineDate instanceof Timestamp ? target.deadlineDate.toDate() : (target.deadlineDate ? new Date(target.deadlineDate) : null),
-        lastPresentedDate: target.lastPresentedDate instanceof Timestamp ? target.lastPresentedDate.toDate() : (target.lastPresentedDate ? new Date(target.lastPresentedDate) : null),
-        observations: target.observations ? target.observations.map(obs => ({
-            ...obs,
-            date: obs.date instanceof Timestamp ? obs.date.toDate() : new Date(obs.date)
-        })) : []
-    }));
+    return targets.map(target => {
+        let dateToUse = target.date;
+        if (target.date) {
+            console.log("Rehydrate Target - Target ID:", target.id, "Date Type before conversion:", typeof target.date, "Value:", target.date); // ADDED LOGGING
+            if (target.date instanceof Timestamp) {
+                dateToUse = target.date.toDate();
+            } else {
+                dateToUse = new Date(target.date); // Forcefully create Date object
+            }
+             console.log("Rehydrate Target - Target ID:", target.id, "Date Type after conversion:", typeof dateToUse, "Value:", dateToUse); // ADDED LOGGING
+        } else {
+            dateToUse = new Date(); // Default to current date if no date present
+        }
+
+
+        return {
+            ...target,
+            date: dateToUse,
+            deadlineDate: target.deadlineDate instanceof Timestamp ? target.deadlineDate.toDate() : (target.deadlineDate ? new Date(target.deadlineDate) : null),
+            lastPresentedDate: target.lastPresentedDate instanceof Timestamp ? target.lastPresentedDate.toDate() : (target.lastPresentedDate ? new Date(target.lastPresentedDate) : null),
+            observations: target.observations ? target.observations.map(obs => ({
+                ...obs,
+                date: obs.date instanceof Timestamp ? obs.date.toDate() : new Date(obs.date)
+            })) : []
+        };
+    });
 }
 
 // ==== MODIFIED FUNCTION: updateAuthUI (SUPORTA AMBOS OS METODOS DE AUTENTICAÇÃO) ====
@@ -452,10 +468,11 @@ async function fetchPrayerTargets(uid) {
     const targetsSnapshot = await getDocs(query(targetsRef, orderBy("date", "desc"))); // Ordenar por data
     targetsSnapshot.forEach((doc) => {
         const targetData = {...doc.data(), id: doc.id};
-        console.log("Data fetched from Firestore for target ID:", doc.id, "Date (Timestamp):", targetData.date); //Log Timestamp from Firestore
+        console.log("fetchPrayerTargets - Target ID:", doc.id, "Date from Firestore Type:", typeof targetData.date, "Value:", targetData.date); // ADDED LOGGING
         if (targetData.date && !(targetData.date instanceof Timestamp)) {
             console.warn(`Target ${doc.id} date is not a Timestamp, attempting to parse.`);
             targetData.date = Timestamp.fromDate(new Date(targetData.date));
+             console.log("fetchPrayerTargets - Target ID:", doc.id, "Date after Timestamp conversion Type:", typeof targetData.date, "Value:", targetData.date); // ADDED LOGGING
         }
         prayerTargets.push(targetData);
     });
