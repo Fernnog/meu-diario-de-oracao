@@ -1432,7 +1432,7 @@ window.toggleObservations = function(targetId, event) {
 };
 
 
-function toggleAddObservation(targetId) {
+window.toggleAddObservation = function(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) {
          console.error(`[toggleAddObservation] Observation form div not found for ID: ${targetId}`);
@@ -1466,7 +1466,7 @@ function renderObservationForm(targetId) {
      }
 }
 
-async function saveObservation(targetId) {
+window.saveObservation = async function(targetId) {
     const observationText = document.getElementById(`observationText-${targetId}`).value.trim(); // Trim whitespace
     const observationDateInput = document.getElementById(`observationDate-${targetId}`).value;
 
@@ -1766,7 +1766,7 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     }
 });
 
-async function markAsResolved(targetId) {
+window.markAsResolved = async function(targetId) {
     const user = auth.currentUser;
     if (!user) {
         alert("Erro: Usuário não autenticado.");
@@ -1854,7 +1854,7 @@ async function markAsResolved(targetId) {
     }
 }
 
-async function archiveTarget(targetId) {
+window.archiveTarget = async function(targetId) {
      const user = auth.currentUser;
      if (!user) { alert("Erro: Usuário não autenticado."); return; }
      const userId = user.uid;
@@ -1932,7 +1932,7 @@ async function archiveTarget(targetId) {
      }
 }
 
-async function deleteArchivedTarget(targetId) {
+window.deleteArchivedTarget = async function(targetId) {
      const user = auth.currentUser;
      if (!user) { alert("Erro: Usuário não autenticado."); return; }
      const userId = user.uid;
@@ -2816,7 +2816,7 @@ function resetPerseveranceUI() {
     resetWeeklyChart();
 }
 
-async function editDeadline(targetId) {
+window.editDeadline = async function(targetId) {
     console.log(`[editDeadline] Editing deadline for target ${targetId}`);
     const target = prayerTargets.find(t => t.id === targetId);
     if (!target) {
@@ -2869,7 +2869,7 @@ async function editDeadline(targetId) {
 }
 
 
-async function saveEditedDeadline(targetId) {
+window.saveEditedDeadline = async function(targetId) {
      console.log(`[saveEditedDeadline] Saving deadline for target ${targetId}`);
     const newDeadlineDateInput = document.getElementById(`editDeadlineDate-${targetId}`);
     if (!newDeadlineDateInput) {
@@ -2945,7 +2945,7 @@ async function updateDeadlineInFirestoreAndLocal(targetId, newDeadlineTimestamp,
 }
 
 
-function cancelEditDeadline(targetId) {
+window.cancelEditDeadline = function(targetId) {
      console.log(`[cancelEditDeadline] Cancelling/removing edit form for ${targetId}`);
      const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
         if (targetDiv) {
