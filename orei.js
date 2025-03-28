@@ -42,6 +42,12 @@ function formatDateToISO(date) {
 function formatDateForDisplay(dateString) {
     if (dateString instanceof Date) {
         dateString = dateString;
+    } else if (typeof dateString === 'string') {
+         if (dateString.includes('Invalid Date') || dateString.includes('NaN')) {
+            return 'Data Inválida';
+        }
+    } else if (!dateString) {
+        return 'Data Inválida';
     }
     if (dateString instanceof Timestamp) {
         dateString = dateString.toDate();
@@ -89,6 +95,10 @@ function updateAuthUI(user) {
 // ==== END UI UPDATE FOR AUTHENTICATION STATE ====
 
 async function loadReportData(userId) {
+     if (!userId) {
+        console.log("loadReportData - userId is null or undefined, cannot load report data.");
+        return;
+    }
     currentUserId = userId;
     await fetchPrayerTargets(userId);
     await fetchArchivedTargets(userId);
@@ -103,8 +113,13 @@ async function fetchPrayerTargets(userId) {
     const targetsSnapshot = await getDocs(targetsRef);
     console.log("fetchPrayerTargets - userId:", userId); // ADICIONE ESTA LINHA
     targetsSnapshot.forEach((doc) => {
-        prayerTargets.push({ ...doc.data(), id: doc.id, status: 'Ativo' });
-    });
+        let targetData = doc.data();
+         if (targetData.date && !(targetData.date instanceof Timestamp)) {
+            console.warn(`Target ${doc.id} date is not a Timestamp, attempting to parse.`);
+            targetData.date = Timestamp.fromDate(new Date(targetData.date));
+        }
+        prayerTargets.push({ ...targetData, id: doc.id, status: 'Ativo' });
+     });
     console.log("fetchPrayerTargets - prayerTargets:", prayerTargets); // ADICIONE ESTA LINHA
 }
 
@@ -114,13 +129,22 @@ async function fetchArchivedTargets(userId) {
     const archivedSnapshot = await getDocs(archivedRef);
     console.log("fetchArchivedTargets - userId:", userId); // ADICIONE ESTA LINHA
     archivedSnapshot.forEach((doc) => {
-        archivedTargets.push({ ...doc.data(), id: doc.id, status: doc.data().resolved ? 'Respondido' : 'Arquivado' });
+         let archivedData = doc.data();
+         if (archivedData.date && !(archivedData.date instanceof Timestamp)) {
+            console.warn(`Archived Target ${doc.id} date is not a Timestamp, attempting to parse.`);
+            archivedData.date = Timestamp.fromDate(new Date(archivedData.date));
+        }
+        archivedTargets.push({ ...archivedData, id: doc.id, status: archivedData.resolved ? 'Respondido' : 'Arquivado' });
     });
     console.log("fetchArchivedTargets - archivedTargets:", archivedTargets); // ADICIONE ESTA LINHA
 }
 
 async function fetchClickCounts(userId) {
     clickCountsData = {};
+     if (!userId) {
+        console.warn("fetchClickCounts - userId is null or undefined, cannot fetch click counts.");
+        return; // Exit function if userId is not available
+    }
     const clickCountsRef = collection(db, "prayerClickCounts");
     const q = query(clickCountsRef, where("userId", "==", userId));
     const snapshot = await getDocs(q);
