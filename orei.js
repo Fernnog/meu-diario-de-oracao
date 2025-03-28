@@ -42,9 +42,10 @@ function formatDateToISO(date) {
 function formatDateForDisplay(dateString) {
     if (dateString instanceof Date) {
         dateString = dateString;
-    }
-    if (dateString instanceof Timestamp) {
+    } else if (dateString instanceof Timestamp) {
         dateString = dateString.toDate();
+    } else if (typeof dateString !== 'string') { // CHECK: Handle non-string dateString
+        return 'Data Inválida';
     }
     if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
     const date = new Date(dateString);
@@ -54,17 +55,7 @@ function formatDateForDisplay(dateString) {
 // ==== FIM FUNÇÕES UTILITÁRIAS ====
 
 // ==== GOOGLE SIGN-IN FUNCTION ====
-async function signInWithGoogle() {
-    const provider = new GoogleAuthProvider();
-    try {
-        const userCredential = await signInWithPopup(auth, provider);
-        const user = userCredential.user;
-        loadReportData(user.uid);
-    } catch (error) {
-        console.error("Erro ao entrar com o Google:", error);
-        alert("Erro ao entrar com o Google: " + error.message);
-    }
-}
+// REMOVE GOOGLE SIGN-IN FUNCTION
 // ==== END GOOGLE SIGN-IN FUNCTION ====
 
 // ==== UI UPDATE FOR AUTHENTICATION STATE ====
@@ -75,7 +66,7 @@ function updateAuthUI(user) {
     const authStatusContainer = document.querySelector('.auth-status-container-report');
 
     if (user) {
-        authStatus.textContent = "Usuário autenticado: " + user.email + " (via Google)";
+        authStatus.textContent = "Usuário autenticado: " + user.email; // REMOVE (via Google)
         authStatusContainer.style.display = 'flex';
         btnLogout.style.display = 'inline-block';
         btnGoogleLogin.style.display = 'none';
@@ -83,7 +74,7 @@ function updateAuthUI(user) {
         authStatus.textContent = "Nenhum usuário autenticado";
         authStatusContainer.style.display = 'block';
         btnLogout.style.display = 'none';
-        btnGoogleLogin.style.display = 'inline-block';
+        btnGoogleLogin.style.display = 'none'; // REMOVE GOOGLE SIGN-IN BUTTON FROM REPORT PAGE
     }
 }
 // ==== END UI UPDATE FOR AUTHENTICATION STATE ====
@@ -272,8 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'index.html#resolvedPanel';
     });
 
-    document.getElementById('btnGoogleLoginReport').addEventListener('click', signInWithGoogle);
-
+    
     document.getElementById('btnLogoutReport').addEventListener('click', async () => {
         try {
             await signOut(auth);
