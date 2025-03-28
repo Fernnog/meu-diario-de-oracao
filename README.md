@@ -170,3 +170,18 @@ Se você deseja contribuir para o projeto, siga os passos abaixo:
 - Implementar notificações push para lembrar o usuário de orar.
 - Criar um sistema de categorias ou tags para organizar os alvos.
 - Adicionar suporte a múltiplos idiomas.
+
+## Funcionalidades em Desenvolvimento
+
+### Seleção Aleatória de Alvos Diários com Exclusão e Reinício de Ciclo
+
+Estamos trabalhando em uma nova funcionalidade para aprimorar a experiência no painel inicial da aplicação "Meus Alvos de Oração". Esta funcionalidade, ainda em implementação, incluirá:
+
+- **Seleção Aleatória de Alvos**: A cada dia, o sistema selecionará aleatoriamente 10 alvos de oração a partir do pool de alvos ativos cadastrados pelo usuário.
+- **Exclusão de Alvos Interagidos**: Alvos marcados como "Orei!" (ou seja, concluídos) no dia atual serão excluídos do pool de seleção do dia seguinte, garantindo que o usuário foque em alvos ainda não orados.
+- **Reinício do Ciclo**: Quando todos os alvos ativos tiverem sido apresentados e concluídos pelo menos uma vez, o ciclo será reiniciado, permitindo que todos os alvos voltem a ser elegíveis para seleção.
+- **Persistência no Firebase**: As interações diárias continuarão sendo salvas na coleção `dailyPrayerTargets`, com um documento por dia no formato `userId_date` (ex.: `user123_2025-03-27`), e os alvos serão rastreados para garantir a exclusão e o reinício corretos.
+
+**Status**: Em desenvolvimento. A lógica de seleção aleatória e exclusão já foi implementada no backend (`script.js`), mas estamos ajustando a robustez do reinício do ciclo e testando a integração com o Firebase para garantir consistência.
+
+Fique de olho nas próximas atualizações para experimentar essa nova funcionalidade!
