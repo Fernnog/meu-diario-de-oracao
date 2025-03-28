@@ -35,6 +35,163 @@ let showDeadlineOnly = false;
 let perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
 const timezoneOffsetHours = 4;
 
+// ==== FUNÇÕES UTILITÁRIAS ====
+function formatDateToISO(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// VERSÃO CORRIGIDA
+function formatDateForDisplay(dateInput) {
+    // 1. Se não houver valor ou for inválido inicialmente
+    if (!dateInput) {
+        return 'Data Inválida';
+    }
+
+    let dateToFormat;
+
+    // 2. Se for um Timestamp do Firebase, converter para Date
+    if (dateInput instanceof Timestamp) {
+        dateToFormat = dateInput.toDate();
+    }
+    // 3. Se já for um objeto Date
+    else if (dateInput instanceof Date) {
+        dateToFormat = dateInput;
+    }
+    // 4. Se for uma string, tentar converter para Date
+    else if (typeof dateInput === 'string') {
+        // Verificar strings explicitamente inválidas antes de criar o objeto Date
+        if (dateInput.includes('Invalid Date') || dateInput.includes('NaN')) {
+            return 'Data Inválida';
+        }
+        dateToFormat = new Date(dateInput);
+    }
+    // 5. Se for outro tipo não esperado
+    else {
+         console.warn("formatDateForDisplay received an unexpected type:", typeof dateInput, dateInput);
+         return 'Data Inválida';
+    }
+
+    // 6. Verificar se a conversão resultou em uma data válida
+    if (!dateToFormat || isNaN(dateToFormat.getTime())) {
+        return 'Data Inválida';
+    }
+
+    // 7. Formatar a data válida
+    const day = String(dateToFormat.getDate()).padStart(2, '0');
+    const month = String(dateToFormat.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = dateToFormat.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+function timeElapsed(date) {
+    if (!date) return 'Data Inválida';
+    const now = new Date();
+    // Garante que 'date' seja um objeto Date, seja vindo de Timestamp.toDate() ou new Date()
+    const pastDate = (date instanceof Timestamp) ? date.toDate() : (date instanceof Date ? date : new Date(date));
+
+    if (isNaN(pastDate.getTime())) return 'Data Inválida'; // Verifica se a data é válida
+
+    let diffInSeconds = Math.floor((now - pastDate) / 1000);
+
+    if (diffInSeconds < 0) diffInSeconds = 0; // Evita tempos negativos se houver pequena dessincronia
+
+    if (diffInSeconds < 60) return `${diffInSeconds} segundos`;
+    let diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes} minutos`;
+    let diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} horas`;
+    let diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `${diffInDays} dias`;
+    let diffInMonths = Math.floor(diffInDays / 30.44); // Média de dias por mês
+    if (diffInMonths < 12) return `${diffInMonths} meses`;
+    let diffInYears = Math.floor(diffInDays / 365.25); // Considera anos bissextos
+    return `${diffInYears} anos`;
+}
+
+
+function isDateExpired(dateStringOrDate) {
+    if (!dateStringOrDate) return false;
+
+    let deadline;
+    if (dateStringOrDate instanceof Timestamp) {
+        deadline = dateStringOrDate.toDate();
+    } else if (dateStringOrDate instanceof Date) {
+        deadline = dateStringOrDate;
+    } else {
+        deadline = new Date(dateStringOrDate);
+    }
+
+    if (isNaN(deadline.getTime())) return false; // Data inválida
+
+    const now = new Date();
+    // Set hours, minutes, seconds, and milliseconds to 0 for both dates for accurate day comparison
+    deadline.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+    return deadline < now;
+}
+
+function generateUniqueId() {
+    // Combina timestamp com parte aleatória para maior unicidade
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
+}
+
+
+function rehydrateTargets(targets) {
+    return targets.map(target => {
+        // Lógica para converter datas (date, deadlineDate, lastPresentedDate) para objetos Date
+        const rehydratedTarget = { ...target };
+
+        if (rehydratedTarget.date) {
+            rehydratedTarget.date = (rehydratedTarget.date instanceof Timestamp)
+                ? rehydratedTarget.date.toDate()
+                : new Date(rehydratedTarget.date);
+             if (isNaN(rehydratedTarget.date.getTime())) rehydratedTarget.date = null; // Define como null se inválido
+        } else {
+             rehydratedTarget.date = new Date(); // Ou talvez null, dependendo da regra de negócio
+        }
+
+        if (rehydratedTarget.deadlineDate) {
+            rehydratedTarget.deadlineDate = (rehydratedTarget.deadlineDate instanceof Timestamp)
+                ? rehydratedTarget.deadlineDate.toDate()
+                : new Date(rehydratedTarget.deadlineDate);
+             if (isNaN(rehydratedTarget.deadlineDate.getTime())) rehydratedTarget.deadlineDate = null; // Define como null se inválido
+        } else {
+            rehydratedTarget.deadlineDate = null;
+        }
+
+        if (rehydratedTarget.lastPresentedDate) {
+            rehydratedTarget.lastPresentedDate = (rehydratedTarget.lastPresentedDate instanceof Timestamp)
+                ? rehydratedTarget.lastPresentedDate.toDate()
+                : new Date(rehydratedTarget.lastPresentedDate);
+             if (isNaN(rehydratedTarget.lastPresentedDate.getTime())) rehydratedTarget.lastPresentedDate = null; // Define como null se inválido
+        } else {
+             rehydratedTarget.lastPresentedDate = null;
+        }
+
+        // Rehydrata datas nas observações
+        if (rehydratedTarget.observations && Array.isArray(rehydratedTarget.observations)) {
+            rehydratedTarget.observations = rehydratedTarget.observations.map(obs => {
+                let obsDate = obs.date;
+                if (obsDate) {
+                    obsDate = (obsDate instanceof Timestamp) ? obsDate.toDate() : new Date(obsDate);
+                    if (isNaN(obsDate.getTime())) obsDate = null; // Define como null se inválido
+                } else {
+                    obsDate = null; // Ou new Date() se fizer mais sentido
+                }
+                return { ...obs, date: obsDate };
+            });
+        } else {
+            rehydratedTarget.observations = []; // Garante que seja sempre um array
+        }
+
+        return rehydratedTarget;
+    });
+}
+// ==== FIM FUNÇÕES UTILITÁRIAS ====
+
 // Utility functions (as before)
 function formatDateToISO(date) {
     const year = date.getFullYear();
