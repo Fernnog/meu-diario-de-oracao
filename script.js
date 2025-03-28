@@ -46,7 +46,14 @@ function formatDateToISO(date) {
 function formatDateForDisplay(dateString) {
     if (dateString instanceof Date) {
         dateString = dateString;
+    } else if (typeof dateString === 'string') {
+         if (dateString.includes('Invalid Date') || dateString.includes('NaN')) {
+            return 'Data Inválida';
+        }
+    } else if (!dateString) {
+        return 'Data Inválida';
     }
+
     if (dateString instanceof Timestamp) {
         dateString = dateString.toDate();
     }
@@ -446,6 +453,10 @@ async function fetchPrayerTargets(uid) {
     targetsSnapshot.forEach((doc) => {
         const targetData = {...doc.data(), id: doc.id};
         console.log("Data fetched from Firestore for target ID:", doc.id, "Date (Timestamp):", targetData.date); //Log Timestamp from Firestore
+        if (targetData.date && !(targetData.date instanceof Timestamp)) {
+            console.warn(`Target ${doc.id} date is not a Timestamp, attempting to parse.`);
+            targetData.date = Timestamp.fromDate(new Date(targetData.date));
+        }
         prayerTargets.push(targetData);
     });
     prayerTargets = rehydrateTargets(prayerTargets);
@@ -457,6 +468,11 @@ async function fetchArchivedTargets(uid) {
     const archivedSnapshot = await getDocs(query(archivedRef, orderBy("date", "desc")));
     archivedSnapshot.forEach((doc) => {
         archivedTargets.push({...doc.data(), id: doc.id});
+        let archivedData = doc.data();
+        if (archivedData.date && !(archivedData.date instanceof Timestamp)) {
+            console.warn(`Archived Target ${doc.id} date is not a Timestamp, attempting to parse.`);
+            archivedData.date = Timestamp.fromDate(new Date(archivedData.date));
+        }
     });
     archivedTargets = rehydrateTargets(archivedTargets);
 }
@@ -503,7 +519,7 @@ window.onload = () => {
                 alert("Erro ao atualizar alvos diários. Verifique o console.");
             }
         }
-    });
+     });
 };
 
 
