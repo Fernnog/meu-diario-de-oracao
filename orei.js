@@ -39,17 +39,47 @@ function formatDateToISO(date) {
     return `${year}-${month}-${day}`;
 }
 
-function formatDateForDisplay(dateString) {
-    if (dateString instanceof Date) {
-        dateString = dateString;
+// VERSÃO CORRIGIDA (igual à de script.js)
+function formatDateForDisplay(dateInput) {
+    // 1. Se não houver valor ou for inválido inicialmente
+    if (!dateInput) {
+        return 'Data Inválida';
     }
-    if (dateString instanceof Timestamp) {
-        dateString = dateString.toDate();
+
+    let dateToFormat;
+
+    // 2. Se for um Timestamp do Firebase, converter para Date
+    if (dateInput instanceof Timestamp) {
+        dateToFormat = dateInput.toDate();
     }
-    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Data Inválida';
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    // 3. Se já for um objeto Date
+    else if (dateInput instanceof Date) {
+        dateToFormat = dateInput;
+    }
+    // 4. Se for uma string, tentar converter para Date
+    else if (typeof dateInput === 'string') {
+        // Verificar strings explicitamente inválidas antes de criar o objeto Date
+        if (dateInput.includes('Invalid Date') || dateInput.includes('NaN')) {
+            return 'Data Inválida';
+        }
+        dateToFormat = new Date(dateInput);
+    }
+    // 5. Se for outro tipo não esperado
+    else {
+         console.warn("formatDateForDisplay received an unexpected type:", typeof dateInput, dateInput);
+         return 'Data Inválida';
+    }
+
+    // 6. Verificar se a conversão resultou em uma data válida
+    if (!dateToFormat || isNaN(dateToFormat.getTime())) {
+        return 'Data Inválida';
+    }
+
+    // 7. Formatar a data válida
+    const day = String(dateToFormat.getDate()).padStart(2, '0');
+    const month = String(dateToFormat.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = dateToFormat.getFullYear();
+    return `${day}/${month}/${year}`;
 }
 // ==== FIM FUNÇÕES UTILITÁRIAS ====
 
