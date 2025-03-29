@@ -20,117 +20,58 @@ const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// === Variáveis Globais para orei.js ===
+// === Variáveis Globais ===
 let currentReportPage = 1;
 const itemsPerPage = 10;
-let allTargetsForReport = []; // Armazenará todos os alvos (ativos e arquivados)
-let filteredTargetsForReport = []; // Alvos filtrados para exibição na lista principal
-let zeroInteractionTargets = []; // Alvos para a nova seção
+let allTargetsForReport = [];
+let filteredTargetsForReport = [];
+let zeroInteractionTargets = [];
 
 // =============================================
-// === Funções Utilitárias (Incluídas aqui) ===
+// === Funções Utilitárias (Completas) ===
 // =============================================
 
-/**
- * Creates a Date object representing UTC midnight from a YYYY-MM-DD string.
- * Returns null if the string is invalid.
- */
 function createUTCDate(dateString) {
-    if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        // console.warn("[createUTCDate] Invalid date string format provided:", dateString);
-        return null;
-    }
-    // Creates a Date object interpreted as UTC midnight
+    if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return null;
     const date = new Date(dateString + 'T00:00:00Z');
-    // Double check if the parsing resulted in a valid date
-    if (isNaN(date.getTime())) {
-        // console.warn("[createUTCDate] Failed to parse date string to valid UTC Date:", dateString);
-        return null;
-    }
+    if (isNaN(date.getTime())) return null;
     return date;
 }
 
-/**
- * Formats a date input (Date object, Timestamp, string) into YYYY-MM-DD (UTC).
- * Defaults to today if input is invalid.
- */
 function formatDateToISO(date) {
     let dateToFormat;
-    if (date instanceof Timestamp) {
-        dateToFormat = date.toDate();
-    } else if (date instanceof Date && !isNaN(date)) {
-        dateToFormat = date;
-    } else if (typeof date === 'string') {
-        dateToFormat = new Date(date); // Try parsing string (might be local time)
-    }
+    if (date instanceof Timestamp) dateToFormat = date.toDate();
+    else if (date instanceof Date && !isNaN(date)) dateToFormat = date;
+    else dateToFormat = new Date();
 
-    // Ensure we have a valid Date object before proceeding
-    if (!(dateToFormat instanceof Date) || isNaN(dateToFormat.getTime())) {
-        // console.warn("formatDateToISO received invalid date, defaulting to today:", date);
-        dateToFormat = new Date();
-    }
+    if (isNaN(dateToFormat.getTime())) dateToFormat = new Date();
 
-    // Use UTC components to avoid timezone shifts in the output string
     const year = dateToFormat.getUTCFullYear();
     const month = String(dateToFormat.getUTCMonth() + 1).padStart(2, '0');
     const day = String(dateToFormat.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
-/**
- * Formats a date input (Date, Timestamp, valid string) into DD/MM/YYYY using UTC components.
- * Returns 'Data Inválida' on failure.
- */
 function formatDateForDisplay(dateInput) {
-    // console.log('[formatDateForDisplay] Received input:', dateInput, '| Type:', typeof dateInput);
-
-    if (!dateInput) {
-        // console.log('[formatDateForDisplay] Input is null or undefined.');
-        return 'Data Inválida';
-    }
-
+    if (!dateInput) return 'Data Inválida';
     let dateToFormat;
-    if (dateInput instanceof Timestamp) {
-        // console.log('[formatDateForDisplay] Input is Timestamp.');
-        dateToFormat = dateInput.toDate();
-    } else if (dateInput instanceof Date && !isNaN(dateInput)) {
-        // console.log('[formatDateForDisplay] Input is already valid Date.');
-        dateToFormat = dateInput;
-    } else if (typeof dateInput === 'string') {
-        // console.log('[formatDateForDisplay] Input is string. Attempting to parse.');
-        dateToFormat = new Date(dateInput); // Try parsing (e.g., ISO string)
-    } else {
-        // console.warn("[formatDateForDisplay] Input is unexpected type:", typeof dateInput);
-        return 'Data Inválida';
+    if (dateInput instanceof Timestamp) dateToFormat = dateInput.toDate();
+    else if (dateInput instanceof Date && !isNaN(dateInput)) dateToFormat = dateInput;
+    else {
+        dateToFormat = new Date(dateInput);
+        if (isNaN(dateToFormat.getTime())) return 'Data Inválida';
     }
-
-    if (!dateToFormat || isNaN(dateToFormat.getTime())) {
-        // console.log('[formatDateForDisplay] Conversion resulted in invalid Date.');
-        return 'Data Inválida';
-    }
-
-    // Use UTC methods for display to reflect the stored calendar date
     const day = String(dateToFormat.getUTCDate()).padStart(2, '0');
-    const month = String(dateToFormat.getUTCMonth() + 1).padStart(2, '0'); // getUTCMonth is 0-indexed
+    const month = String(dateToFormat.getUTCMonth() + 1).padStart(2, '0');
     const year = dateToFormat.getUTCFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
-    // console.log('[formatDateForDisplay] Formatting successful (UTC components):', formattedDate);
-    return formattedDate;
+    return `${day}/${month}/${year}`;
 }
 
-/**
- * Calculates time elapsed from a past Date object until now.
- * Returns a human-readable string (e.g., "5 min", "2 dias").
- */
 function timeElapsed(date) {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-        return 'Data Inválida';
-    }
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
     const now = new Date();
     let diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
     if (diffInSeconds < 0) diffInSeconds = 0;
-
     if (diffInSeconds < 60) return `${diffInSeconds} seg`;
     let diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) return `${diffInMinutes} min`;
@@ -144,77 +85,49 @@ function timeElapsed(date) {
     return `${diffInYears} anos`;
 }
 
-/**
- * Checks if a given Date object (representing UTC midnight) is before the start of today (UTC).
- * Used to determine if a deadline has passed.
- */
 function isDateExpired(date) {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
-
     const now = new Date();
-    // Create a Date object representing the start of today in UTC
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-
-    // Deadline is expired if its timestamp is strictly less than the start of today's timestamp
     return date.getTime() < todayUTCStart.getTime();
 }
 
-/**
- * Converts Firestore Timestamps within an array of target objects to JS Date objects.
- * Handles nested observations arrays as well.
- */
 function rehydrateTargets(targets) {
-    // console.log('[rehydrateTargets] Starting rehydration for', targets.length, 'targets.');
-    return targets.map((target) => {
+     return targets.map((target) => {
         const rehydratedTarget = { ...target };
-        const fieldsToConvert = ['date', 'deadlineDate', 'lastPresentedDate', 'resolutionDate', 'archivedDate']; // Added archivedDate just in case
+        const fieldsToConvert = ['date', 'deadlineDate', 'lastPresentedDate', 'resolutionDate', 'archivedDate'];
         fieldsToConvert.forEach(field => {
             const originalValue = rehydratedTarget[field];
             if (originalValue instanceof Timestamp) {
                 rehydratedTarget[field] = originalValue.toDate();
             } else if (originalValue instanceof Date && !isNaN(originalValue)) {
-                // Already a valid Date, do nothing
                 rehydratedTarget[field] = originalValue;
             } else if (originalValue === null || originalValue === undefined) {
                 rehydratedTarget[field] = null;
             } else {
-                // Attempt to parse if it's a string or other type, set to null if invalid
                 try {
                     const parsedDate = new Date(originalValue);
                     rehydratedTarget[field] = !isNaN(parsedDate.getTime()) ? parsedDate : null;
-                } catch (e) {
-                    rehydratedTarget[field] = null;
-                }
-                // if (rehydratedTarget[field] === null && originalValue !== null) {
-                //     console.warn(`[rehydrateTargets] Invalid date value for field '${field}'. Original:`, originalValue);
-                // }
+                } catch (e) { rehydratedTarget[field] = null; }
             }
         });
-
-        // Process observations array
         if (rehydratedTarget.observations && Array.isArray(rehydratedTarget.observations)) {
             rehydratedTarget.observations = rehydratedTarget.observations.map(obs => {
                 let obsDateFinal = null;
-                if (obs.date instanceof Timestamp) {
-                    obsDateFinal = obs.date.toDate();
-                } else if (obs.date instanceof Date && !isNaN(obs.date)) {
-                    obsDateFinal = obs.date;
-                } else if (obs.date) {
-                    try {
-                        const parsedObsDate = new Date(obs.date);
-                        if (!isNaN(parsedObsDate.getTime())) obsDateFinal = parsedObsDate;
-                    } catch (e) { /* ignore parse error */ }
+                if (obs.date instanceof Timestamp) obsDateFinal = obs.date.toDate();
+                else if (obs.date instanceof Date && !isNaN(obs.date)) obsDateFinal = obs.date;
+                else if (obs.date) {
+                   try {
+                      const parsedObsDate = new Date(obs.date);
+                      if (!isNaN(parsedObsDate.getTime())) obsDateFinal = parsedObsDate;
+                   } catch(e) { /* ignore */ }
                 }
                 return { ...obs, date: obsDateFinal };
             });
-        } else {
-            rehydratedTarget.observations = [];
-        }
-
+        } else rehydratedTarget.observations = [];
         return rehydratedTarget;
     });
 }
-
 // =============================================
 // === FIM Funções Utilitárias               ===
 // =============================================
@@ -229,40 +142,33 @@ function updateAuthUIReport(user) {
     const reportContainers = document.querySelectorAll('.report-container, .zero-interaction-section');
 
     if (user) {
-        let providerType = 'E-mail/Senha'; // Default
-        if (user.providerData[0]?.providerId === 'google.com') {
-            providerType = 'Google';
-        }
+        let providerType = 'E-mail/Senha';
+        if (user.providerData[0]?.providerId === 'google.com') providerType = 'Google';
         authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
         btnLogout.style.display = 'inline-block';
-        if (mainMenu) mainMenu.style.display = 'block'; // Ou 'flex'
+        if (mainMenu) mainMenu.style.display = 'block';
         if (mainMenuSeparator) mainMenuSeparator.style.display = 'block';
-        // Não mostramos os containers aqui ainda, esperamos o loadPerseveranceReport
-        loadPerseveranceReport(user.uid); // Carrega dados SÓ QUANDO autenticado
+        loadPerseveranceReport(user.uid);
     } else {
         authStatus.textContent = "Nenhum usuário autenticado. Faça login na página inicial.";
         btnLogout.style.display = 'none';
         if (mainMenu) mainMenu.style.display = 'none';
         if (mainMenuSeparator) mainMenuSeparator.style.display = 'none';
-        reportContainers.forEach(c => c.style.display = 'none'); // Esconde containers
-        // Limpa as listas
+        reportContainers.forEach(c => c.style.display = 'none');
         document.getElementById('zeroInteractionList').innerHTML = '';
         document.getElementById('reportList').innerHTML = '';
         document.getElementById('pagination').innerHTML = '';
     }
 }
 
-// Listener principal de autenticação
 onAuthStateChanged(auth, (user) => {
     updateAuthUIReport(user);
 });
 
-// Função de Logout
 document.getElementById('btnLogoutReport')?.addEventListener('click', () => {
     signOut(auth).then(() => {
         console.log("Usuário deslogado.");
-        // UI será atualizada pelo onAuthStateChanged
-        window.location.href = 'index.html'; // Redireciona
+        window.location.href = 'index.html';
     }).catch((error) => {
         console.error("Erro ao sair:", error);
     });
@@ -274,20 +180,16 @@ document.getElementById('btnLogoutReport')?.addEventListener('click', () => {
 
 async function loadPerseveranceReport(userId) {
     console.log(`Carregando relatório para ${userId}`);
-    // Mostra placeholders enquanto carrega
     document.getElementById('zeroInteractionSection').style.display = 'block';
     document.getElementById('mainReportContainer').style.display = 'block';
     document.getElementById('zeroInteractionList').innerHTML = '<p>Carregando alvos sem interação...</p>';
     document.getElementById('reportList').innerHTML = '<p>Carregando relatório principal...</p>';
 
     try {
-        // 1. Buscar todos os alvos (ativos e arquivados)
         await fetchAllTargetsForReport(userId);
-
-        // 2. Processar e renderizar a lista de "Sem Interação"
         await processAndRenderZeroInteraction(userId);
 
-        // 3. Processar e renderizar a lista principal com filtros (começa com Ativos)
+        // Define filtros iniciais (ex: Ativos) e renderiza o relatório principal
         document.getElementById('filterAtivo').checked = true;
         document.getElementById('filterArquivado').checked = false;
         document.getElementById('filterRespondido').checked = false;
@@ -300,35 +202,29 @@ async function loadPerseveranceReport(userId) {
     }
 }
 
-// Busca todos os alvos (ativos e arquivados)
 async function fetchAllTargetsForReport(userId) {
     allTargetsForReport = [];
     try {
         const activeTargetsRef = collection(db, "users", userId, "prayerTargets");
         const activeSnapshot = await getDocs(query(activeTargetsRef, orderBy("date", "desc")));
-        const activeRaw = [];
-        activeSnapshot.forEach(doc => activeRaw.push({ ...doc.data(), id: doc.id, status: 'ativo' }));
+        const activeRaw = activeSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, status: 'ativo' }));
 
         const archivedTargetsRef = collection(db, "users", userId, "archivedTargets");
         const archivedSnapshot = await getDocs(query(archivedTargetsRef, orderBy("date", "desc")));
-        const archivedRaw = [];
-        archivedSnapshot.forEach(doc => {
+        const archivedRaw = archivedSnapshot.docs.map(doc => {
             const data = doc.data();
-            // Adiciona archivedDate fictício se não existir, para ordenação (usar data de criação como fallback)
             const archiveSortDate = data.resolutionDate || data.archivedDate || data.date;
-            archivedRaw.push({ ...data, id: doc.id, status: data.resolved ? 'respondido' : 'arquivado', archiveSortDate: archiveSortDate });
+            return { ...data, id: doc.id, status: data.resolved ? 'respondido' : 'arquivado', archiveSortDate: archiveSortDate };
         });
 
-        // Combina e Rehidrata
         allTargetsForReport = rehydrateTargets([...activeRaw, ...archivedRaw]);
-        console.log(`Total de alvos (ativos e arquivados) carregados: ${allTargetsForReport.length}`);
+        console.log(`Total de alvos carregados: ${allTargetsForReport.length}`);
     } catch (error) {
         console.error("Erro ao buscar alvos para o relatório:", error);
         throw error;
     }
 }
 
-// Processa e renderiza a seção "Sem Interação"
 async function processAndRenderZeroInteraction(userId) {
     const zeroInteractionListDiv = document.getElementById('zeroInteractionList');
     zeroInteractionListDiv.innerHTML = '<p>Processando interações...</p>';
@@ -340,16 +236,13 @@ async function processAndRenderZeroInteraction(userId) {
         return;
     }
 
-    // Obtém o mês atual no formato YYYY-MM (importante usar UTC para consistência com Firestore se necessário, mas aqui local deve funcionar)
     const now = new Date();
     const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    console.log("Verificando interações para o mês:", currentMonthYear);
 
     const promises = activeTargets.map(async (target) => {
         try {
             const clickCountsRef = doc(db, "prayerClickCounts", target.id);
             const clickSnap = await getDoc(clickCountsRef);
-
             let hasInteractionThisMonth = false;
             if (clickSnap.exists()) {
                 const clickData = clickSnap.data();
@@ -357,49 +250,45 @@ async function processAndRenderZeroInteraction(userId) {
                     hasInteractionThisMonth = true;
                 }
             }
-            //console.log(`Alvo: ${target.title}, Interação em ${currentMonthYear}? ${hasInteractionThisMonth}`);
-            if (!hasInteractionThisMonth) {
-                return target; // Retorna o alvo se NÃO houve interação
-            }
+            if (!hasInteractionThisMonth) return target;
         } catch (error) {
             console.error(`Erro ao verificar cliques para ${target.id}:`, error);
         }
-        return null; // Retorna null se houve interação ou erro
+        return null;
     });
 
     const results = await Promise.all(promises);
-    zeroInteractionTargets = results.filter(target => target !== null); // Filtra os não nulos
+    zeroInteractionTargets = results.filter(target => target !== null);
 
-    console.log(`Alvos sem interação encontrados em ${currentMonthYear}: ${zeroInteractionTargets.length}`);
-    renderZeroInteractionList(zeroInteractionTargets);
+    renderZeroInteractionList(zeroInteractionTargets); // <-- Chamada movida para após o loop
 }
 
-
-// Renderiza a lista da seção "Sem Interação"
+// --- MODIFICADO --- Renderiza APENAS os nomes na seção "Sem Interação"
 function renderZeroInteractionList(targets) {
     const listDiv = document.getElementById('zeroInteractionList');
-    listDiv.innerHTML = '';
+    listDiv.innerHTML = ''; // Limpa
 
     if (targets.length === 0) {
         listDiv.innerHTML = '<p>Ótimo! Todos os alvos ativos tiveram interação este mês.</p>';
         return;
     }
 
+    // Cria uma lista não ordenada (ul)
+    const ul = document.createElement('ul');
+    ul.classList.add('zero-interaction-name-list'); // Adiciona classe para estilização opcional
+
     // Ordena por data de criação (mais antigo primeiro)
     targets.sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
 
     targets.forEach(target => {
-        const itemDiv = document.createElement('div');
-        itemDiv.classList.add('report-item', 'zero-interaction-item');
-        itemDiv.innerHTML = `
-            <h3>${target.title || 'Sem Título'}</h3>
-            <p>Criado em: ${formatDateForDisplay(target.date)} (${timeElapsed(target.date)} atrás)</p>
-            ${target.details ? `<p><i>${target.details.substring(0, 100)}${target.details.length > 100 ? '...' : ''}</i></p>` : ''}
-            <p class="no-interaction-alert">Nenhuma interação ('Orei!') registrada em ${new Date().toLocaleString('pt-BR', { month: 'long' })}.</p>
-        `;
-        listDiv.appendChild(itemDiv);
+        const li = document.createElement('li');
+        li.textContent = target.title || 'Sem Título'; // Mostra apenas o título
+        ul.appendChild(li);
     });
+
+    listDiv.appendChild(ul); // Adiciona a lista ao container
 }
+
 
 // Aplica filtros e renderiza a lista principal do relatório
 function applyFiltersAndRenderMainReport() {
@@ -417,16 +306,12 @@ function applyFiltersAndRenderMainReport() {
         if (searchTerm) {
             const titleMatch = target.title?.toLowerCase().includes(searchTerm);
             const detailsMatch = target.details?.toLowerCase().includes(searchTerm);
-            // Considerar busca em observações se necessário
-            // const obsMatch = target.observations?.some(obs => obs.text?.toLowerCase().includes(searchTerm));
-            if (!titleMatch && !detailsMatch /* && !obsMatch */) return false;
+            if (!titleMatch && !detailsMatch) return false;
         }
         return true;
     });
 
-    // Ordena por data descendente (data de criação para ativos, data de arquivamento/resolução para outros)
     filteredTargetsForReport.sort((a, b) => {
-        // Usamos a data de criação como fallback geral se outras não existirem
         const dateA = a.archiveSortDate || a.date || 0;
         const dateB = b.archiveSortDate || b.date || 0;
         return (dateB instanceof Date ? dateB.getTime() : 0) - (dateA instanceof Date ? dateA.getTime() : 0);
@@ -436,10 +321,10 @@ function applyFiltersAndRenderMainReport() {
     renderMainReportList();
 }
 
-// Renderiza a lista principal paginada
+// --- MODIFICADO --- Renderiza a lista principal com DADOS DE PERSEVERANÇA (Cliques)
 function renderMainReportList() {
     const reportListDiv = document.getElementById('reportList');
-    reportListDiv.innerHTML = '';
+    reportListDiv.innerHTML = ''; // Limpa a lista antes de renderizar
 
     const startIndex = (currentReportPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -447,45 +332,97 @@ function renderMainReportList() {
 
     if (itemsToDisplay.length === 0) {
         reportListDiv.innerHTML = '<p>Nenhum alvo encontrado com os filtros selecionados.</p>';
-    } else {
-        itemsToDisplay.forEach(target => {
-            const itemDiv = document.createElement('div');
-            itemDiv.classList.add('report-item');
-            let statusLabel = '';
-            switch (target.status) {
-                case 'ativo': statusLabel = '<span class="status-tag status-ativo">Ativo</span>'; break;
-                case 'arquivado': statusLabel = '<span class="status-tag status-arquivado">Arquivado</span>'; break;
-                case 'respondido': statusLabel = '<span class="status-tag status-respondido">Respondido</span>'; break;
-            }
-
-            // Define qual data mostrar com base no status
-            let dateToShow = target.date; // Data de criação por padrão
-            let dateLabel = "Criado em";
-            if (target.status === 'respondido' && target.resolutionDate) {
-                dateToShow = target.resolutionDate;
-                dateLabel = "Respondido em";
-            } else if (target.status === 'arquivado' && target.archivedDate) { // Usar archivedDate se existir
-                dateToShow = target.archivedDate;
-                dateLabel = "Arquivado em";
-            }
-             // Se for arquivado/respondido mas não tiver data específica, mostra data de criação
-             else if ((target.status === 'arquivado' || target.status === 'respondido') && !dateToShow) {
-                 dateToShow = target.date;
-                 dateLabel = `Criado em`; // Indica que é a data de criação
-             }
-
-
-            itemDiv.innerHTML = `
-                <h3>${statusLabel} ${target.title || 'Sem Título'}</h3>
-                <p>${dateLabel}: ${formatDateForDisplay(dateToShow)} (${timeElapsed(target.date)} desde criação)</p>
-                ${target.details ? `<p><i>${target.details.substring(0, 150)}${target.details.length > 150 ? '...' : ''}</i></p>` : ''}
-            `;
-            reportListDiv.appendChild(itemDiv);
-        });
+        renderReportPagination(); // Renderiza paginação vazia se necessário
+        return; // Sai da função
     }
 
-    renderReportPagination();
+    itemsToDisplay.forEach(target => {
+        const itemDiv = document.createElement('div');
+        itemDiv.classList.add('report-item', `status-${target.status}`); // Adiciona classe de status
+        itemDiv.dataset.targetId = target.id; // Guarda o ID para buscar cliques
+
+        let statusLabel = '';
+        switch (target.status) {
+            case 'ativo': statusLabel = '<span class="status-tag status-ativo">Ativo</span>'; break;
+            case 'arquivado': statusLabel = '<span class="status-tag status-arquivado">Arquivado</span>'; break;
+            case 'respondido': statusLabel = '<span class="status-tag status-respondido">Respondido</span>'; break;
+        }
+
+        let dateToShow = target.date;
+        let dateLabel = "Criado em";
+        if (target.status === 'respondido' && target.resolutionDate) {
+            dateToShow = target.resolutionDate; dateLabel = "Respondido em";
+        } else if (target.status === 'arquivado' && target.archivedDate) {
+            dateToShow = target.archivedDate; dateLabel = "Arquivado em";
+        } else if ((target.status === 'arquivado' || target.status === 'respondido')) {
+             dateToShow = target.date; dateLabel = `Criado em`;
+         }
+
+        itemDiv.innerHTML = `
+            <h3>${statusLabel} ${target.title || 'Sem Título'}</h3>
+            <p>${dateLabel}: ${formatDateForDisplay(dateToShow)} (${timeElapsed(target.date)} desde criação)</p>
+            ${target.details ? `<p><i>${target.details.substring(0, 150)}${target.details.length > 150 ? '...' : ''}</i></p>` : ''}
+            <div class="click-stats">
+                <p>Perseverança (Cliques 'Orei!'):</p>
+                <ul>
+                    <li>Total: <span id="clicks-total-${target.id}">...</span></li>
+                    <li>Este Mês: <span id="clicks-month-${target.id}">...</span></li>
+                    <li>Este Ano: <span id="clicks-year-${target.id}">...</span></li>
+                    <!-- <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> -->
+                </ul>
+            </div>
+        `;
+        reportListDiv.appendChild(itemDiv);
+
+        // Busca e exibe os dados de cliques para este alvo
+        fetchAndDisplayClickCount(target.id, itemDiv);
+    });
+
+    renderReportPagination(); // Renderiza a paginação após os itens
 }
+
+
+// --- NOVO --- Busca e exibe os dados de cliques para um alvo específico
+async function fetchAndDisplayClickCount(targetId, itemDiv) {
+    const totalSpan = itemDiv.querySelector(`#clicks-total-${targetId}`);
+    const monthSpan = itemDiv.querySelector(`#clicks-month-${targetId}`);
+    const yearSpan = itemDiv.querySelector(`#clicks-year-${targetId}`);
+    // const lastSpan = itemDiv.querySelector(`#clicks-last-${targetId}`); // Se for adicionar data da última
+
+    if (!totalSpan || !monthSpan || !yearSpan) return; // Sai se os elementos não existirem
+
+    try {
+        const clickCountsRef = doc(db, "prayerClickCounts", targetId);
+        const clickSnap = await getDoc(clickCountsRef);
+
+        if (clickSnap.exists()) {
+            const data = clickSnap.data();
+            const now = new Date();
+            const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const currentYear = now.getFullYear().toString();
+
+            totalSpan.textContent = data.totalClicks || 0;
+            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0;
+            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;
+            // Para data da última oração, precisaríamos armazenar um timestamp no `prayerClickCounts`
+            // lastSpan.textContent = data.lastClickTimestamp ? formatDateForDisplay(data.lastClickTimestamp) : 'Nenhuma';
+
+        } else {
+            // Se não existe documento de cliques, assume 0 para tudo
+            totalSpan.textContent = '0';
+            monthSpan.textContent = '0';
+            yearSpan.textContent = '0';
+            // lastSpan.textContent = 'Nenhuma';
+        }
+    } catch (error) {
+        console.error(`Erro ao buscar cliques para ${targetId}:`, error);
+        totalSpan.textContent = 'Erro';
+        monthSpan.textContent = 'Erro';
+        yearSpan.textContent = 'Erro';
+        // lastSpan.textContent = 'Erro';
+    }
+}
+
 
 // Renderiza a paginação para a lista principal
 function renderReportPagination() {
@@ -495,13 +432,11 @@ function renderReportPagination() {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     if (totalPages <= 1) {
-        paginationDiv.style.display = 'none';
-        return;
+        paginationDiv.style.display = 'none'; return;
     } else {
-         paginationDiv.style.display = 'flex'; // Garante que a paginação seja visível
+         paginationDiv.style.display = 'flex';
     }
 
-    // Botão Anterior
     if (currentReportPage > 1) {
         const prevLink = document.createElement('a');
         prevLink.href = '#';
@@ -512,20 +447,17 @@ function renderReportPagination() {
             if (currentReportPage > 1) {
                 currentReportPage--;
                 renderMainReportList();
-                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop); // Scroll para o topo da lista
+                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20); // Scroll suave
             }
         });
         paginationDiv.appendChild(prevLink);
     }
 
-    // Indicador de Página
     const pageIndicator = document.createElement('span');
     pageIndicator.textContent = ` Página ${currentReportPage} de ${totalPages} `;
-    pageIndicator.style.margin = "0 10px"; // Espaçamento
+    pageIndicator.style.margin = "0 10px";
     paginationDiv.appendChild(pageIndicator);
 
-
-    // Botão Próximo
     if (currentReportPage < totalPages) {
         const nextLink = document.createElement('a');
         nextLink.href = '#';
@@ -536,25 +468,21 @@ function renderReportPagination() {
              if (currentReportPage < totalPages) {
                 currentReportPage++;
                 renderMainReportList();
-                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop); // Scroll para o topo da lista
+                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20); // Scroll suave
             }
         });
         paginationDiv.appendChild(nextLink);
     }
 }
 
-// === Event Listeners para Filtros e Busca ===
+// === Event Listeners ===
 document.getElementById('searchReport')?.addEventListener('input', applyFiltersAndRenderMainReport);
 document.getElementById('filterAtivo')?.addEventListener('change', applyFiltersAndRenderMainReport);
 document.getElementById('filterArquivado')?.addEventListener('change', applyFiltersAndRenderMainReport);
 document.getElementById('filterRespondido')?.addEventListener('change', applyFiltersAndRenderMainReport);
 
-// === Navegação ===
-document.getElementById('backToMainButton')?.addEventListener('click', () => {
-    window.location.href = 'index.html';
-});
+document.getElementById('backToMainButton')?.addEventListener('click', () => window.location.href = 'index.html');
 
-// Listeners para botões de filtro rápido
 document.getElementById('viewAllTargetsButton')?.addEventListener('click', () => {
     document.getElementById('filterAtivo').checked = true;
     document.getElementById('filterArquivado').checked = true;
@@ -564,15 +492,15 @@ document.getElementById('viewAllTargetsButton')?.addEventListener('click', () =>
 document.getElementById('viewArchivedButton')?.addEventListener('click', () => {
     document.getElementById('filterAtivo').checked = false;
     document.getElementById('filterArquivado').checked = true;
-    document.getElementById('filterRespondido').checked = false; // Mostra APENAS arquivados
+    document.getElementById('filterRespondido').checked = false;
     applyFiltersAndRenderMainReport();
 });
 document.getElementById('viewResolvedButton')?.addEventListener('click', () => {
     document.getElementById('filterAtivo').checked = false;
-    document.getElementById('filterArquivado').checked = false; // Não marca arquivado
-    document.getElementById('filterRespondido').checked = true; // Mostra APENAS respondidos
+    document.getElementById('filterArquivado').checked = false;
+    document.getElementById('filterRespondido').checked = true;
     applyFiltersAndRenderMainReport();
 });
 
 // === Inicialização ===
-// A inicialização principal é feita pelo onAuthStateChanged.
+// Controlada pelo onAuthStateChanged
