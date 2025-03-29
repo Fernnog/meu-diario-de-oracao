@@ -43,10 +43,12 @@ h2 {
     border-bottom: 1px solid #eee; /* Linha separadora mais suave */
     padding: 15px 5px; /* Mais padding vertical */
     margin-bottom: 10px;
+    /* O fundo padrão é branco, ou definido por :nth-child(even) */
+    /* NENHUM background-color específico para .status-ativo AQUI */
 }
 /* Adiciona uma cor de fundo sutil alternada para melhor legibilidade */
 .report-item:nth-child(even) {
-    background-color: #fafafa;
+    background-color: #fafafa; /* Fundo cinza claro alternado */
 }
 
 
@@ -204,6 +206,7 @@ p.no-interaction-alert { /* Alerta específico para falta de interação - Não 
     border: 1px solid transparent; /* Adiciona borda transparente para consistência */
 }
 
+/* ESTA REGRA APLICA O FUNDO VERDE *APENAS* À TAG */
 .status-ativo {
     background-color: #66BB6A; /* Verde um pouco mais suave */
     border-color: #5aae60; /* Borda ligeiramente mais escura */
