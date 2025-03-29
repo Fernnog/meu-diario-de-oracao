@@ -1,22 +1,48 @@
 /* orei.css - Estilos específicos para a página de relatório */
-.report-container {
-    padding: 20px;
-    font-family: 'Playfair Display', serif;
+
+/* Estilos Gerais da Página */
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centraliza containers principais */
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin: 0;
+    font-family: 'Playfair Display', serif; /* Garante a fonte base */
     color: #333;
-    max-width: 960px;
+}
+
+.report-container, .zero-interaction-section {
+    padding: 20px;
+    max-width: 960px; /* Limita largura máxima */
+    width: 95%; /* Usa a maior parte da largura disponível */
     margin: 20px auto;
     background-color: #fff;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd; /* Adiciona uma borda sutil */
 }
 
+h1, h2 {
+     font-family: 'Playfair Display', serif; /* Garante a fonte nos títulos */
+     text-align: center;
+     color: #333;
+}
+
+h2 {
+    margin-bottom: 15px;
+    font-size: 1.8em;
+}
+
+/* Estilos para a lista de itens */
 .report-list {
-    margin-top: 20px;
+    margin-top: 15px;
 }
 
 .report-item {
-    border-bottom: 1px solid #ddd;
-    padding: 10px 0;
+    border-bottom: 1px solid #eee; /* Linha separadora mais suave */
+    padding: 15px 5px; /* Mais padding vertical */
+    margin-bottom: 10px;
 }
 
 .report-item:last-child {
@@ -25,73 +51,203 @@
 
 .report-item h3 {
     margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.2em;
+    display: flex; /* Alinha status tag e título */
+    align-items: center;
 }
 
 .report-item p {
-    margin: 5px 0;
+    margin: 4px 0;
+    font-size: 0.95em;
+    color: #555;
+}
+.report-item p i { /* Estilo para detalhes em itálico */
+    color: #666;
+    display: block; /* Quebra linha se for longo */
+    margin-top: 5px;
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background-color: #f9f9f9;
+
+/* Filtros e Busca */
+.search-input {
+    display: block;
+    margin: 0 auto 15px auto; /* Centraliza e adiciona espaço abaixo */
     padding: 10px;
-    margin: 0;
+    width: 80%;
+    max-width: 400px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: inherit; /* Usa a fonte do body */
 }
 
-/* Estilos para os checkboxes de filtro */
 .filter-options {
-    margin-bottom: 10px;
-    text-align: center; /* Centraliza os labels horizontalmente */
-    width: 100%;       /* Garante que o container ocupe a largura total */
+    margin-bottom: 15px;
+    text-align: center;
 }
 
 .filter-options label {
-    margin: 0 10px; /* Espaçamento horizontal *entre* os labels */
+    margin: 0 12px;
     cursor: pointer;
-    display: inline-block; /* Faz com que os labels fiquem lado a lado */
-     white-space: nowrap; /*Impedir quebra de linha*/
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 0.95em;
 }
-.filter-options label input[type="checkbox"]{
- margin-right: 5px; /*espaço entre checkbox e label*/
+.filter-options label input[type="checkbox"] {
+    margin-right: 5px;
+    vertical-align: middle; /* Alinha checkbox com o texto */
 }
 
-
-/* Linha separadora */
 .filter-separator {
     border: none;
-    border-top: 1px solid #ddd; /* Linha fina e cinza claro */
-    margin: 10px 0;          /* Espaço acima e abaixo da linha */
-    width: 100%;              /* Ocupa toda a largura */
+    border-top: 1px solid #ddd;
+    margin: 15px 0;
+    width: 100%;
 }
 
-
-/* Estilos para a paginação */
+/* Paginação */
 .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 20px; /* Espaço entre a lista e a paginação */
+    margin-top: 25px;
+    padding-bottom: 10px; /* Espaço extra no final */
 }
 
-.pagination a {
-    padding: 8px 12px;
-    margin: 0 4px;
+.pagination a.page-link { /* Estilo específico para links de paginação */
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 0 5px;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #333;
     background-color: #fff;
-    transition: background-color 0.3s ease;
+    color: #555;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s, border-color 0.3s;
+    font-size: 0.9em;
 }
 
-.pagination a:hover {
-    background-color: #f0f0f0;
+.pagination a.page-link:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
 }
 
-.pagination a.active {
-    background-color: #f9a825; /* Cor do seu tema */
+.pagination a.page-link.active { /* Estilo da página ativa (se implementado) */
+    background-color: #f9a825;
     color: white;
     border-color: #f9a825;
+    cursor: default;
+}
+
+.pagination span { /* Estilo para o texto "Página X de Y" */
+     padding: 8px 10px;
+     color: #666;
+     font-size: 0.95em;
+}
+
+/* Estilos para a seção "Sem Interação" */
+.zero-interaction-section {
+    background-color: #fffaf2; /* Fundo creme muito claro */
+    border: 1px solid #ffecb3; /* Borda amarela clara */
+    margin-bottom: 25px;
+}
+
+.zero-interaction-section h2 {
+    color: #b56c00; /* Laranja/Marrom escuro */
+}
+
+.zero-interaction-item {
+    border-bottom: 1px dashed #ffe0b2; /* Linha tracejada amarela */
+}
+
+.zero-interaction-item:last-child {
+    border-bottom: none;
+}
+
+p.no-interaction-alert { /* Alerta específico para falta de interação */
+    color: #c76a00; /* Tom de laranja mais forte */
+    font-weight: bold;
+    margin-top: 8px !important;
+    font-size: 0.9em !important;
+}
+
+.zero-interaction-section hr.title-separator {
+    border: none;
+    border-top: 1px dotted #ffcc80; /* Linha pontilhada amarela */
+    margin: 10px auto;
+    width: 60%;
+}
+
+/* Tags de Status */
+.status-tag {
+    display: inline-block;
+    padding: 3px 10px; /* Ajuste padding */
+    border-radius: 12px; /* Mais arredondado */
+    font-size: 0.75em; /* Pouco menor */
+    margin-right: 10px;
+    color: white;
+    font-weight: bold;
+    line-height: 1.5; /* Ajusta altura da linha */
+    vertical-align: middle; /* Tenta alinhar melhor com o texto */
+    text-transform: uppercase; /* Caixa alta */
+}
+
+.status-ativo {
+    background-color: #4CAF50; /* Verde */
+}
+
+.status-arquivado {
+    background-color: #757575; /* Cinza */
+}
+
+.status-respondido {
+    background-color: #8BC34A; /* Verde mais claro */
+    color: #333; /* Texto escuro para contraste */
+}
+
+/* Container de Autenticação */
+.auth-status-container-report {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px; /* Mais padding */
+    border: 1px dashed #bdbdbd; /* Borda tracejada mais escura */
+    background-color: #f5f5f5; /* Fundo cinza claro */
+    border-radius: 5px; /* Bordas arredondadas */
+    max-width: 960px; /* Mesma largura dos containers */
+    width: 95%;
+}
+.auth-status-container-report p {
+    margin: 0 0 10px 0; /* Espaço abaixo do texto */
+    font-size: 1.1em;
+}
+.auth-status-container-report button {
+    /* Estilos dos botões definidos em styles.css devem ser aplicados */
+}
+
+
+/* Mensagem de erro */
+.error-message {
+    color: #D32F2F;
+    font-weight: bold;
+    text-align: center;
+    padding: 15px;
+    background-color: #FFCDD2;
+    border: 1px solid #E57373;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .report-container, .zero-interaction-section, .auth-status-container-report {
+        width: 98%;
+        padding: 15px;
+    }
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.5em; }
+    .report-item h3 { font-size: 1.1em; }
+    .filter-options label { margin: 0 8px; font-size: 0.9em;}
+    .pagination a.page-link { padding: 6px 10px; margin: 0 3px; font-size: 0.85em;}
+    .pagination span { font-size: 0.9em; }
+    .search-input { width: 90%; }
 }
