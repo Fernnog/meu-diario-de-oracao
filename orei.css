@@ -1,30 +1,30 @@
-/* orei.css - Estilos específicos e adicionados */
+/* orei.css - Estilos completos para a página de relatório */
 
 /* Estilos Gerais da Página */
 body {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: center; /* Centraliza containers principais */
     background-color: #f9f9f9;
     padding: 10px;
     margin: 0;
-    font-family: 'Playfair Display', serif;
+    font-family: 'Playfair Display', serif; /* Garante a fonte base */
     color: #333;
 }
 
 .report-container, .zero-interaction-section {
     padding: 20px;
-    max-width: 960px;
-    width: 95%;
+    max-width: 960px; /* Limita largura máxima */
+    width: 95%; /* Usa a maior parte da largura disponível */
     margin: 20px auto;
     background-color: #fff;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border: 1px solid #ddd;
+    border: 1px solid #ddd; /* Adiciona uma borda sutil */
 }
 
 h1, h2 {
-     font-family: 'Playfair Display', serif;
+     font-family: 'Playfair Display', serif; /* Garante a fonte nos títulos */
      text-align: center;
      color: #333;
 }
@@ -40,8 +40,8 @@ h2 {
 }
 
 .report-item {
-    border-bottom: 1px solid #eee;
-    padding: 15px 5px;
+    border-bottom: 1px solid #eee; /* Linha separadora mais suave */
+    padding: 15px 5px; /* Mais padding vertical */
     margin-bottom: 10px;
 }
 /* Adiciona uma cor de fundo sutil alternada para melhor legibilidade */
@@ -58,7 +58,7 @@ h2 {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 1.2em;
-    display: flex;
+    display: flex; /* Alinha status tag e título */
     align-items: center;
 }
 
@@ -67,9 +67,9 @@ h2 {
     font-size: 0.95em;
     color: #555;
 }
-.report-item p i {
+.report-item p i { /* Estilo para detalhes em itálico */
     color: #666;
-    display: block;
+    display: block; /* Quebra linha se for longo */
     margin-top: 5px;
 }
 
@@ -77,13 +77,13 @@ h2 {
 /* Filtros e Busca */
 .search-input {
     display: block;
-    margin: 0 auto 15px auto;
+    margin: 0 auto 15px auto; /* Centraliza e adiciona espaço abaixo */
     padding: 10px;
     width: 80%;
     max-width: 400px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    font-family: inherit;
+    font-family: inherit; /* Usa a fonte do body */
 }
 
 .filter-options {
@@ -100,7 +100,7 @@ h2 {
 }
 .filter-options label input[type="checkbox"] {
     margin-right: 5px;
-    vertical-align: middle;
+    vertical-align: middle; /* Alinha checkbox com o texto */
 }
 
 .filter-separator {
@@ -116,10 +116,10 @@ h2 {
     justify-content: center;
     align-items: center;
     margin-top: 25px;
-    padding-bottom: 10px;
+    padding-bottom: 10px; /* Espaço extra no final */
 }
 
-.pagination a.page-link {
+.pagination a.page-link { /* Estilo específico para links de paginação */
     display: inline-block;
     padding: 8px 14px;
     margin: 0 5px;
@@ -137,24 +137,31 @@ h2 {
     border-color: #ccc;
 }
 
-.pagination span {
+.pagination a.page-link.active { /* Estilo da página ativa (se implementado) */
+    background-color: #f9a825;
+    color: white;
+    border-color: #f9a825;
+    cursor: default;
+}
+
+.pagination span { /* Estilo para o texto "Página X de Y" */
      padding: 8px 10px;
      color: #666;
      font-size: 0.95em;
 }
 
-/* --- MODIFICADO --- Estilos para a seção "Sem Interação" */
+/* Estilos para a seção "Sem Interação" */
 .zero-interaction-section {
-    background-color: #fffaf2;
-    border: 1px solid #ffecb3;
+    background-color: #fffaf2; /* Fundo creme muito claro */
+    border: 1px solid #ffecb3; /* Borda amarela clara */
     margin-bottom: 25px;
 }
 
 .zero-interaction-section h2 {
-    color: #b56c00;
+    color: #b56c00; /* Laranja/Marrom escuro */
 }
 
-/* --- NOVO --- Estilo para a lista de nomes */
+/* Estilo para a lista de nomes */
 ul.zero-interaction-name-list {
     list-style: disc; /* Usa marcadores de lista padrão */
     padding-left: 30px; /* Adiciona indentação */
@@ -169,43 +176,73 @@ ul.zero-interaction-name-list li {
 
 .zero-interaction-section hr.title-separator {
     border: none;
-    border-top: 1px dotted #ffcc80;
+    border-top: 1px dotted #ffcc80; /* Linha pontilhada amarela */
     margin: 10px auto;
     width: 60%;
 }
 
-/* Tags de Status */
+p.no-interaction-alert { /* Alerta específico para falta de interação - Não usado na versão atual, mas mantido */
+    color: #c76a00; /* Tom de laranja mais forte */
+    font-weight: bold;
+    margin-top: 8px !important;
+    font-size: 0.9em !important;
+}
+
+
+/* Tags de Status com Cores Suavizadas */
 .status-tag {
     display: inline-block;
     padding: 3px 10px;
     border-radius: 12px;
     font-size: 0.75em;
     margin-right: 10px;
-    color: white;
+    color: white; /* Cor padrão do texto, será sobrescrita se necessário */
     font-weight: bold;
     line-height: 1.5;
     vertical-align: middle;
     text-transform: uppercase;
+    border: 1px solid transparent; /* Adiciona borda transparente para consistência */
 }
 
-.status-ativo { background-color: #4CAF50; }
-.status-arquivado { background-color: #757575; }
-.status-respondido { background-color: #8BC34A; color: #333; }
+.status-ativo {
+    background-color: #66BB6A; /* Verde um pouco mais suave */
+    border-color: #5aae60; /* Borda ligeiramente mais escura */
+    color: white;
+}
+
+.status-arquivado {
+    background-color: #BDBDBD; /* Cinza mais claro */
+    border-color: #aeaeae;
+    color: #424242; /* Texto cinza escuro */
+}
+
+.status-respondido {
+    background-color: #FFD54F; /* Âmbar/Dourado mais suave */
+    border-color: #FFC107; /* Borda âmbar */
+    color: #4E342E; /* Texto marrom escuro para contraste */
+}
 
 /* Container de Autenticação */
 .auth-status-container-report {
     text-align: center;
     margin-bottom: 20px;
-    padding: 15px;
-    border: 1px dashed #bdbdbd;
-    background-color: #f5f5f5;
-    border-radius: 5px;
-    max-width: 960px;
+    padding: 15px; /* Mais padding */
+    border: 1px dashed #bdbdbd; /* Borda tracejada mais escura */
+    background-color: #f5f5f5; /* Fundo cinza claro */
+    border-radius: 5px; /* Bordas arredondadas */
+    max-width: 960px; /* Mesma largura dos containers */
     width: 95%;
 }
-.auth-status-container-report p { margin: 0 0 10px 0; font-size: 1.1em; }
+.auth-status-container-report p {
+    margin: 0 0 10px 0; /* Espaço abaixo do texto */
+    font-size: 1.1em;
+}
+.auth-status-container-report button {
+    /* Estilos dos botões (btn, auth-btn) definidos em styles.css são aplicados */
+}
 
-/* --- NOVO --- Estilos para Estatísticas de Cliques */
+
+/* Estilos para Estatísticas de Cliques com Cores Suavizadas */
 .click-stats {
     margin-top: 12px;
     padding-top: 10px;
@@ -215,7 +252,7 @@ ul.zero-interaction-name-list li {
     font-weight: bold;
     margin-bottom: 5px;
     font-size: 0.9em !important; /* Garante tamanho menor */
-    color: #444 !important;
+    color: #6D4C41; /* Tom marrom para o título */
 }
 .click-stats ul {
     list-style: none;
@@ -224,12 +261,12 @@ ul.zero-interaction-name-list li {
 }
 .click-stats ul li {
     font-size: 0.9em;
-    color: #555;
+    color: #757575; /* Cinza mais suave para o texto */
     margin-bottom: 3px;
 }
 .click-stats ul li span {
     font-weight: bold;
-    color: #222; /* Destaca o número */
+    color: #5D4037; /* Marrom um pouco mais escuro para o número */
     min-width: 20px; /* Garante espaço mínimo para o número */
     display: inline-block; /* Para aplicar min-width */
 }
@@ -249,7 +286,10 @@ ul.zero-interaction-name-list li {
 
 /* Responsividade */
 @media (max-width: 768px) {
-    .report-container, .zero-interaction-section, .auth-status-container-report { width: 98%; padding: 15px; }
+    .report-container, .zero-interaction-section, .auth-status-container-report {
+        width: 98%;
+        padding: 15px;
+    }
     h1 { font-size: 2em; }
     h2 { font-size: 1.5em; }
     .report-item h3 { font-size: 1.1em; }
