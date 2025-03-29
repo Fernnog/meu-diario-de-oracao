@@ -20,15 +20,39 @@
     </div>
 
     <hr class="menu-separator">
-    <div class="main-menu" id="mainMenu">
+    <div class="main-menu" id="mainMenu" style="display: none;"> <!-- Oculto inicialmente -->
         <button id="backToMainButton" class="btn">Página Inicial</button>
         <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
         <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
         <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
     </div>
-    <hr class="menu-separator dark">
+    <hr class="menu-separator dark" id="mainMenuSeparator" style="display: none;"> <!-- Oculto inicialmente -->
 
-    <div class="report-container">
+    <!-- Container de Autenticação Simplificado -->
+    <div class="auth-status-container-report">
+        <p id="authStatusReport" class="auth-status">Verificando autenticação...</p>
+        <button id="btnLogoutReport" class="btn auth-btn" style="display:none;">Sair</button>
+        <!-- Botão de Login Google Removido -->
+    </div>
+    <!-- Fim Container de Autenticação Simplificado -->
+
+    <!-- NOVA SEÇÃO: Alvos Sem Interação no Mês -->
+    <div id="zeroInteractionSection" class="report-container zero-interaction-section" style="display: none;">
+         <h2>Alvos Sem Interação Este Mês</h2>
+         <hr class="title-separator"> <!-- Separador opcional -->
+         <div id="zeroInteractionList" class="report-list">
+             <!-- Lista de alvos sem interação será renderizada aqui -->
+             <p>Carregando...</p>
+         </div>
+         <!-- Paginação para esta seção pode ser adicionada se necessário -->
+         <!-- <div id="pagination-zeroInteraction" class="pagination"></div> -->
+     </div>
+    <!-- FIM NOVA SEÇÃO -->
+
+
+    <!-- Seção Principal do Relatório (Existente) -->
+    <div class="report-container" id="mainReportContainer" style="display: none;">
+        <h2>Detalhes dos Alvos</h2> <!-- Título ajustado -->
         <input type="text" id="searchReport" placeholder="Pesquisar alvos..." class="search-input">
         <div class="filter-options">
             <label><input type="checkbox" id="filterAtivo" checked>Ativo</label>
@@ -37,20 +61,14 @@
         </div>
         <hr class="filter-separator">  <!-- LINHA SEPARADORA -->
         <div id="reportList" class="report-list">
-            <!-- Lista de relatórios será renderizada aqui por JavaScript -->
+            <!-- Lista principal de relatórios/alvos será renderizada aqui -->
+            <p>Carregando...</p>
         </div>
         <div id="pagination" class="pagination">
             <!-- A paginação será renderizada aqui -->
         </div>
     </div>
-
-    <div class="auth-status-container-report">
-        <p id="authStatusReport" class="auth-status">Nenhum usuário autenticado</p>
-        <button id="btnLogoutReport" class="btn auth-btn" style="display:none;">Sair</button>
-    </div>
-    <div class="auth-buttons-report">
-        <button id="btnGoogleLoginReport" class="btn auth-btn">Entrar com o Google</button>
-    </div>
+    <!-- Fim Seção Principal do Relatório -->
 
     <script type="module" src="orei.js"></script>
 </body>
