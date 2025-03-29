@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
-import { getAuth, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getAuth, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, addDoc, increment, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // Firebase configuration (as before)
@@ -33,7 +33,7 @@ let currentSearchTermArchived = '';
 let currentSearchTermResolved = '';
 let showDeadlineOnly = false;
 let perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
-const timezoneOffsetHours = 4; // Note: This might need adjustment based on server/client timezones (REMOVED - No longer used directly for date logic)
+// const timezoneOffsetHours = 4; // Note: This might need adjustment based on server/client timezones (REMOVED - No longer used directly for date logic)
 
 // ==== FUNÇÕES UTILITÁRIAS ====
 
@@ -229,36 +229,38 @@ function rehydrateTargets(targets) {
 // ==== FIM FUNÇÕES UTILITÁRIAS ====
 
 
-// ==== AUTENTICAÇÃO (Sem alterações significativas, já parece funcional) ====
+// ==== AUTENTICAÇÃO ====
 function updateAuthUI(user) {
     const authStatus = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
-    const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    // REMOVIDO: const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
     const authStatusContainer = document.querySelector('.auth-status-container');
 
     if (user) {
-        authStatusContainer.style.display = 'flex';
+        authStatusContainer.style.display = 'flex'; // Mantém flex para alinhar status e logout
         btnLogout.style.display = 'inline-block';
-        btnGoogleLogin.style.display = 'none';
+        // REMOVIDO: btnGoogleLogin.style.display = 'none';
         emailPasswordAuthForm.style.display = 'none';
 
-        if (user.providerData[0].providerId === 'google.com') {
-            authStatus.textContent = `Usuário autenticado: ${user.email} (via Google)`;
-        } else if (user.providerData[0].providerId === 'password') {
+        // Mantém a lógica de exibição do provedor (sem Google)
+        if (user.providerData[0]?.providerId === 'password') {
             authStatus.textContent = `Usuário autenticado: ${user.email} (via E-mail/Senha)`;
         } else {
+            // Caso genérico ou outro provedor futuro
             authStatus.textContent = `Usuário autenticado: ${user.email}`;
         }
     } else {
-        authStatusContainer.style.display = 'block';
+        authStatusContainer.style.display = 'block'; // Volta para block quando deslogado
         btnLogout.style.display = 'none';
-        btnGoogleLogin.style.display = 'inline-block';
+        // REMOVIDO: btnGoogleLogin.style.display = 'inline-block';
         emailPasswordAuthForm.style.display = 'block';
         authStatus.textContent = "Nenhum usuário autenticado";
     }
 }
 
+// REMOVIDA: Função signInWithGoogle
+/*
 async function signInWithGoogle() {
     console.log("signInWithGoogle function CALLED!");
     const provider = new GoogleAuthProvider();
@@ -271,6 +273,7 @@ async function signInWithGoogle() {
         alert("Erro ao entrar com o Google: " + error.message);
     }
 }
+*/
 
 async function signUpWithEmailPassword() {
     const email = document.getElementById('email').value;
@@ -325,7 +328,7 @@ async function resetPassword() {
 
 // --- Carregamento de Dados ---
 async function loadData(user) {
-    updateAuthUI(user);
+    updateAuthUI(user); // Chama a UI atualizada sem referência ao botão Google
     const uid = user ? user.uid : null;
 
     if (uid) {
@@ -1818,7 +1821,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('showExpiredOnlyMain').addEventListener('change', handleExpiredOnlyMainChange);
 
     // Buttons
-    document.getElementById('btnGoogleLogin')?.addEventListener('click', signInWithGoogle);
+    // REMOVIDO: Event listener para btnGoogleLogin
+    // document.getElementById('btnGoogleLogin')?.addEventListener('click', signInWithGoogle);
     document.getElementById('btnEmailSignUp')?.addEventListener('click', signUpWithEmailPassword);
     document.getElementById('btnEmailSignIn')?.addEventListener('click', signInWithEmailPassword);
     document.getElementById('btnForgotPassword')?.addEventListener('click', resetPassword);
