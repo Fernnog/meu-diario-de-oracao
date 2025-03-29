@@ -1650,7 +1650,19 @@ function resetWeeklyChart() {
 
 // *** FUNÇÃO MODIFICADA PARA DOWNLOAD ***
 // Gera o HTML e dispara o download como arquivo
+// *** FUNÇÃO MODIFICADA PARA DOWNLOAD E VERSÍCULO ALEATÓRIO ***
+// Gera o HTML e dispara o download como arquivo
 function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
+    // --- 1. SELECIONAR VERSÍCULO ALEATÓRIO ---
+    let randomVerse = ''; // Inicializa vazio
+    if (typeof verses !== 'undefined' && Array.isArray(verses) && verses.length > 0) {
+        const randomIndex = Math.floor(Math.random() * verses.length);
+        randomVerse = verses[randomIndex];
+    } else {
+        console.warn("Array 'verses' não encontrada ou vazia. Não foi possível adicionar versículo.");
+    }
+    // --- FIM DA SELEÇÃO ---
+
     let viewHTML = `
         <!DOCTYPE html>
         <html lang="pt-BR">
@@ -1660,6 +1672,7 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
             <title>Alvos de Oração - Visualização Geral</title>
             <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap">
             <style>
+                /* Estilos básicos para a visualização */
                 body { font-family: 'Playfair Display', serif; margin: 20px; background-color: #f9f9f9; color: #333; }
                 h1, h2 { text-align: center; color: #333; }
                 .target { border: 1px solid #ddd; border-radius: 5px; background-color: #fff; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: left; }
@@ -1671,16 +1684,36 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
                 .observation-item { font-size: 0.9em; color: #555; margin-bottom: 5px; padding-left: 10px; }
                 .observation-item strong { color: #333; }
                 hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; }
+
+                /* --- 3. ESTILO OPCIONAL PARA O VERSÍCULO --- */
+                .verse-container {
+                    text-align: center;
+                    font-style: italic;
+                    color: #555;
+                    margin-top: 15px;
+                    margin-bottom: 25px; /* Aumenta espaço antes da lista */
+                    padding: 10px;
+                    border-top: 1px dashed #ccc;
+                    border-bottom: 1px dashed #ccc;
+                }
+                /* --- FIM DO ESTILO --- */
+
                 @media print { /* Simple print styles */
                   body { background-color: #fff; }
                   .target { box-shadow: none; border: 1px solid #ccc; }
+                  .verse-container { border: none; } /* Remove bordas ao imprimir */
                 }
             </style>
         </head>
         <body>
             <h1>Meus Alvos de Oração - Visualização Geral</h1>
             <h2>Gerado em: ${formatDateForDisplay(new Date())}</h2>
-            <hr>
+
+            <!-- --- 2. INSERIR O VERSÍCULO NO HTML --- -->
+            ${randomVerse ? `<div class="verse-container">${randomVerse}</div>` : ''}
+            <!-- --- FIM DA INSERÇÃO --- -->
+
+            <hr> {/* Mantém a linha antes dos alvos */}
     `;
 
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
@@ -1698,7 +1731,6 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
         </body>
         </html>
     `;
-
     // Lógica para Download
     try {
         const filenameDate = formatDateForFilename(new Date()); // Usa a nova função DD-MM-AAAA
