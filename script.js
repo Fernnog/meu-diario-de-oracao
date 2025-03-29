@@ -1713,7 +1713,7 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
             ${randomVerse ? `<div class="verse-container">${randomVerse}</div>` : ''}
             <!-- --- FIM DA INSERÇÃO --- -->
 
-            <hr> {/* Mantém a linha antes dos alvos */}
+            <hr> 
     `;
 
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
