@@ -1983,69 +1983,53 @@ function resetPerseveranceUI() {
 // --- Função updateWeeklyChart REFINADA com LOGS ---
 function updateWeeklyChart() {
     console.log('[updateWeeklyChart] Starting update. Current perseveranceData:', JSON.stringify(perseveranceData));
-    const today = new Date(); // Current local date
-    let lastInteractionDatePartMs = null;
+    const today = new Date();
+    const currentDayOfWeek = today.getDay(); // 0=Dom, 6=Sáb
 
-    // Get the date part (at midnight local time) of the last interaction
+    // Determina o início da semana atual (domingo)
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - currentDayOfWeek);
+    const startOfWeekMs = startOfWeek.getTime();
+
+    // Converte lastInteractionDate para meia-noite local
+    let lastInteractionDateMs = null;
     if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
         const li = perseveranceData.lastInteractionDate;
-        lastInteractionDatePartMs = new Date(li.getFullYear(), li.getMonth(), li.getDate()).getTime();
-        console.log(`[updateWeeklyChart] Last Interaction Date Part MS: ${lastInteractionDatePartMs} (${new Date(lastInteractionDatePartMs).toISOString()})`);
-    } else {
-        console.log('[updateWeeklyChart] No valid last interaction date found.');
+        lastInteractionDateMs = new Date(li.getFullYear(), li.getMonth(), li.getDate()).getTime();
     }
 
-    const currentDayOfWeek = today.getDay(); // 0=Sun, 6=Sat
-    const todayDatePartMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime(); // Midnight today
     const consecutiveDays = perseveranceData.consecutiveDays || 0;
+    console.log(`[updateWeeklyChart] Start of Week: ${startOfWeek.toISOString().split('T')[0]}, Last Interaction MS: ${lastInteractionDateMs}, Consecutive: ${consecutiveDays}`);
 
-    console.log(`[updateWeeklyChart] Today: ${today.toISOString()}, Today Date Part MS: ${todayDatePartMs}, DayOfWeek: ${currentDayOfWeek}, Consecutive: ${consecutiveDays}`);
+    // Calcula o início da sequência consecutiva
+    const streakStartMs = lastInteractionDateMs && consecutiveDays > 0
+        ? lastInteractionDateMs - ((consecutiveDays - 1) * 24 * 60 * 60 * 1000)
+        : null;
 
-    for (let i = 0; i < 7; i++) { // Loop through day ticks (day-0 to day-6)
-         const dayTick = document.getElementById(`day-${i}`);
-         if (dayTick) {
-             // Calculate the date for this slot in the chart (local time)
-             const dayDifference = i - currentDayOfWeek;
-             const chartDay = new Date(today);
-             chartDay.setDate(today.getDate() + dayDifference);
-             const chartDayDatePartMs = new Date(chartDay.getFullYear(), chartDay.getMonth(), chartDay.getDate()).getTime();
+    for (let i = 0; i < 7; i++) {
+        const dayTick = document.getElementById(`day-${i}`);
+        if (dayTick) {
+            // Calcula o timestamp do dia i da semana atual
+            const chartDayMs = startOfWeekMs + (i * 24 * 60 * 60 * 1000);
+            const chartDay = new Date(chartDayMs);
 
-             let shouldBeActive = false;
+            let shouldBeActive = false;
+            if (streakStartMs !== null && lastInteractionDateMs !== null) {
+                // Verifica se o dia está dentro da sequência (inclusive)
+                shouldBeActive = chartDayMs >= streakStartMs && chartDayMs <= lastInteractionDateMs;
+            }
 
-             // Check if the last interaction is valid and there's a streak
-             if (lastInteractionDatePartMs !== null && consecutiveDays > 0) {
-                 // Calculate how many days ago the chart slot's date was (relative to today's midnight)
-                 const daysAgoChartSlot = Math.round((todayDatePartMs - chartDayDatePartMs) / (1000 * 60 * 60 * 24));
+            console.log(`[updateWeeklyChart] Day ${i} (${chartDay.toISOString().split('T')[0]}): chartMs=${chartDayMs}, streakStartMs=${streakStartMs}, lastInteractionMs=${lastInteractionDateMs}, Active=${shouldBeActive}`);
 
-                 // Calculate how many days ago the last interaction date was (relative to today's midnight)
-                 const daysAgoLastInteraction = Math.round((todayDatePartMs - lastInteractionDatePartMs) / (1000 * 60 * 60 * 24));
-
-                 // The chart slot should be active if its date falls within the consecutive streak ending on the last interaction day.
-                 // The streak includes days from 'daysAgoLastInteraction' up to 'daysAgoLastInteraction + consecutiveDays - 1'.
-                 // So, daysAgoChartSlot must be >= daysAgoLastInteraction AND < daysAgoLastInteraction + consecutiveDays.
-                 if (daysAgoChartSlot >= daysAgoLastInteraction && daysAgoChartSlot < (daysAgoLastInteraction + consecutiveDays)) {
-                     shouldBeActive = true;
-                 }
-                 // Log calculation details for this specific tick
-                 console.log(`[updateWeeklyChart] Slot ${i} (${chartDay.toISOString().split('T')[0]}): chartMs=${chartDayDatePartMs}, daysAgoSlot=${daysAgoChartSlot}, daysAgoLastInt=${daysAgoLastInteraction}, consecutive=${consecutiveDays} => ShouldBeActive=${shouldBeActive}`);
-
-             } else {
-                 // Log if no streak or invalid date
-                  console.log(`[updateWeeklyChart] Slot ${i} (${chartDay.toISOString().split('T')[0]}): No valid streak or last interaction date. ShouldBeActive=false`);
-             }
-
-
-             // Update the class for styling
-             if (shouldBeActive) {
-                 dayTick.classList.add('active');
-             } else {
-                 dayTick.classList.remove('active');
-             }
-         } else {
-             console.warn(`[updateWeeklyChart] Day tick element day-${i} not found.`);
-         }
+            if (shouldBeActive) {
+                dayTick.classList.add('active');
+            } else {
+                dayTick.classList.remove('active');
+            }
+        } else {
+            console.warn(`[updateWeeklyChart] Day tick day-${i} not found.`);
+        }
     }
-    console.log('[updateWeeklyChart] Finished update.');
 }
 
 
