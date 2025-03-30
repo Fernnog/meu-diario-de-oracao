@@ -1710,29 +1710,51 @@ function addPrayButtonFunctionality(dailyDiv, targetId, isManual = false) {
 
 
 async function updateClickCounts(userId, targetId) {
-     const clickCountsRef = doc(db, "prayerClickCounts", targetId);
-     const now = new Date();
-     const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-     const year = now.getFullYear().toString();
+    const clickCountsRef = doc(db, "prayerClickCounts", targetId);
+    const now = new Date();
+    // Gera a chave ANO-MES (ex: "2023-10") para o mapa mensal
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // Gera a chave ANO (ex: "2023") para o mapa anual
+    const year = now.getFullYear().toString();
 
-     try {
-         // Use setDoc with merge:true for upsert behavior
-         await setDoc(clickCountsRef, {
-             targetId: targetId, // Store target ID for reference
-             userId: userId,     // Store user ID for reference/rules
-             totalClicks: increment(1),
-             [`monthlyClicks.${yearMonth}`]: increment(1),
-             [`yearlyClicks.${year}`]: increment(1),
-             lastClickTimestamp: Timestamp.fromDate(now) // Store last click time
-         }, { merge: true }); // merge:true is crucial for incrementing existing fields safely
-         console.log(`[updateClickCounts] Click count updated for target ${targetId}.`);
-     } catch (error) {
-         console.error(`[updateClickCounts] Error updating click count for ${targetId}:`, error);
-         // Non-critical error, could log to an analytics service
-     }
- }
+    try {
+        // 1. Verifica se o documento de contagem para este alvo já existe
+        const docSnap = await getDoc(clickCountsRef);
 
- // *** NOVA FUNÇÃO: Busca alvos ativos para adição manual ***
+        if (docSnap.exists()) {
+            // 2. Se existe, usa updateDoc com notação de ponto para incrementar
+            //    os campos corretamente dentro dos mapas existentes.
+            console.log(`[updateClickCounts] Document exists for ${targetId}. Updating with dot notation.`);
+            await updateDoc(clickCountsRef, {
+                totalClicks: increment(1),
+                [`monthlyClicks.${yearMonth}`]: increment(1), // Notação de ponto para incrementar chave no mapa
+                [`yearlyClicks.${year}`]: increment(1),       // Notação de ponto para incrementar chave no mapa
+                lastClickTimestamp: Timestamp.fromDate(now), // Atualiza sempre
+                userId: userId // Garante que o userId está atualizado
+            });
+            console.log(`[updateClickCounts] Updated counts for ${targetId}.`);
+
+        } else {
+            // 3. Se não existe, usa setDoc para criar o documento
+            //    inicializando os mapas com o valor 1 para o mês/ano atual.
+            console.log(`[updateClickCounts] Document NOT found for ${targetId}. Creating with initial maps.`);
+            await setDoc(clickCountsRef, {
+                targetId: targetId,
+                userId: userId,
+                totalClicks: 1, // Valor inicial
+                monthlyClicks: { [yearMonth]: 1 }, // Cria o mapa com a chave e valor inicial
+                yearlyClicks: { [year]: 1 },       // Cria o mapa com a chave e valor inicial
+                lastClickTimestamp: Timestamp.fromDate(now)
+            });
+            // Note: Não precisamos de { merge: true } aqui porque estamos criando um novo documento.
+            console.log(`[updateClickCounts] Created new counts document for ${targetId}.`);
+        }
+    } catch (error) {
+        console.error(`[updateClickCounts] Error updating click count for ${targetId}:`, error);
+        // Não fatal, apenas loga o erro.
+    }
+}
+
 function searchActiveTargetsForManualAdd(searchTerm) {
     const resultsContainer = document.getElementById('manualTargetResults');
     if (!resultsContainer) return;
