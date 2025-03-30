@@ -110,6 +110,15 @@ function formatDateForDisplay(dateInput) {
     return formattedDate;
 }
 
+// ADICIONAR: Helper para obter o início da semana (Domingo)
+function getStartOfWeek(date) {
+    const dt = new Date(date); // Clona a data
+    const dayOfWeek = dt.getDay(); // 0=Domingo, 6=Sábado
+    dt.setDate(dt.getDate() - dayOfWeek); // Retrocede para Domingo
+    dt.setHours(0, 0, 0, 0); // Zera a hora para comparação de datas
+    return dt;
+}
+
 
 function formatDateForFilename(date) {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
