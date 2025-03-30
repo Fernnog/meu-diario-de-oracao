@@ -306,7 +306,10 @@ function applyFiltersAndRenderMainReport() {
         if (searchTerm) {
             const titleMatch = target.title?.toLowerCase().includes(searchTerm);
             const detailsMatch = target.details?.toLowerCase().includes(searchTerm);
-            if (!titleMatch && !detailsMatch) return false;
+            const observationMatch = Array.isArray(target.observations) &&
+                 target.observations.some(obs => obs && obs.text && obs.text.toLowerCase().includes(searchTerm));
+            // Modificado para incluir busca em observações
+            if (!titleMatch && !detailsMatch && !observationMatch) return false;
         }
         return true;
     });
@@ -338,7 +341,9 @@ function renderMainReportList() {
 
     itemsToDisplay.forEach(target => {
         const itemDiv = document.createElement('div');
-        itemDiv.classList.add('report-item', `status-${target.status}`); // Adiciona classe de status
+        // ******** INÍCIO DA CORREÇÃO VISUAL ********
+        itemDiv.classList.add('report-item'); // NÃO adiciona mais a classe de status aqui
+        // ******** FIM DA CORREÇÃO VISUAL ********
         itemDiv.dataset.targetId = target.id; // Guarda o ID para buscar cliques
 
         let statusLabel = '';
@@ -358,17 +363,28 @@ function renderMainReportList() {
              dateToShow = target.date; dateLabel = `Criado em`;
          }
 
+        // Renderiza observações (pode precisar da função renderObservations de script.js se for complexo)
+        let observationsHTML = '';
+        if (Array.isArray(target.observations) && target.observations.length > 0) {
+             // Simplificado: Mostra a última observação ou uma mensagem
+             const lastObservation = target.observations.sort((a,b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0))[0];
+             if (lastObservation && lastObservation.text) {
+                  observationsHTML = `<p><i>Última Obs: ${lastObservation.text.substring(0, 100)}${lastObservation.text.length > 100 ? '...' : ''}</i></p>`;
+             }
+        }
+
         itemDiv.innerHTML = `
             <h3>${statusLabel} ${target.title || 'Sem Título'}</h3>
             <p>${dateLabel}: ${formatDateForDisplay(dateToShow)} (${timeElapsed(target.date)} desde criação)</p>
             ${target.details ? `<p><i>${target.details.substring(0, 150)}${target.details.length > 150 ? '...' : ''}</i></p>` : ''}
+            ${observationsHTML} {/* Inclui o HTML das observações simplificado */}
             <div class="click-stats">
                 <p>Perseverança (Cliques 'Orei!'):</p>
                 <ul>
                     <li>Total: <span id="clicks-total-${target.id}">...</span></li>
                     <li>Este Mês: <span id="clicks-month-${target.id}">...</span></li>
                     <li>Este Ano: <span id="clicks-year-${target.id}">...</span></li>
-                    <!-- <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> -->
+                    {/* <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> */}
                 </ul>
             </div>
         `;
@@ -402,8 +418,8 @@ async function fetchAndDisplayClickCount(targetId, itemDiv) {
             const currentYear = now.getFullYear().toString();
 
             totalSpan.textContent = data.totalClicks || 0;
-            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0;
-            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;
+            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0; // Acesso ao mapa aninhado
+            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;     // Acesso ao mapa aninhado
             // Para data da última oração, precisaríamos armazenar um timestamp no `prayerClickCounts`
             // lastSpan.textContent = data.lastClickTimestamp ? formatDateForDisplay(data.lastClickTimestamp) : 'Nenhuma';
 
