@@ -1927,45 +1927,123 @@ async function confirmPerseverance() {
      // Store previous day count for logging
      const previousConsecutiveDays = perseveranceData.consecutiveDays || 0;
 
-     // Update perseverance data
-     perseveranceData.consecutiveDays = isConsecutive ? previousConsecutiveDays + 1 : 1;
-     perseveranceData.lastInteractionDate = today; // Store the full timestamp of today's confirmation
-     perseveranceData.recordDays = perseveranceData.recordDays || 0;
-     if (perseveranceData.consecutiveDays > perseveranceData.recordDays) {
-         perseveranceData.recordDays = perseveranceData.consecutiveDays;
-     }
-      console.log('[confirmPerseverance] Updated perseveranceData:', JSON.stringify(perseveranceData));
+// ==== Perseverança ====
 
-     // Save to Firestore and update UI
-     try {
-        await updatePerseveranceFirestore(userId, perseveranceData);
-        console.log('[confirmPerseverance] Firestore updated. Now updating UI.');
-        updatePerseveranceUI(); // Update progress bar and weekly chart
-         alert(`Perseverança confirmada! Dias consecutivos: ${perseveranceData.consecutiveDays}. Recorde: ${perseveranceData.recordDays} dias.`);
-     } catch (error) {
-          console.error("[confirmPerseverance] Error updating Firestore:", error);
-          alert("Erro ao salvar dados de perseverança.");
-          // Consider how to handle save failure - maybe revert local state? For now, local state remains updated.
-     }
+async function loadPerseveranceData(userId) {
+    console.log(`[loadPerseveranceData] Loading for user ${userId}`);
+    const perseveranceDocRef = doc(db, "perseveranceData", userId);
+    try {
+        const docSnap = await getDoc(perseveranceDocRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            // Rehydrate data carefully
+            perseveranceData.consecutiveDays = Number(data.consecutiveDays) || 0;
+            perseveranceData.recordDays = Number(data.recordDays) || 0;
+            perseveranceData.lastInteractionDate = data.lastInteractionDate instanceof Timestamp
+                ? data.lastInteractionDate.toDate() // Convert Timestamp to Date
+                : null;
+            // *** NOVO: Carregar e validar o log de confirmação ***
+            perseveranceData.confirmationLog = Array.isArray(data.confirmationLog)
+                ? data.confirmationLog.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) // Garante que são strings de data válidas
+                : [];
+            console.log('[loadPerseveranceData] Loaded data:', JSON.stringify(perseveranceData));
+
+        } else {
+            console.log("[loadPerseveranceData] No perseverance data found, initializing.");
+            // Inicializa com log vazio
+            perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0, confirmationLog: [] };
+            // Optionally save initial data to Firestore here if desired
+            // await updatePerseveranceFirestore(userId, perseveranceData);
+        }
+        updatePerseveranceUI(); // Atualiza a barra de progresso E o quadro semanal
+    } catch (error) {
+        console.error("[loadPerseveranceData] Error loading perseverance data:", error);
+        // Reset local data on error
+        perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0, confirmationLog: [] };
+        updatePerseveranceUI(); // Update UI with reset data
+    }
 }
 
+async function confirmPerseverance() {
+    const user = auth.currentUser;
+    if (!user) { alert("Erro: Usuário não autenticado."); return; }
+    const userId = user.uid;
+
+    const today = new Date();
+    const todayStr = formatDateToISO(today); // Formato YYYY-MM-DD
+    const todayDatePart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // *** MODIFICADO: Verifica se a data de hoje JÁ ESTÁ no log ***
+    if (perseveranceData.confirmationLog.includes(todayStr)) {
+        console.log('[confirmPerseverance] Already confirmed today.');
+        alert(`Perseverança já confirmada para hoje (${formatDateForDisplay(today)})! Dias consecutivos: ${perseveranceData.consecutiveDays}. Recorde: ${perseveranceData.recordDays} dias.`);
+        return; // Already confirmed today
+    }
+
+    // Lógica para dias consecutivos (baseada em lastInteractionDate) - MANTÉM IGUAL
+    let lastInteractionDatePart = null;
+    if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
+        const li = perseveranceData.lastInteractionDate;
+        lastInteractionDatePart = new Date(li.getFullYear(), li.getMonth(), li.getDate());
+    }
+    let isConsecutive = false;
+    if (lastInteractionDatePart) {
+        const expectedYesterdayDatePart = new Date(todayDatePart.getTime() - 24 * 60 * 60 * 1000);
+        if (lastInteractionDatePart.getTime() === expectedYesterdayDatePart.getTime()) {
+            isConsecutive = true;
+        }
+    }
+    console.log(`[confirmPerseverance] Is Consecutive: ${isConsecutive}`);
+    const previousConsecutiveDays = perseveranceData.consecutiveDays || 0;
+
+    // Atualiza dados de perseverança (consecutivos, recorde, última interação)
+    perseveranceData.consecutiveDays = isConsecutive ? previousConsecutiveDays + 1 : 1;
+    perseveranceData.lastInteractionDate = today; // Store the full timestamp of today's confirmation
+    perseveranceData.recordDays = Math.max(perseveranceData.recordDays || 0, perseveranceData.consecutiveDays);
+
+    // *** NOVO: Atualiza o log de confirmação ***
+    // Adiciona a data de hoje ao log
+    if (!perseveranceData.confirmationLog.includes(todayStr)) { // Dupla verificação
+         perseveranceData.confirmationLog.push(todayStr);
+    }
+    // Mantém apenas as últimas N datas (ex: 14 dias) - opcional mas recomendado
+    const logLimit = 14;
+    if (perseveranceData.confirmationLog.length > logLimit) {
+        perseveranceData.confirmationLog = perseveranceData.confirmationLog.slice(-logLimit); // Mantém os últimos 14
+    }
+    // Ordena o log (opcional, mas pode ajudar na depuração)
+    perseveranceData.confirmationLog.sort();
+
+    console.log('[confirmPerseverance] Updated perseveranceData:', JSON.stringify(perseveranceData));
+
+    // Salva no Firestore e atualiza UI
+    try {
+        await updatePerseveranceFirestore(userId, perseveranceData); // Passa o objeto completo
+        console.log('[confirmPerseverance] Firestore updated. Now updating UI.');
+        updatePerseveranceUI(); // Atualiza barra E quadro semanal
+        alert(`Perseverança confirmada! Dias consecutivos: ${perseveranceData.consecutiveDays}. Recorde: ${perseveranceData.recordDays} dias.`);
+    } catch (error) {
+        console.error("[confirmPerseverance] Error updating Firestore:", error);
+        alert("Erro ao salvar dados de perseverança.");
+    }
+}
 
 async function updatePerseveranceFirestore(userId, data) {
     const perseveranceDocRef = doc(db, "perseveranceData", userId);
-    // Prepare data for Firestore, converting Date back to Timestamp
-     const dataToSave = {
-         consecutiveDays: data.consecutiveDays || 0,
-         lastInteractionDate: data.lastInteractionDate instanceof Date ? Timestamp.fromDate(data.lastInteractionDate) : null,
-         recordDays: data.recordDays || 0
-     };
-    await setDoc(perseveranceDocRef, dataToSave, { merge: true }); // merge:true prevents overwriting other potential fields
-     console.log("[updatePerseveranceFirestore] Perseverance data saved for", userId);
+    // Prepara dados para Firestore, incluindo o log
+    const dataToSave = {
+        consecutiveDays: data.consecutiveDays || 0,
+        lastInteractionDate: data.lastInteractionDate instanceof Date ? Timestamp.fromDate(data.lastInteractionDate) : null,
+        recordDays: data.recordDays || 0,
+        confirmationLog: Array.isArray(data.confirmationLog) ? data.confirmationLog : [] // Garante que é um array
+    };
+    await setDoc(perseveranceDocRef, dataToSave, { merge: true });
+    console.log("[updatePerseveranceFirestore] Perseverance data saved for", userId);
 }
 
-
 function updatePerseveranceUI() {
-     console.log('[updatePerseveranceUI] Updating progress bar and weekly chart.'); // Log entry
-     const consecutiveDays = perseveranceData.consecutiveDays || 0;
+    console.log('[updatePerseveranceUI] Updating progress bar and weekly chart.');
+    const consecutiveDays = perseveranceData.consecutiveDays || 0;
     const targetDays = 30;
     const percentage = Math.min(Math.max(0, (consecutiveDays / targetDays) * 100), 100);
     const progressBar = document.getElementById('perseveranceProgressBar');
@@ -1973,13 +2051,54 @@ function updatePerseveranceUI() {
 
     if (progressBar && percentageDisplay) {
         progressBar.style.width = `${percentage}%`;
-        percentageDisplay.textContent = `${consecutiveDays} dia${consecutiveDays !== 1 ? 's' : ''}`; // Show exact days
+        percentageDisplay.textContent = `${consecutiveDays} dia${consecutiveDays !== 1 ? 's' : ''}`;
     } else {
         console.warn("Perseverance UI elements (bar/percentage) not found.");
     }
-    updateWeeklyChart(); // Update the visual week chart based on new data
+    // *** Chama a NOVA função do quadro semanal ***
+    updateWeeklyChartBasedOnLog();
 }
 
+// *** NOVA FUNÇÃO para atualizar o quadro baseado no LOG ***
+function updateWeeklyChartBasedOnLog() {
+    console.log('[updateWeeklyChartBasedOnLog] Updating based on confirmation log:', perseveranceData.confirmationLog);
+    const today = new Date();
+    const startOfWeek = getStartOfWeek(today); // Obtém o Domingo da semana atual
+
+    const currentWeekConfirmationDates = perseveranceData.confirmationLog || [];
+
+    for (let i = 0; i < 7; i++) { // 0=Domingo, 1=Segunda, ..., 6=Sábado
+        const dayTick = document.getElementById(`day-${i}`);
+        if (dayTick) {
+            // Calcula a data para o dia 'i' da semana atual
+            const chartDay = new Date(startOfWeek);
+            chartDay.setDate(startOfWeek.getDate() + i);
+            const chartDayStr = formatDateToISO(chartDay); // Formato YYYY-MM-DD
+
+            // Verifica se a data do dia 'i' está no log de confirmações
+            if (currentWeekConfirmationDates.includes(chartDayStr)) {
+                dayTick.classList.add('active');
+                 // console.log(`[updateWeeklyChartBasedOnLog] Day ${i} (${chartDayStr}) is ACTIVE.`);
+            } else {
+                dayTick.classList.remove('active');
+                 // console.log(`[updateWeeklyChartBasedOnLog] Day ${i} (${chartDayStr}) is INACTIVE.`);
+            }
+        }
+    }
+}
+
+// Mantém a função resetWeeklyChart como está
+function resetWeeklyChart() {
+    console.log('[resetWeeklyChart] Resetting all ticks.');
+    for (let i = 0; i < 7; i++) {
+        const dayTick = document.getElementById(`day-${i}`);
+        if (dayTick) {
+            dayTick.classList.remove('active');
+        }
+    }
+}
+
+// Em resetPerseveranceUI, garantir que resetWeeklyChart seja chamado
 function resetPerseveranceUI() {
     const progressBar = document.getElementById('perseveranceProgressBar');
     const percentageDisplay = document.getElementById('perseverancePercentage');
@@ -1987,7 +2106,7 @@ function resetPerseveranceUI() {
         progressBar.style.width = `0%`;
         percentageDisplay.textContent = `0 dias`;
     }
-    resetWeeklyChart();
+    resetWeeklyChart(); // Garante reset visual do quadro
 }
 
 // --- Função updateWeeklyChart REFINADA com LOGS ---
