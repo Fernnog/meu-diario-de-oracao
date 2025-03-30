@@ -260,10 +260,10 @@ async function processAndRenderZeroInteraction(userId) {
     const results = await Promise.all(promises);
     zeroInteractionTargets = results.filter(target => target !== null);
 
-    renderZeroInteractionList(zeroInteractionTargets); // <-- Chamada movida para após o loop
+    renderZeroInteractionList(zeroInteractionTargets);
 }
 
-// --- MODIFICADO --- Renderiza APENAS os nomes na seção "Sem Interação"
+// --- Renderiza APENAS os nomes na seção "Sem Interação" ---
 function renderZeroInteractionList(targets) {
     const listDiv = document.getElementById('zeroInteractionList');
     listDiv.innerHTML = ''; // Limpa
@@ -273,24 +273,22 @@ function renderZeroInteractionList(targets) {
         return;
     }
 
-    // Cria uma lista não ordenada (ul)
     const ul = document.createElement('ul');
-    ul.classList.add('zero-interaction-name-list'); // Adiciona classe para estilização opcional
+    ul.classList.add('zero-interaction-name-list');
 
-    // Ordena por data de criação (mais antigo primeiro)
     targets.sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
 
     targets.forEach(target => {
         const li = document.createElement('li');
-        li.textContent = target.title || 'Sem Título'; // Mostra apenas o título
+        li.textContent = target.title || 'Sem Título';
         ul.appendChild(li);
     });
 
-    listDiv.appendChild(ul); // Adiciona a lista ao container
+    listDiv.appendChild(ul);
 }
 
 
-// Aplica filtros e renderiza a lista principal do relatório
+// --- Aplica filtros e renderiza a lista principal do relatório ---
 function applyFiltersAndRenderMainReport() {
     const searchTerm = document.getElementById('searchReport').value.toLowerCase();
     const showAtivo = document.getElementById('filterAtivo').checked;
@@ -308,7 +306,6 @@ function applyFiltersAndRenderMainReport() {
             const detailsMatch = target.details?.toLowerCase().includes(searchTerm);
             const observationMatch = Array.isArray(target.observations) &&
                  target.observations.some(obs => obs && obs.text && obs.text.toLowerCase().includes(searchTerm));
-            // Modificado para incluir busca em observações
             if (!titleMatch && !detailsMatch && !observationMatch) return false;
         }
         return true;
@@ -324,10 +321,10 @@ function applyFiltersAndRenderMainReport() {
     renderMainReportList();
 }
 
-// --- MODIFICADO --- Renderiza a lista principal com DADOS DE PERSEVERANÇA (Cliques)
+// --- Renderiza a lista principal com DADOS DE PERSEVERANÇA (Cliques) ---
 function renderMainReportList() {
     const reportListDiv = document.getElementById('reportList');
-    reportListDiv.innerHTML = ''; // Limpa a lista antes de renderizar
+    reportListDiv.innerHTML = '';
 
     const startIndex = (currentReportPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -335,16 +332,14 @@ function renderMainReportList() {
 
     if (itemsToDisplay.length === 0) {
         reportListDiv.innerHTML = '<p>Nenhum alvo encontrado com os filtros selecionados.</p>';
-        renderReportPagination(); // Renderiza paginação vazia se necessário
-        return; // Sai da função
+        renderReportPagination();
+        return;
     }
 
     itemsToDisplay.forEach(target => {
         const itemDiv = document.createElement('div');
-        // ******** INÍCIO DA CORREÇÃO VISUAL ********
-        itemDiv.classList.add('report-item'); // NÃO adiciona mais a classe de status aqui
-        // ******** FIM DA CORREÇÃO VISUAL ********
-        itemDiv.dataset.targetId = target.id; // Guarda o ID para buscar cliques
+        itemDiv.classList.add('report-item'); // CORREÇÃO VISUAL: Não adiciona mais a classe de status aqui
+        itemDiv.dataset.targetId = target.id;
 
         let statusLabel = '';
         switch (target.status) {
@@ -363,49 +358,47 @@ function renderMainReportList() {
              dateToShow = target.date; dateLabel = `Criado em`;
          }
 
-        // Renderiza observações (pode precisar da função renderObservations de script.js se for complexo)
         let observationsHTML = '';
         if (Array.isArray(target.observations) && target.observations.length > 0) {
-             // Simplificado: Mostra a última observação ou uma mensagem
              const lastObservation = target.observations.sort((a,b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0))[0];
              if (lastObservation && lastObservation.text) {
                   observationsHTML = `<p><i>Última Obs: ${lastObservation.text.substring(0, 100)}${lastObservation.text.length > 100 ? '...' : ''}</i></p>`;
              }
         }
 
+        // ******** INÍCIO DA CORREÇÃO DE COMENTÁRIOS ********
         itemDiv.innerHTML = `
             <h3>${statusLabel} ${target.title || 'Sem Título'}</h3>
             <p>${dateLabel}: ${formatDateForDisplay(dateToShow)} (${timeElapsed(target.date)} desde criação)</p>
             ${target.details ? `<p><i>${target.details.substring(0, 150)}${target.details.length > 150 ? '...' : ''}</i></p>` : ''}
-            ${observationsHTML} {/* Inclui o HTML das observações simplificado */}
+            ${observationsHTML} <!-- Comentário HTML correto -->
             <div class="click-stats">
                 <p>Perseverança (Cliques 'Orei!'):</p>
                 <ul>
                     <li>Total: <span id="clicks-total-${target.id}">...</span></li>
                     <li>Este Mês: <span id="clicks-month-${target.id}">...</span></li>
                     <li>Este Ano: <span id="clicks-year-${target.id}">...</span></li>
-                    {/* <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> */}
+                    <!-- <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> --> <!-- Comentário HTML correto -->
                 </ul>
             </div>
         `;
+        // ******** FIM DA CORREÇÃO DE COMENTÁRIOS ********
         reportListDiv.appendChild(itemDiv);
 
-        // Busca e exibe os dados de cliques para este alvo
         fetchAndDisplayClickCount(target.id, itemDiv);
     });
 
-    renderReportPagination(); // Renderiza a paginação após os itens
+    renderReportPagination();
 }
 
 
-// --- NOVO --- Busca e exibe os dados de cliques para um alvo específico
+// --- Busca e exibe os dados de cliques para um alvo específico ---
 async function fetchAndDisplayClickCount(targetId, itemDiv) {
     const totalSpan = itemDiv.querySelector(`#clicks-total-${targetId}`);
     const monthSpan = itemDiv.querySelector(`#clicks-month-${targetId}`);
     const yearSpan = itemDiv.querySelector(`#clicks-year-${targetId}`);
-    // const lastSpan = itemDiv.querySelector(`#clicks-last-${targetId}`); // Se for adicionar data da última
 
-    if (!totalSpan || !monthSpan || !yearSpan) return; // Sai se os elementos não existirem
+    if (!totalSpan || !monthSpan || !yearSpan) return;
 
     try {
         const clickCountsRef = doc(db, "prayerClickCounts", targetId);
@@ -418,29 +411,24 @@ async function fetchAndDisplayClickCount(targetId, itemDiv) {
             const currentYear = now.getFullYear().toString();
 
             totalSpan.textContent = data.totalClicks || 0;
-            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0; // Acesso ao mapa aninhado
-            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;     // Acesso ao mapa aninhado
-            // Para data da última oração, precisaríamos armazenar um timestamp no `prayerClickCounts`
-            // lastSpan.textContent = data.lastClickTimestamp ? formatDateForDisplay(data.lastClickTimestamp) : 'Nenhuma';
+            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0;
+            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;
 
         } else {
-            // Se não existe documento de cliques, assume 0 para tudo
             totalSpan.textContent = '0';
             monthSpan.textContent = '0';
             yearSpan.textContent = '0';
-            // lastSpan.textContent = 'Nenhuma';
         }
     } catch (error) {
         console.error(`Erro ao buscar cliques para ${targetId}:`, error);
         totalSpan.textContent = 'Erro';
         monthSpan.textContent = 'Erro';
         yearSpan.textContent = 'Erro';
-        // lastSpan.textContent = 'Erro';
     }
 }
 
 
-// Renderiza a paginação para a lista principal
+// --- Renderiza a paginação para a lista principal ---
 function renderReportPagination() {
     const paginationDiv = document.getElementById('pagination');
     paginationDiv.innerHTML = '';
@@ -463,7 +451,7 @@ function renderReportPagination() {
             if (currentReportPage > 1) {
                 currentReportPage--;
                 renderMainReportList();
-                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20); // Scroll suave
+                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20);
             }
         });
         paginationDiv.appendChild(prevLink);
@@ -484,7 +472,7 @@ function renderReportPagination() {
              if (currentReportPage < totalPages) {
                 currentReportPage++;
                 renderMainReportList();
-                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20); // Scroll suave
+                 window.scrollTo(0, document.getElementById('mainReportContainer').offsetTop - 20);
             }
         });
         paginationDiv.appendChild(nextLink);
