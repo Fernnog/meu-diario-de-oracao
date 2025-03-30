@@ -210,18 +210,30 @@ function updateAuthUI(user) {
     const btnLogout = document.getElementById('btnLogout');
     const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
     const authStatusContainer = document.querySelector('.auth-status-container');
-    const mainMenu = document.getElementById('mainMenu'); // Adicionado para controlar menu
-    const perseveranceSection = document.getElementById('perseveranceSection'); // Adicionado
-    const weeklyChart = document.getElementById('weeklyPerseveranceChart'); // Adicionado
-    const sectionSeparator = document.getElementById('sectionSeparator'); // Adicionado
+
+    // Seleciona os menus e separadores
+    const mainMenu = document.getElementById('mainMenu');
+    const mainMenuActions = document.getElementById('mainMenuActions');
+    const menuSeparatorDark = document.getElementById('menuSeparatorDark');
+    const menuSeparatorBottom = document.getElementById('menuSeparatorBottom');
+    // (Mantenha as outras seleções como estavam: perseveranceSection, weeklyChart, sectionSeparator)
+    const perseveranceSection = document.getElementById('perseveranceSection');
+    const weeklyChart = document.getElementById('weeklyPerseveranceChart');
+    const sectionSeparator = document.getElementById('sectionSeparator'); // Separador principal antes do conteúdo diário
+
 
     if (user) {
         authStatusContainer.style.display = 'flex';
         btnLogout.style.display = 'inline-block';
         emailPasswordAuthForm.style.display = 'none';
 
-        // Mostrar menu e seções relacionadas ao usuário logado
-        if (mainMenu) mainMenu.style.display = 'block'; // Ou 'flex' dependendo do seu CSS
+        // Mostrar menus e separadores relacionados
+        if (mainMenu) mainMenu.style.display = 'block'; // Ou 'flex' dependendo do CSS
+        if (mainMenuActions) mainMenuActions.style.display = 'block'; // Ou 'flex'
+        if (menuSeparatorDark) menuSeparatorDark.style.display = 'block';
+        if (menuSeparatorBottom) menuSeparatorBottom.style.display = 'block';
+
+        // Mostrar seções de perseverança e separador principal (se aplicável)
         if (perseveranceSection) perseveranceSection.style.display = 'block';
         if (weeklyChart) weeklyChart.style.display = 'block';
         if (sectionSeparator) sectionSeparator.style.display = 'block';
@@ -235,20 +247,27 @@ function updateAuthUI(user) {
         emailPasswordAuthForm.style.display = 'block';
         authStatus.textContent = "Nenhum usuário autenticado";
 
-        // Esconder menu e seções que exigem login
+        // Esconder menus e separadores
         if (mainMenu) mainMenu.style.display = 'none';
+        if (mainMenuActions) mainMenuActions.style.display = 'none';
+        if (menuSeparatorDark) menuSeparatorDark.style.display = 'none';
+        if (menuSeparatorBottom) menuSeparatorBottom.style.display = 'none';
+
+        // Esconder seções que exigem login
         if (perseveranceSection) perseveranceSection.style.display = 'none';
         if (weeklyChart) weeklyChart.style.display = 'none';
         if (sectionSeparator) sectionSeparator.style.display = 'none';
 
-        // Limpar conteúdo que depende do usuário
+        // Limpar/ocultar conteúdo principal
         document.getElementById('appContent').style.display = 'none';
         document.getElementById('dailySection').style.display = 'none';
         document.getElementById('mainPanel').style.display = 'none';
         document.getElementById('archivedPanel').style.display = 'none';
         document.getElementById('resolvedPanel').style.display = 'none';
-        document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>";
-        document.getElementById('dailyVerses').textContent = '';
+        const dailyTargetsDiv = document.getElementById("dailyTargets");
+        if(dailyTargetsDiv) dailyTargetsDiv.innerHTML = "<p>Faça login para ver os alvos diários.</p>";
+        const dailyVerses = document.getElementById('dailyVerses');
+        if(dailyVerses) dailyVerses.textContent = '';
         resetPerseveranceUI();
         prayerTargets = [];
         archivedTargets = [];
@@ -258,7 +277,6 @@ function updateAuthUI(user) {
         renderResolvedTargets();
     }
 }
-
 
 async function signUpWithEmailPassword() {
     const email = document.getElementById('email').value;
