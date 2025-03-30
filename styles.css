@@ -828,26 +828,48 @@ input[type="date"] {
 /* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS CENTRALIZAR BOTÕES DIÁRIOS ==== */
+
+/* Container para os botões 'Atualizar', 'Copiar', 'Visualizar' */
 .daily-buttons-container {
-    display: flex;
-    justify-content: center;
-    gap: 10px; /* Espaço entre os botões */
-    margin-top: 15px; /* Espaço acima dos botões */
-    flex-wrap: wrap; /* Permite quebrar linha */
+    display: flex;          /* Usa flexbox para alinhar os botões */
+    justify-content: center;/* Centraliza os botões horizontalmente */
+    gap: 10px;              /* Espaço horizontal entre os botões */
+    margin-top: 15px;       /* Espaço acima do grupo de botões */
+    flex-wrap: wrap;        /* Permite que os botões quebrem para a próxima linha em telas pequenas */
 }
 
+/* Estilo base para os botões DENTRO deste container específico */
 .daily-buttons-container .btn {
-     padding: 8px 15px; /* Ajusta padding se necessário */
-     font-size: 0.9em;
+    padding: 7px 12px;        /* Padding interno (vertical, horizontal) - ajustado para ser menor */
+    font-size: 13px;          /* Tamanho da fonte específico para estes botões */
+    border-radius: 5px;       /* Bordas arredondadas */
+    border: none;             /* Sem borda padrão */
+    cursor: pointer;          /* Cursor de mãozinha */
+    color: #fff;              /* Cor do texto padrão (branco) */
+    background-color: #f9a825;/* Cor de fundo padrão (laranja/dourado) */
+    transition: background-color 0.3s, box-shadow 0.2s; /* Transição suave */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Sombra sutil */
+    line-height: 1.4;         /* Altura da linha para texto */
+    /* Herança de estilos gerais de .btn é aplicada, estes são ajustes/sobrescritas */
 }
 
-/* Botão Visualizar Alvos do Dia */
-.daily-buttons-container .daily-view {
-    background-color: #7a5217; /* Marrom */
+/* Efeito hover para os botões DENTRO deste container */
+.daily-buttons-container .btn:hover {
+    background-color: #e29420; /* Tom um pouco mais escuro no hover */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* Sombra mais pronunciada no hover */
+    filter: brightness(110%); /* Leve brilho */
+}
+
+/* Estilo específico para o botão 'Visualizar Alvos do Dia' */
+.daily-buttons-container .btn.daily-view {
+    background-color: #7a5217; /* Marrom escuro */
     color: #fff;
 }
-.daily-buttons-container .daily-view:hover { background-color: #5f4012; }
 
+/* Hover específico para o botão 'Visualizar Alvos do Dia' */
+.daily-buttons-container .btn.daily-view:hover {
+    background-color: #5f4012; /* Marrom mais escuro no hover */
+}
 
 /* ==== FIM SEÇÃO - ESTILOS CENTRALIZAR BOTÕES DIÁRIOS ==== */
 
