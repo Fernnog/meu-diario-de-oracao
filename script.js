@@ -1708,8 +1708,7 @@ function addPrayButtonFunctionality(dailyDiv, targetId, isManual = false) {
      }
 }
 
-// --- SUBSTITUA ESTA FUNÇÃO NO SEU script.js MAIS RECENTE ---
-
+// --- SUBSTITUA ESTA FUNÇÃO NO SEU script.js MAIS RECENTE --- // (ESTA É A VERSÃO CORRETA QUE JÁ ESTAVA NO SEU CÓDIGO)
 async function updateClickCounts(userId, targetId) {
     const clickCountsRef = doc(db, "prayerClickCounts", targetId);
     const now = new Date();
