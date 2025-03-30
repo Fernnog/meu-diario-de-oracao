@@ -34,6 +34,7 @@ let currentSearchTermResolved = '';
 let showDeadlineOnly = false;
 let perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
 let dailyDisplayedTargetIds = new Set(); // *** NOVO: Guarda IDs exibidos no dia (random + manual) ***
+let perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0, confirmationLog: [] };
 
 // ==== FUNÇÕES UTILITÁRIAS ====
 
