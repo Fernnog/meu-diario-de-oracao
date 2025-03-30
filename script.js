@@ -1982,16 +1982,13 @@ function resetPerseveranceUI() {
 
 // --- Função updateWeeklyChart REFINADA com LOGS ---
 function updateWeeklyChart() {
-    console.log('[updateWeeklyChart] Starting update. Current perseveranceData:', JSON.stringify(perseveranceData));
     const today = new Date();
-    const currentDayOfWeek = today.getDay(); // 0=Dom, 6=Sáb
-
-    // Determina o início da semana atual (domingo)
+    const currentDayOfWeek = today.getDay(); // 0=Domingo, 6=Sábado
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - currentDayOfWeek);
+    startOfWeek.setDate(today.getDate() - currentDayOfWeek); // Início da semana (domingo)
     const startOfWeekMs = startOfWeek.getTime();
 
-    // Converte lastInteractionDate para meia-noite local
+    // Converte lastInteractionDate para timestamp (meia-noite do dia)
     let lastInteractionDateMs = null;
     if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
         const li = perseveranceData.lastInteractionDate;
@@ -1999,9 +1996,8 @@ function updateWeeklyChart() {
     }
 
     const consecutiveDays = perseveranceData.consecutiveDays || 0;
-    console.log(`[updateWeeklyChart] Start of Week: ${startOfWeek.toISOString().split('T')[0]}, Last Interaction MS: ${lastInteractionDateMs}, Consecutive: ${consecutiveDays}`);
 
-    // Calcula o início da sequência consecutiva
+    // Calcula o início da sequência
     const streakStartMs = lastInteractionDateMs && consecutiveDays > 0
         ? lastInteractionDateMs - ((consecutiveDays - 1) * 24 * 60 * 60 * 1000)
         : null;
@@ -2009,25 +2005,26 @@ function updateWeeklyChart() {
     for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
         if (dayTick) {
-            // Calcula o timestamp do dia i da semana atual
-            const chartDayMs = startOfWeekMs + (i * 24 * 60 * 60 * 1000);
-            const chartDay = new Date(chartDayMs);
-
+            const chartDayMs = startOfWeekMs + (i * 24 * 60 * 60 * 1000); // Timestamp do dia i
             let shouldBeActive = false;
+
+            // Verifica se o dia está na sequência
             if (streakStartMs !== null && lastInteractionDateMs !== null) {
-                // Verifica se o dia está dentro da sequência (inclusive)
                 shouldBeActive = chartDayMs >= streakStartMs && chartDayMs <= lastInteractionDateMs;
             }
 
-            console.log(`[updateWeeklyChart] Day ${i} (${chartDay.toISOString().split('T')[0]}): chartMs=${chartDayMs}, streakStartMs=${streakStartMs}, lastInteractionMs=${lastInteractionDateMs}, Active=${shouldBeActive}`);
+            // Garante que o dia atual seja marcado se houve interação hoje
+            const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+            if (chartDayMs === todayMs && lastInteractionDateMs === todayMs) {
+                shouldBeActive = true;
+            }
 
+            // Aplica a classe 'active' se o dia deve estar ativo
             if (shouldBeActive) {
                 dayTick.classList.add('active');
             } else {
                 dayTick.classList.remove('active');
             }
-        } else {
-            console.warn(`[updateWeeklyChart] Day tick day-${i} not found.`);
         }
     }
 }
