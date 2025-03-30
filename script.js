@@ -349,7 +349,7 @@ async function loadData(user) {
 
             // Carrega dados diários e de perseverança
             await loadDailyTargets(); // Isso exibirá a dailySection se houver dados
-            await loadPerseveranceData(uid); // Isso exibirá as seções de perseverança
+            await loadPerseveranceData(uid); // Isso exibirá as seções de perseverança << MODIFICADO
 
             // Garante que a seção diária seja exibida por padrão após o login/carregamento
              if (document.getElementById('dailySection').style.display !== 'block') {
@@ -1848,7 +1848,7 @@ function addManualTargetToDailyView(targetId) {
 }
 
 
-// --- Perseverança ---
+// --- Perseverança --- << INÍCIO DAS FUNÇÕES MODIFICADAS >>
 async function loadPerseveranceData(userId) {
      console.log(`[loadPerseveranceData] Loading for user ${userId}`);
     const perseveranceDocRef = doc(db, "perseveranceData", userId);
@@ -1860,8 +1860,9 @@ async function loadPerseveranceData(userId) {
             perseveranceData.consecutiveDays = Number(data.consecutiveDays) || 0;
             perseveranceData.recordDays = Number(data.recordDays) || 0;
             perseveranceData.lastInteractionDate = data.lastInteractionDate instanceof Timestamp
-                ? data.lastInteractionDate.toDate()
-                : null; // Convert Timestamp to Date
+                ? data.lastInteractionDate.toDate() // Convert Timestamp to Date
+                : null;
+            console.log('[loadPerseveranceData] Loaded data:', JSON.stringify(perseveranceData)); // Log loaded data
 
         } else {
              console.log("[loadPerseveranceData] No perseverance data found, initializing.");
@@ -1893,9 +1894,12 @@ async function confirmPerseverance() {
          // Get the date part of the last interaction in local time
          lastInteractionDatePart = new Date(li.getFullYear(), li.getMonth(), li.getDate());
      }
+     console.log(`[confirmPerseverance] Today Date Part: ${todayDatePart.toISOString().split('T')[0]}, Last Interaction Date Part: ${lastInteractionDatePart ? lastInteractionDatePart.toISOString().split('T')[0] : 'null'}`);
+
 
      // Check if interaction already happened today (comparing only date parts)
     if (lastInteractionDatePart && todayDatePart.getTime() === lastInteractionDatePart.getTime()) {
+         console.log('[confirmPerseverance] Already confirmed today.');
          alert(`Perseverança já confirmada para hoje (${formatDateForDisplay(today)})! Dias consecutivos: ${perseveranceData.consecutiveDays}. Recorde: ${perseveranceData.recordDays} dias.`);
          return; // Already confirmed today
      }
@@ -1908,18 +1912,24 @@ async function confirmPerseverance() {
              isConsecutive = true;
          }
      }
+     console.log(`[confirmPerseverance] Is Consecutive: ${isConsecutive}`);
+
+     // Store previous day count for logging
+     const previousConsecutiveDays = perseveranceData.consecutiveDays || 0;
 
      // Update perseverance data
-     perseveranceData.consecutiveDays = isConsecutive ? (perseveranceData.consecutiveDays || 0) + 1 : 1;
+     perseveranceData.consecutiveDays = isConsecutive ? previousConsecutiveDays + 1 : 1;
      perseveranceData.lastInteractionDate = today; // Store the full timestamp of today's confirmation
      perseveranceData.recordDays = perseveranceData.recordDays || 0;
      if (perseveranceData.consecutiveDays > perseveranceData.recordDays) {
          perseveranceData.recordDays = perseveranceData.consecutiveDays;
      }
+      console.log('[confirmPerseverance] Updated perseveranceData:', JSON.stringify(perseveranceData));
 
      // Save to Firestore and update UI
      try {
         await updatePerseveranceFirestore(userId, perseveranceData);
+        console.log('[confirmPerseverance] Firestore updated. Now updating UI.');
         updatePerseveranceUI(); // Update progress bar and weekly chart
          alert(`Perseverança confirmada! Dias consecutivos: ${perseveranceData.consecutiveDays}. Recorde: ${perseveranceData.recordDays} dias.`);
      } catch (error) {
@@ -1944,6 +1954,7 @@ async function updatePerseveranceFirestore(userId, data) {
 
 
 function updatePerseveranceUI() {
+     console.log('[updatePerseveranceUI] Updating progress bar and weekly chart.'); // Log entry
      const consecutiveDays = perseveranceData.consecutiveDays || 0;
     const targetDays = 30;
     const percentage = Math.min(Math.max(0, (consecutiveDays / targetDays) * 100), 100);
@@ -1969,7 +1980,9 @@ function resetPerseveranceUI() {
     resetWeeklyChart();
 }
 
+// --- Função updateWeeklyChart REFINADA com LOGS ---
 function updateWeeklyChart() {
+    console.log('[updateWeeklyChart] Starting update. Current perseveranceData:', JSON.stringify(perseveranceData));
     const today = new Date(); // Current local date
     let lastInteractionDatePartMs = null;
 
@@ -1977,9 +1990,16 @@ function updateWeeklyChart() {
     if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
         const li = perseveranceData.lastInteractionDate;
         lastInteractionDatePartMs = new Date(li.getFullYear(), li.getMonth(), li.getDate()).getTime();
+        console.log(`[updateWeeklyChart] Last Interaction Date Part MS: ${lastInteractionDatePartMs} (${new Date(lastInteractionDatePartMs).toISOString()})`);
+    } else {
+        console.log('[updateWeeklyChart] No valid last interaction date found.');
     }
 
     const currentDayOfWeek = today.getDay(); // 0=Sun, 6=Sat
+    const todayDatePartMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime(); // Midnight today
+    const consecutiveDays = perseveranceData.consecutiveDays || 0;
+
+    console.log(`[updateWeeklyChart] Today: ${today.toISOString()}, Today Date Part MS: ${todayDatePartMs}, DayOfWeek: ${currentDayOfWeek}, Consecutive: ${consecutiveDays}`);
 
     for (let i = 0; i < 7; i++) { // Loop through day ticks (day-0 to day-6)
          const dayTick = document.getElementById(`day-${i}`);
@@ -1990,17 +2010,30 @@ function updateWeeklyChart() {
              chartDay.setDate(today.getDate() + dayDifference);
              const chartDayDatePartMs = new Date(chartDay.getFullYear(), chartDay.getMonth(), chartDay.getDate()).getTime();
 
-              // Determine if this day tick should be active based on consecutive days
-              let shouldBeActive = false;
-              if (lastInteractionDatePartMs !== null && perseveranceData.consecutiveDays > 0) {
-                  // Check if the chart day falls within the consecutive range ending on the last interaction day
-                  const daysAgoChartSlot = Math.round((today.getTime() - chartDayDatePartMs) / (1000 * 60 * 60 * 24));
-                  const daysAgoLastInteraction = Math.round((today.getTime() - lastInteractionDatePartMs) / (1000 * 60 * 60 * 24));
+             let shouldBeActive = false;
 
-                  if (daysAgoChartSlot >= daysAgoLastInteraction && daysAgoChartSlot < (daysAgoLastInteraction + perseveranceData.consecutiveDays)) {
-                       shouldBeActive = true;
-                  }
-              }
+             // Check if the last interaction is valid and there's a streak
+             if (lastInteractionDatePartMs !== null && consecutiveDays > 0) {
+                 // Calculate how many days ago the chart slot's date was (relative to today's midnight)
+                 const daysAgoChartSlot = Math.round((todayDatePartMs - chartDayDatePartMs) / (1000 * 60 * 60 * 24));
+
+                 // Calculate how many days ago the last interaction date was (relative to today's midnight)
+                 const daysAgoLastInteraction = Math.round((todayDatePartMs - lastInteractionDatePartMs) / (1000 * 60 * 60 * 24));
+
+                 // The chart slot should be active if its date falls within the consecutive streak ending on the last interaction day.
+                 // The streak includes days from 'daysAgoLastInteraction' up to 'daysAgoLastInteraction + consecutiveDays - 1'.
+                 // So, daysAgoChartSlot must be >= daysAgoLastInteraction AND < daysAgoLastInteraction + consecutiveDays.
+                 if (daysAgoChartSlot >= daysAgoLastInteraction && daysAgoChartSlot < (daysAgoLastInteraction + consecutiveDays)) {
+                     shouldBeActive = true;
+                 }
+                 // Log calculation details for this specific tick
+                 console.log(`[updateWeeklyChart] Slot ${i} (${chartDay.toISOString().split('T')[0]}): chartMs=${chartDayDatePartMs}, daysAgoSlot=${daysAgoChartSlot}, daysAgoLastInt=${daysAgoLastInteraction}, consecutive=${consecutiveDays} => ShouldBeActive=${shouldBeActive}`);
+
+             } else {
+                 // Log if no streak or invalid date
+                  console.log(`[updateWeeklyChart] Slot ${i} (${chartDay.toISOString().split('T')[0]}): No valid streak or last interaction date. ShouldBeActive=false`);
+             }
+
 
              // Update the class for styling
              if (shouldBeActive) {
@@ -2008,12 +2041,16 @@ function updateWeeklyChart() {
              } else {
                  dayTick.classList.remove('active');
              }
+         } else {
+             console.warn(`[updateWeeklyChart] Day tick element day-${i} not found.`);
          }
     }
+    console.log('[updateWeeklyChart] Finished update.');
 }
 
 
 function resetWeeklyChart() {
+    console.log('[resetWeeklyChart] Resetting all ticks.'); // Log reset
     for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
         if (dayTick) {
@@ -2021,6 +2058,8 @@ function resetWeeklyChart() {
         }
     }
 }
+// --- Perseverança --- << FIM DAS FUNÇÕES MODIFICADAS >>
+
 
 // --- Visualizações e Filtros ---
 
@@ -2570,7 +2609,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("prayerForm")?.addEventListener("submit", handlePrayerFormSubmit);
 
     // Action Buttons
-    document.getElementById('confirmPerseveranceButton')?.addEventListener('click', confirmPerseverance);
+    document.getElementById('confirmPerseveranceButton')?.addEventListener('click', confirmPerseverance); // MODIFICADO
     document.getElementById("viewReportButton")?.addEventListener('click', () => window.location.href = 'orei.html');
     document.getElementById("refreshDaily")?.addEventListener("click", async () => {
         const user = auth.currentUser;
