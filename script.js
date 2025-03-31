@@ -445,11 +445,11 @@ function renderTargets() {
                     <button class="archive btn" onclick="archiveTarget('${target.id}')">Arquivar</button>
                     <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
                     ${target.hasDeadline ? `<button class="edit-deadline btn" onclick="editDeadline('${target.id}')">Editar Prazo</button>` : ''}
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button> {/* Botão de Editar Categoria */}
+                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
                 <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
-                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div> {/* Placeholder para Edição de Categoria */}
+                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
                 `;
             targetListDiv.appendChild(targetDiv);
             renderObservationForm(target.id); // Chama para popular o form de observação (se necessário)
@@ -512,10 +512,10 @@ function renderArchivedTargets() {
                 <div class="target-actions">
                     <button class="delete btn" onclick="deleteArchivedTarget('${target.id}')">Excluir Permanentemente</button>
                     <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button> {/* Botão de Editar Categoria */}
+                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
                 </div>
                  <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div> {/* Placeholder para Edição de Categoria */}
+                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
                  `;
             archivedListDiv.appendChild(archivedDiv);
             renderObservationForm(target.id);
@@ -590,10 +590,10 @@ function renderResolvedTargets() {
                 ${renderObservations(observations, false, target.id)}
                  <div class="target-actions">
                     <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button> {/* Botão de Editar Categoria */}
+                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
                 </div>
                  <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div> {/* Placeholder para Edição de Categoria */}
+                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
                  `;
             resolvedListDiv.appendChild(resolvedDiv);
             renderObservationForm(target.id);
@@ -846,6 +846,9 @@ window.toggleAddObservation = function(targetId) {
     const isVisible = formDiv.style.display === 'block';
     formDiv.style.display = isVisible ? 'none' : 'block';
     if (!isVisible) {
+        // Esconde outros forms abertos no mesmo alvo
+        document.getElementById(`editDeadlineForm-${targetId}`)?.style.display = 'none';
+        document.getElementById(`editCategoryForm-${targetId}`)?.style.display = 'none';
         formDiv.querySelector('textarea')?.focus();
         try {
             const dateInput = formDiv.querySelector(`#observationDate-${targetId}`);
@@ -1012,6 +1015,10 @@ window.editDeadline = function(targetId) {
     const isVisible = editFormContainer.style.display === 'block';
     if (isVisible) { editFormContainer.style.display = 'none'; return; }
 
+    // Esconde outros forms abertos
+    document.getElementById(`observationForm-${targetId}`)?.style.display = 'none';
+    document.getElementById(`editCategoryForm-${targetId}`)?.style.display = 'none';
+
     let currentDeadlineISO = '';
     if (target.deadlineDate instanceof Date && !isNaN(target.deadlineDate)) {
         currentDeadlineISO = formatDateToISO(target.deadlineDate);
@@ -1107,10 +1114,8 @@ window.editCategory = function(targetId) {
     }
 
     // Esconde outros formulários de edição abertos no mesmo alvo
-    const obsForm = document.getElementById(`observationForm-${targetId}`);
-    const deadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
-    if(obsForm) obsForm.style.display = 'none';
-    if(deadlineForm) deadlineForm.style.display = 'none';
+    document.getElementById(`observationForm-${targetId}`)?.style.display = 'none';
+    document.getElementById(`editDeadlineForm-${targetId}`)?.style.display = 'none';
 
     // Cria as opções do select dinamicamente
     let optionsHTML = '<option value="">-- Remover Categoria --</option>'; // Opção para remover
@@ -1519,11 +1524,16 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
         }
     };
 
-     // Adiciona o botão ao início do div do alvo
-     if (dailyDiv.firstChild) {
-         dailyDiv.insertBefore(prayButton, dailyDiv.firstChild.nextSibling); // Insere após o h3
+     // Adiciona o botão ao início do div do alvo, logo após o h3
+     const heading = dailyDiv.querySelector('h3');
+     if (heading && heading.nextSibling) {
+         dailyDiv.insertBefore(prayButton, heading.nextSibling);
+     } else if (heading) {
+         dailyDiv.appendChild(prayButton); // Fallback se não houver nada após h3
+     } else if (dailyDiv.firstChild) {
+         dailyDiv.insertBefore(prayButton, dailyDiv.firstChild); // Fallback se não houver h3
      } else {
-         dailyDiv.appendChild(prayButton);
+         dailyDiv.appendChild(prayButton); // Fallback se div estiver vazio
      }
 }
 
@@ -1822,7 +1832,7 @@ function resetWeeklyChart() {
 
 // --- Visualizações e Filtros ---
 function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Visualização de Alvos</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #81d4fa; color: #01579b; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #4fc3f7; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos de Oração (Visão Atual)</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Visualização de Alvos</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #D81B60; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #AD1457; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos de Oração (Visão Atual)</h1>`;
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
         viewHTML += "<p style='text-align:center;'>Nenhum alvo para exibir na visão atual.</p>";
     } else {
@@ -1841,7 +1851,7 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
 }
 
 function generateDailyViewHTML() {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos do Dia</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #81d4fa; color: #01579b; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #4fc3f7; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .completed-target{background-color:#f0f0f0 !important; border-left: 5px solid #9cbe4a;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos do Dia</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos do Dia</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #D81B60; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #AD1457; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .completed-target{background-color:#f0f0f0 !important; border-left: 5px solid #9cbe4a;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos do Dia</h1>`;
     const dailyTargetsDiv = document.getElementById('dailyTargets');
     let pendingCount = 0;
     let completedCount = 0;
@@ -1967,7 +1977,7 @@ async function generateResolvedViewHTML(startDate, endDate) {
     }
 
     // Gera o HTML da visualização
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .category-tag { background-color: #81d4fa; color: #01579b; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #4fc3f7; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; }</style></head><body><h1>Alvos Respondidos</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .category-tag { background-color: #D81B60; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #AD1457; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; }</style></head><body><h1>Alvos Respondidos</h1>`;
     viewHTML += `<h2>Período: ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}</h2><hr/>`;
 
      if (filteredResolvedTargets.length === 0) {
@@ -2263,6 +2273,6 @@ window.toggleObservations = toggleObservations;
 window.editDeadline = editDeadline;
 window.saveEditedDeadline = saveEditedDeadline;
 window.cancelEditDeadline = cancelEditDeadline;
-window.editCategory = editCategory; 
-window.saveEditedCategory = saveEditedCategory; 
-window.cancelEditCategory = cancelEditCategory; 
+window.editCategory = editCategory;
+window.saveEditedCategory = saveEditedCategory;
+window.cancelEditCategory = cancelEditCategory;
