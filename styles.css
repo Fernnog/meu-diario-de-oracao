@@ -65,7 +65,8 @@ h1 {
     margin-bottom: 20px;
 }
 
-.main-menu button, .main-menu .btn {
+/* General Button Style */
+.btn {
     margin: 10px 5px;
     padding: 10px 20px;
     color: #fff;
@@ -73,87 +74,90 @@ h1 {
     cursor: pointer;
     border-radius: 5px;
     font-size: 14px;
-    background-color: #f9a825;
+    font-family: 'Playfair Display', serif; /* Ensure font */
     transition: background-color 0.3s, color 0.3s;
 }
 
-.main-menu button:hover, .main-menu .btn:hover {
-    background-color: #d48c1a;
-    color: #fff;
+.btn:hover {
+    /* Define hover effects per button type */
 }
 
-/* Novos botões principais em tom mais escuro */
+/* Primary Menu Buttons (Orange) */
 .main-menu button, .main-menu .btn {
     background-color: #e29420;
 }
-
 .main-menu button:hover, .main-menu .btn:hover {
-    background-color: #ca7d1b; /* Tom mais escuro no hover */
+    background-color: #ca7d1b; /* Darker orange */
 }
 
-/* Botões de visualização */
+/* View Buttons (Dark Brown) */
 .generate-view, .daily-view {
     background-color: #7a5217;
-    color: #fff;
 }
-
 .generate-view:hover, .daily-view:hover {
-    background-color: #5f4012; /* Tom mais escuro no hover */
+    background-color: #5f4012;
 }
 
-/* Botões de Arquivados e Respondidos */
+/* Archived/Resolved Buttons (Grey) */
 .archived-resolved {
     background-color: #948484;
 }
-
 .archived-resolved:hover {
-    background-color: #756b6b; /* Tom mais escuro no hover */
+    background-color: #756b6b;
 }
 
-/* Botões de ações (exportar, importar, resetar, etc.) */
+/* Action Buttons (Darkest Brown) */
 .main-menu .action-btn {
-    background-color: #654321; /* Tom marrom escuro */
-    color: #fff;
+    background-color: #654321;
 }
-
 .main-menu .action-btn:hover {
-    background-color: #4a301a; /* Tom mais escuro no hover */
+    background-color: #4a301a;
 }
 
-/* Linhas de separação */
+/* Separator Lines */
 hr.menu-separator {
     border: none;
-    border-top: 2px solid #e29420; /* Cor compatível com a paleta */
+    border-top: 2px solid #e29420; /* Orange */
     margin: 20px auto;
     width: 80%;
 }
-
 hr.menu-separator.dark {
-    border-top: 2px solid #654321;
+    border-top: 2px solid #654321; /* Dark Brown */
 }
-
 hr.section-separator {
     border: none;
-    border-top: 1px solid #ddd; /* Cor mais clara para separação de seções */
+    border-top: 1px solid #ddd; /* Light Grey */
     margin: 30px auto;
     width: 80%;
 }
+hr.title-separator, hr.search-separator, hr.filter-separator {
+     border: none;
+     border-top: 1px solid #eee; /* Very light separator */
+     margin: 15px auto;
+     width: 80%;
+ }
 /* ==== FIM SEÇÃO - ESTILOS DOS BOTÕES ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DAS SEÇÕES ==== */
 .form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .completed-daily-targets-section {
-    margin-bottom: 20px;
+    margin: 20px auto; /* Center sections */
     padding: 15px;
     border: 1px solid #ddd;
     border-radius: 5px;
     background-color: #fff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
+    width: 95%; /* Responsive width */
+    max-width: 800px; /* Max width */
 }
 /* ==== FIM SEÇÃO - ESTILOS DAS SEÇÕES ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS INPUTS ==== */
-input, textarea {
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+textarea {
     display: block;
     margin: 10px auto;
     padding: 10px;
@@ -162,22 +166,22 @@ input, textarea {
     border: 1px solid #ccc;
     border-radius: 5px;
     font-family: 'Playfair Display', serif;
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 textarea {
     resize: vertical;
+    min-height: 70px; /* Default min height */
 }
 
 .search-input {
-    margin: 10px auto;
+    margin: 10px auto 15px auto; /* Adjust margin */
     padding: 8px;
     width: 80%;
     max-width: 300px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
     display: block;
 }
-/* Estilo para o ícone de data à esquerda */
+/* Estilo para o ícone de data à esquerda (Original) */
 input[type="date"] {
     padding-left: 30px; /* Espaço para o ícone */
     background-repeat: no-repeat;
@@ -190,322 +194,243 @@ input[type="date"] {
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS ALVOS ==== */
 .target {
     border-bottom: 1px solid #ddd;
-    padding: 10px 0;
+    padding: 15px 10px; /* Adjusted padding */
     text-align: left;
+    margin-bottom: 10px; /* Added margin */
 }
 
 .target:last-child {
     border-bottom: none;
 }
 
-/* Estilo do botão Resolved */
-.target .resolved {
-    background-color: #9cbe4a; /* Nova cor para o botão resolvido */
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-right: 5px;
+/* Target Actions & Buttons */
+.target-actions {
+     margin-top: 10px;
+     display: flex;
+     flex-wrap: wrap;
+     gap: 5px;
+}
+.target .btn { /* Buttons inside targets */
+     padding: 8px 12px;
+     font-size: 13px; /* Smaller font */
+     margin: 0; /* Reset margins */
 }
 
-.target .resolved:hover {
-    background-color: #85a739; /* Nova cor para o hover do botão resolvido */
+.target button.resolved {
+    background-color: #9cbe4a; /* Green */
+}
+.target button.resolved:hover {
+    background-color: #85a739;
 }
 
-.resolved {
-    background-color: #eaffea; /* Fundo quando está na aba Resolvido */
-}
-
-/* Separador de alvo */
-.target {
-    border-bottom: 1px solid #ddd; /* Borda cinza claro */
-    padding: 10px 0;
-    text-align: left;
-}
-
-.target:last-child {
-    border-bottom: none;
-}
-
-/* Estilo de citação para Alvos Diários */
-#dailyTargets .target:nth-child(odd) {
-    background-color: rgba(249, 168, 37, 0.1); /* Fundo laranja claro para alvos ímpares */
-}
-
-#dailyTargets .target:nth-child(even) {
-    background-color: white; /* Fundo cinza claro para alvos pares */
-}
-
-/* Estilo dos botões dentro do target */
 .target button.archive {
-    background-color: #c97272; /* Tom vermelho claro */
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-right: 5px;
+    background-color: #c97272; /* Light Red */
 }
-
 .target button.archive:hover {
-    background-color: #a65b5b; /* Tom mais escuro no hover */
+    background-color: #a65b5b;
 }
 
 .target button.add-observation {
-    background-color: #73a8f3; /* Tom azul claro */
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-right: 5px;
+    background-color: #73a8f3; /* Light Blue */
 }
-
 .target button.add-observation:hover {
-    background-color: #5a8ccb; /* Tom mais escuro no hover */
+    background-color: #5a8ccb;
 }
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
-.add-observation-form {
+.target button.edit-deadline {
+    background-color: #6599cc; /* Blue */
+}
+.target button.edit-deadline:hover {
+    background-color: #4a77a5;
+}
+
+.target button.delete { /* Delete button in Archived */
+    background-color: #d9534f; /* Red */
+}
+.target button.delete:hover {
+    background-color: #c9302c;
+}
+
+
+/* Styling for different target views/states */
+.resolved { /* Targets in the Resolved panel */
+    background-color: #eaffea; /* Light green background */
+    border-left: 3px solid #9cbe4a; /* Green left border */
+    padding-left: 10px; /* Add padding for border */
+}
+.archived { /* Targets in the Archived panel */
+     background-color: #f8f8f8; /* Light grey background */
+     opacity: 0.9;
+}
+
+/* Estilo de citação para Alvos Diários */
+#dailyTargets .target {
+     background-color: #fff; /* Default white */
+     padding: 12px; /* Adjust padding */
+     border: 1px solid #eee; /* Add border */
+     border-radius: 4px; /* Add rounding */
+     box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
+}
+#dailyTargets .target:nth-child(odd) {
+    background-color: rgba(249, 168, 37, 0.05); /* Very light orange tint for odd targets */
+}
+/* #dailyTargets .target:nth-child(even) { background-color: white; } */
+
+/* ==== INÍCIO SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES E EDIÇÃO ==== */
+.add-observation-form, .edit-deadline-form {
     margin-top: 10px;
     padding: 10px;
     background-color: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 5px;
+    /* display: none; by default */
 }
 
-.add-observation-form textarea {
-    width: calc(100% - 22px); /* Ajuste para considerar o padding */
+.add-observation-form textarea,
+.add-observation-form input[type="date"],
+.edit-deadline-form input[type="date"] {
+    width: calc(100% - 22px); /* Adjust width considering padding */
     max-width: none;
     margin: 0 auto 10px auto;
 }
 
-.add-observation-form input[type="date"] {
-    width: calc(100% - 22px); /* Ajuste para considerar o padding */
-    max-width: none;
-    margin: 0 auto 10px auto;
-}
-
-.add-observation-form .btn {
-    margin: 0 auto;
-    display: block;
-    background-color: #7cb17c; /* Tom verde claro */
+.add-observation-form .btn,
+.edit-deadline-form .btn {
+    margin: 5px; /* Add margin around buttons */
+    display: inline-block; /* Keep inline */
+    background-color: #7cb17c; /* Save Observation - Green */
     color: #fff;
-    border: none;
     padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
     font-size: 14px;
 }
+.add-observation-form .btn:hover { background-color: #649464; }
 
-.add-observation-form .btn:hover {
-    background-color: #649464; /* Tom mais escuro no hover */
-}
+.edit-deadline-form .save-deadline-btn { background-color: #4CAF50; } /* Save Deadline */
+.edit-deadline-form .save-deadline-btn:hover { background-color: #45a049; }
+.edit-deadline-form .cancel-deadline-btn { background-color: #f44336; } /* Cancel Deadline */
+.edit-deadline-form .cancel-deadline-btn:hover { background-color: #da190b; }
 
-.observations-list {
+/* Observation Display Styles */
+.observations {
     margin-top: 10px;
+    padding-left: 10px; /* Indent observations */
+    border-left: 2px solid #eee; /* Light left border */
+}
+.observation-item {
+    margin-left: 0; /* Reset margin */
+    font-size: 0.9em;
+    color: #555;
+    padding-left: 0;
+    margin-bottom: 5px;
+}
+.observation-item strong { /* Date part */
+     color: #444;
 }
 
 .observations-toggle {
-    background-color: #f0f0f0; /* Cor de fundo bem clara */
-    border: 1px solid #ddd; /* Borda leve */
-    color: #9cbe4a; /* Cor verde harmoniosa com "Orei!" */
+    background: none; /* No background */
+    border: none;
+    color: #9cbe4a; /* Green color */
     cursor: pointer;
-    text-decoration: none; /* Remove underline */
-    font-size: 14px;
-    padding: 5px 10px; /* Padding pequeno para o botão */
-    margin-bottom: 5px; /* Add a little space below the button */
-    display: inline-block; /* Mantém inline para não ocupar toda a largura */
-    border-radius: 5px; /* Bordas arredondadas */
+    text-decoration: underline;
+    font-size: 13px; /* Smaller font */
+    padding: 5px 0;
+    margin-top: 5px;
+    display: inline-block;
 }
-
 .observations-toggle:hover {
-    text-decoration: none; /* Remove underline on hover if desired */
+    /* text-decoration: none; */
 }
 
 /* ==== FIM SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
 /* ==== FIM SEÇÃO - ESTILOS DOS ALVOS ==== */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
-.login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.login-container input {
-    margin: 0 5px 0 10px;
-    display: inline-block;
-    width: 200px;
-    max-width: none;
-}
-
-.login-container button {
-    margin: 0 5px 0 0;
-    display: inline-block;
-}
+/* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN (REMOVED, merged into Auth Section) ==== */
+/* .login-container { ... } */
 /* ==== FIM SEÇÃO - ESTILOS DO CONTAINER DE LOGIN ==== */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DAS MENSAGENS DE CONFIRMAÇÃO ==== */
-.success-message {
-    display: none; /* Inicialmente oculto */
-    position: fixed; /* Posicionamento fixo na tela */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Centraliza na tela */
-    background-color: #4CAF50; /* Cor de fundo verde */
-    color: white; /* Texto branco */
-    padding: 15px 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Garante que fique acima de outros elementos */
-    opacity: 0; /* Começa com opacidade 0 */
-    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
-}
-
-.success-message.show {
-    display: block; /* Exibe a mensagem */
-    opacity: 1; /* Opacidade total */
-}
-
-.delete-success-message {
-    display: none; /* Inicialmente oculto */
-    position: fixed; /* Posicionamento fixo na tela */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Centraliza na tela */
-    background-color: #d9534f; /* Cor de fundo vermelha */
-    color: white; /* Texto branco */
-    padding: 15px 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Garante que fique acima de outros elementos */
-    opacity: 0; /* Começa com opacidade 0 */
-    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
-}
-
-.delete-success-message.show {
-    display: block; /* Exibe a mensagem */
-    opacity: 1; /* Opacidade total */
-}
+/* ==== INÍCIO SEÇÃO - ESTILOS DAS MENSAGENS DE CONFIRMAÇÃO (REMOVED, use standard alerts) ==== */
+/* .success-message, .delete-success-message, .login-success-message { ... } */
 /* ==== FIM SEÇÃO - ESTILOS DAS MENSAGENS DE CONFIRMAÇÃO ==== */
-
-/* ==== INÍCIO SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
-.login-success-message {
-    display: none; /* Inicialmente oculto */
-    position: fixed; /* Posicionamento fixo na tela */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Centraliza na tela */
-    background-color: #4CAF50; /* Cor de fundo verde */
-    color: white; /* Texto branco */
-    padding: 15px 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Garante que fique acima de outros elementos */
-    opacity: 0; /* Começa com opacidade 0 */
-    transition: opacity 0.5s ease-in-out; /* Transição suave de opacidade */
-}
-
-.login-success-message.show {
-    display: block; /* Exibe a mensagem */
-    opacity: 1; /* Opacidade total */
-}
-/* ==== FIM SEÇÃO - ESTILOS DA MENSAGEM DE CONFIRMAÇÃO DE LOGIN ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL ==== */
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 1000; /* High z-index */
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.4); /* Semi-transparent black background */
 }
 
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
+    margin: 15% auto; /* 15% from top, centered */
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
-    max-width: 600px;
+    max-width: 500px; /* Adjusted max-width */
     border-radius: 5px;
     position: relative;
+    box-shadow: 0 3px 7px rgba(0,0,0,0.2); /* Add shadow */
+}
+.modal-content h2 { /* Style modal title */
+     text-align: center;
+     margin-top: 0;
+     margin-bottom: 15px;
+}
+.modal-content label { /* Style labels inside modal */
+     display: block;
+     margin-top: 10px;
+     margin-bottom: 3px;
+     font-weight: bold;
+     text-align: left;
+     margin-left: 0; /* Reset indent */
+}
+.modal-content input[type="date"] { /* Style date inputs inside modal */
+     width: 100%;
+     margin-bottom: 15px;
+}
+.modal-buttons { /* Container for modal buttons */
+     text-align: right;
+     margin-top: 20px;
+}
+.modal-buttons .btn { /* Buttons inside modal */
+     margin-left: 10px; /* Space between buttons */
 }
 
-/* Estilo do botão Fechar */
+
+/* Estilo do botão Fechar (Original) */
 .close-button {
     color: #aaa;
-    float: right;
+    /* float: right; */ /* Use absolute positioning instead */
+    position: absolute; /* Position relative to modal content */
+    top: 10px;
+    right: 15px;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    line-height: 1; /* Prevent extra height */
 }
-
 .close-button:hover,
 .close-button:focus {
     color: black;
     text-decoration: none;
-    cursor: pointer;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO MODAL ==== */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO MODAL DE SELEÇÃO DE DATA ==== */
-/* Estilos para o modal de seleção de data */
-#dateRangeModal .modal-content {
-    width: 400px; /* Ajuste a largura conforme necessário */
-}
-
-#dateRangeModal label {
-    display: block;
-    margin-top: 10px;
-}
-
-#dateRangeModal input[type="date"] {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-/* Estilos para os botões do modal */
-#dateRangeModal .modal-content button {
-  margin: 10px 5px;
-  padding: 10px 20px;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-  font-size: 14px;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-#dateRangeModal .modal-content button#generateResolvedView {
-    background-color: #7a5217;
-}
-
-#dateRangeModal .modal-content button#generateResolvedView:hover {
-  background-color: #5f4012;
-}
-#dateRangeModal .modal-content button#cancelDateRange {
-    background-color: #948484;
-}
-
-#dateRangeModal .modal-content button#cancelDateRange:hover {
-  background-color: #756b6b;
-}
-/* ==== FIM SEÇÃO - ESTILOS DO MODAL DE SELEÇÃO DE DATA ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DA PAGINAÇÃO ==== */
+.pagination {
+     display: flex;
+     justify-content: center; /* Center pagination items */
+     align-items: center;
+     margin-top: 20px;
+     padding: 10px 0;
+}
 .page-link {
     display: inline-block;
     padding: 8px 12px;
@@ -517,99 +442,72 @@ input[type="date"] {
     border-radius: 4px;
     transition: background-color 0.3s;
 }
-
 .page-link:hover {
     background-color: #eee;
 }
-
-.page-link.active {
-    background-color: #f9a825;
-    color: white;
-    border-color: #f9a825;
+.page-link.disabled { /* Style for disabled pagination links */
+     color: #ccc;
+     pointer-events: none; /* Make unclickable */
+     background-color: #fdfdfd;
+}
+.pagination span { /* Style for "Page X of Y" text */
+     margin: 0 10px;
+     color: #666;
 }
 /* ==== FIM SEÇÃO - ESTILOS DA PAGINAÇÃO ==== */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO HTML GERADO ==== */
-/* CSS para o HTML gerado pela função generateViewHTML */
-.view-html-container {
-    margin: 10px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    color: #333;
-}
-
-.view-html-container h1 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 20px;
-    font-size: 2.5em;
-}
-
-.view-html-container h2 {
-    color: #555;
-    font-size: 1.75em;
-    margin-bottom: 10px;
-}
-
-.view-html-container div {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.view-html-container p {
-    margin: 5px 0;
-}
-
-.view-html-container hr {
-    margin-top: 30px;
-    margin-bottom: 30px;
-    border: 0;
-    border-top: 1px solid #ddd;
-}
+/* ==== INÍCIO SEÇÃO - ESTILOS DO HTML GERADO (REMOVED, use browser print/view) ==== */
+/* .view-html-container { ... } */
 /* ==== FIM SEÇÃO - ESTILOS DO HTML GERADO ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO BOTÃO "OREI!" ==== */
 .daily-section .target .pray-button {
-    background-color: #9cbe4a; /* Tom de verde igual ao do botão "Marcar como Respondido" */
+    background-color: #9cbe4a; /* Green */
     color: white;
     border: none;
     padding: 5px 10px;
     margin-right: 5px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 18px; /* AUMENTANDO O TAMANHO DO BOTÃO OREI AQUI */
+    font-size: 18px; /* Larger size */
+    transition: background-color 0.2s, opacity 0.2s; /* Add transitions */
 }
-
 .daily-section .target .pray-button:hover {
-    background-color: #85a739; /* Tom de verde mais escuro para o hover (igual ao do botão "Marcar como Respondido") */
+    background-color: #85a739;
+}
+.daily-section .target .pray-button:disabled { /* Style when disabled */
+     background-color: #bdd696; /* Lighter green */
+     cursor: not-allowed;
+     opacity: 0.7;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO BOTÃO "OREI!" ==== */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO POPUP ==== */
+/* ==== INÍCIO SEÇÃO - ESTILOS DO POPUP DE CONCLUSÃO ==== */
 .popup {
     display: none;
     position: fixed;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    z-index: 10;
+    z-index: 1010; /* Above modal overlay */
     background-color: white;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     border-radius: 5px;
     text-align: center;
+    padding: 20px; /* Add padding */
+    width: 90%; /* Responsive width */
+    max-width: 350px; /* Limit max width */
 }
-
 .popup-content {
-    padding: 20px;
+    /* padding: 20px; */ /* Padding moved to .popup */
 }
-
 .popup-verse {
     font-style: italic;
     margin-top: 10px;
+    color: #555; /* Verse color */
+}
+.popup .btn { /* Close button */
+     margin-top: 15px;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO POPUP ==== */
 
@@ -619,245 +517,233 @@ input[type="date"] {
     margin-bottom: 20px;
     font-style: italic;
     color: #555;
+    padding: 8px; /* Add padding */
+    background-color: #fdfaf6; /* Light cream background */
+    border-left: 3px solid #e29420; /* Orange left border */
+    border-radius: 3px; /* Slight rounding */
 }
 /* ==== FIM SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
+
 /* ==== INÍCIO SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
-/* Estilo para a tag de prazo de validade */
 .deadline-tag {
-    background-color: #ffcc00; /* Cor de fundo amarela */
-    color: #333; /* Cor do texto escura */
-    padding: 5px 10px;
-    border-radius: 5px;
-    margin-right: 10px; /* Espaço entre a tag e o título */
+    background-color: #ffcc00; /* Yellow */
+    color: #333;
+    padding: 3px 8px; /* Adjusted padding */
+    border-radius: 4px; /* Rounded corners */
+    margin-right: 8px;
     font-size: 0.8em;
+    display: inline-block; /* Ensure it flows inline */
 }
-
-/* Estilo para a tag de prazo de validade em ALVOS DIÁRIOS */
-.daily-section .deadline-tag {
-    background-color: #ffcc00; /* Cor de fundo amarela */
-    color: #333; /* Cor do texto escura */
-    padding: 5px 10px;
-    border-radius: 5px;
-    margin-right: 10px; /* Espaço entre a tag e o título */
-    font-size: 0.8em;
-}
-
-/* Estilo para quando o prazo está vencido */
 .deadline-tag.expired {
-    background-color: #ff6666; /* Cor de fundo vermelha */
-    color: #fff; /* Cor do texto branca */
-}
-
-/* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
-/* ==== INÍCIO SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
-.target button.edit-deadline {
-    background-color: #6599cc; /* Tom azul claro */
+    background-color: #ff6666; /* Red */
     color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-right: 5px;
 }
+.deadline-tag.completed { /* For completed daily targets */
+    background-color: #e0e0e0; /* Grey */
+    color: #777;
+}
+/* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
 
-.target button.edit-deadline:hover {
-    background-color: #4a77a5; /* Tom mais escuro no hover */
+/* ==== INÍCIO SEÇÃO - ESTILOS FILTROS ==== */
+.filter-controls {
+     display: flex;
+     justify-content: center;
+     gap: 15px; /* Space between filters */
+     margin-bottom: 15px;
+     flex-wrap: wrap; /* Allow wrapping */
 }
-/* ==== FIM SEÇÃO - ESTILOS DO BOTÃO EDITAR PRAZO ==== */
-/* ==== INÍCIO SEÇÃO - ESTILOS CENTRALIZAR BOTÕES ==== */
-.daily-buttons-container {
+.filter-container {
     display: flex;
-    justify-content: center;
-    gap: 10px; /* Espaço entre os botões */
-    margin-top: 10px; /* Espaço acima dos botões */
+    align-items: center;
 }
-/* ==== FIM SEÇÃO - ESTILOS CENTRALIZAR BOTÕES ==== */
+.filter-container input[type="checkbox"] {
+    margin-right: 5px;
+    width: auto; /* Override general input width */
+    vertical-align: middle;
+}
+.filter-container label {
+    margin: 0; /* Reset label defaults */
+    font-weight: normal;
+    display: inline;
+    text-align: left;
+}
+.notification-badge { /* Optional badge for expired count */
+     background-color: #f44336;
+     color: white;
+     border-radius: 8px;
+     padding: 1px 5px;
+     font-size: 0.7em;
+     margin-left: 3px;
+     vertical-align: text-top;
+}
+/* ==== FIM SEÇÃO - ESTILOS FILTROS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DA SEÇÃO DE AUTENTICAÇÃO ==== */
-
-/* Container principal da seção de autenticação */
 .auth-section {
     display: flex;
-    flex-direction: column; /* Organiza os elementos verticalmente */
-    align-items: center; /* Centraliza os elementos horizontalmente */
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 20px;
-    text-align: center; /* Centraliza o texto dentro dos elementos */
+    text-align: center;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    max-width: 450px;
+    margin-left: auto;
+    margin-right: auto;
 }
-
-/* Estilos para os inputs de email e senha */
+.auth-section .auth-form {
+     width: 100%;
+}
 .auth-section input[type="email"],
 .auth-section input[type="password"] {
-    margin: 5px 0; /* Espaço acima e abaixo de cada input */
-    padding: 10px;
-    width: 80%; /* Largura responsiva */
-    max-width: 300px; /* Largura máxima para evitar inputs muito largos */
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-family: 'Playfair Display', serif;
+    margin: 8px 0;
+    width: 100%;
+    max-width: none;
 }
-
-/* Container para os botões de Registrar e Entrar */
 .auth-buttons {
     display: flex;
-    gap: 10px; /* Espaço entre os botões */
-    margin-top: 10px;
-    justify-content: center; /* Centraliza os botões no container */
-
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
 }
-
-/* Estilos para os botões de autenticação (Registrar, Entrar) */
-.auth-btn {
+.auth-btn { /* General style for auth buttons (signup, signin, logout) */
     padding: 10px 15px;
     border: none;
-    border-radius: 15px; /* Bordas mais arredondadas */
-    background-color: #f9c784; /* Tom mais claro, da paleta */
+    border-radius: 5px;
+    background-color: #f9c784; /* Light orange */
     color: #333;
     cursor: pointer;
     transition: background-color 0.3s;
-    font-size: 16px; /* Aumentei um pouco o tamanho da fonte */
-    font-weight: bold; /* Deixei em negrito para destacar */
+    font-size: 1em;
+    font-weight: normal;
 }
+.auth-btn:hover { background-color: #f2b366; }
 
-.auth-btn:hover {
-    background-color: #f2b366; /* Tom ligeiramente mais escuro no hover */
-}
-
-/* Container para o link "Esqueci minha senha" */
-.forgot-password-container {
-    margin-top: 10px;
-}
-
-/* Estilos para o link "Esqueci minha senha" */
+.forgot-password-container { margin-top: 15px; }
 .forgot-password-btn {
-    background: none;
-    border: none;
-    color: #654321; /* Cor do texto (marrom escuro) */
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: 14px;
+    background: none; border: none; color: #654321; /* Dark Brown */
+    cursor: pointer; text-decoration: underline; font-size: 0.9em;
 }
+.forgot-password-btn:hover { text-decoration: none; }
 
-.forgot-password-btn:hover {
-    text-decoration: none; /* Remove o sublinhado no hover */
-}
-
-/* Container para o status de autenticação e botão Sair */
 .auth-status-container {
     display: flex;
-    flex-direction: column; /* Organiza verticalmente */
+    flex-direction: row;
     align-items: center;
-    margin-top: 20px;
-    gap: 10px; /* Espaço entre status e botão */
+    justify-content: center;
+    margin-top: 15px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
-
 .auth-status {
-    font-size: 16px;
+     font-size: 1em;
+     margin: 0;
+     color: #333;
+}
+.auth-status-container #btnLogout { /* Specific style for logout button */
+     margin: 0;
+     background-color: #a65b5b; /* Muted red */
+     color: #fff;
+}
+.auth-status-container #btnLogout:hover {
+     background-color: #914d4d;
+}
+.password-reset-message { /* Style for password reset feedback */
+     padding: 8px;
+     margin-top: 10px;
+     border-radius: 4px;
+     font-size: 0.9em;
+     text-align: center;
+     width: 100%; /* Take full width of auth container */
+     box-sizing: border-box;
 }
 /* ==== FIM SEÇÃO - ESTILOS DA SEÇÃO DE AUTENTICAÇÃO ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DA BARRA DE PROGRESSO PERSEVERANÇA ==== */
 .perseverance-section {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    text-align: center;
+    /* General section styles already applied */
+    max-width: 700px; /* Limit width slightly more */
 }
 
-.perseverance-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+.perseverance-header h2 {
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    color: #444;
 }
 
 .perseverance-bar-container {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Distribute space between bar and button */
-    width: 100%; /* Make container take full width */
-    max-width: 500px; /* Limit max width if needed */
+    justify-content: space-between;
+    width: 100%;
+    /* max-width: 500px; Removed max-width here, let section control it */
     margin-top: 10px;
+    gap: 10px; /* Adjust gap */
 }
 
 .progress-bar {
-    background-color: #f0f0f0; /* Light grey background for the bar */
+    background-color: #f0f0f0; /* Light grey background */
     border-radius: 10px;
     height: 20px; /* Height of the progress bar */
     position: relative; /* For positioning the progress and percentage */
-    margin-right: 10px; /* Space between bar and button */
+    /* margin-right: 10px; Removed margin, use gap */
     display: flex; /* Enable flexbox for inline elements */
     align-items: center; /* Vertically align percentage and target days */
-    flex-grow: 1; /* Adicionado: Permite que a barra de progresso se expanda */
+    flex-grow: 1; /* Allow bar to expand */
+    overflow: hidden; /* Hide overflowing progress part */
 }
 
 .progress {
-    background-color: #3CB371; /* Green progress color, from image */
-    border-radius: 10px;
+    background-color: #3CB371; /* Green progress color */
+    /* background: linear-gradient(to right, #66BB6A, #3CB371); Optional gradient */
+    border-radius: 10px; /* Match parent */
     height: 100%;
-    width: 0%; /* Initial width is 0, will be updated by JS */
-    transition: width 0.3s ease; /* Smooth width transition */
-    border-top-left-radius: 0; /* Reset left radius to allow percentage background to be rounded */
-    border-bottom-left-radius: 0;
+    width: 0%; /* Initial width is 0 */
+    transition: width 0.4s ease; /* Smooth width transition */
 }
 
-.progress-percentage {
-    position: absolute; /* Keep absolute positioning for centering if needed in future */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* Center percentage text */
-    color: white; /* White text for percentage */
-    font-size: 0.8em;
-    /* Remove centering styles, as percentage is now on the left inline */
-    position: static;
-    transform: none;
-    left: auto;
-    top: auto;
-    color: #333; /* Dark text color for the percentage number itself */
-}
-
+/* Text inside/over bar */
 .progress-percentage-left {
-    background-color: #3CB371; /* Green background for percentage */
-    color: white; /* White text for percentage */
-    padding: 3px 8px;
-    border-radius: 10px 0 0 10px; /* Rounded corners on the left side */
+    /* position: absolute; Alternative: keep it inside the flex flow */
+    /* left: 10px; */
+    /* top: 50%; */
+    /* transform: translateY(-50%); */
+    padding: 0 10px; /* Padding for text */
+    color: #333; /* Dark text */
     font-size: 0.8em;
-    position: relative; /* Needed for z-index */
-    z-index: 1; /* Ensure it's above the grey bar background */
+    font-weight: bold;
+    white-space: nowrap; /* Prevent wrapping */
+    z-index: 1; /* Ensure it's potentially above progress */
 }
 
-.progress-target-days-right {
-    background-color: #f0f0f0; /* Light grey background for target days */
-    color: #666; /* Slightly darker grey text for target days */
-    padding: 3px 8px;
-    border-radius: 0 10px 10px 0; /* Rounded corners on the right side */
-    font-size: 0.8em;
-    margin-left: auto; /* Push to the right end of the progress bar */
-}
-
+/* Target text (removed, integrated into left text) */
+/* .progress-target-days-right { ... } */
 
 .perseverance-btn {
-    background-color: #3CB371; /* Green button color, from image */
+    background-color: #3CB371; /* Green button color */
     color: white;
-    border-radius: 15px; /* Rounded corners for the button */
+    border-radius: 5px; /* Match other buttons */
+    flex-shrink: 0; /* Prevent button shrinking */
+    padding: 8px 12px; /* Adjust padding */
+}
+.perseverance-btn:hover {
+     background-color: #31a061;
 }
 /* ==== FIM SEÇÃO - ESTILOS DA BARRA DE PROGRESSO PERSEVERANÇA ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO QUADRO DE DIAS DA SEMANA PERSEVERANÇA ==== */
 .weekly-perseverance-chart {
     margin-bottom: 15px; /* Espaço abaixo do quadro */
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    padding: 15px; /* Increased padding */
+    /* background-color: #f9f9f9; */ /* Use default section background */
     text-align: center;
 }
 
 .weekly-header h3 {
     margin-top: 0;
-    margin-bottom: 10px;
+    margin-bottom: 15px; /* More space below header */
     font-size: 1.2em;
     color: #555;
 }
@@ -876,97 +762,126 @@ input[type="date"] {
 }
 
 .day-name {
-    font-size: 0.9em;
+    font-size: 0.85em; /* Slightly smaller */
     color: #777;
-    margin-bottom: 3px;
+    margin-bottom: 4px; /* More space */
+    font-weight: bold;
 }
 
 .day-tick {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
+    display: flex; /* Use flex to center content */
+    justify-content: center;
+    align-items: center;
+    width: 22px; /* Slightly larger */
+    height: 22px;
     border-radius: 50%;
-    border: 2px solid transparent; /* Inicialmente sem borda */
+    border: 2px solid #ccc; /* Default border */
     text-align: center;
-    line-height: 20px;
     font-size: 1em;
-    color: #fff; /* Cor do "tick" */
+    color: #fff; /* Tick color (white) */
+    background-color: #e0e0e0; /* Default background */
+    transition: background-color 0.3s, border-color 0.3s; /* Add transition */
 }
 
+/* --- MODIFICADO --- Cor para o tick ativo do quadro semanal */
 .day-tick.active {
-    background-color: #3CB371; /* Verde para dia com perseverança */
-    border-color: #3CB371;
+    background-color: #f9a825; /* Amarelo-alaranjado do logo/botões */
+    border-color: #f9a825;     /* Matching border */
+    color: #fff; /* Keep tick white */
 }
 
 .day-tick.active::before {
     content: '✓'; /* Caractere "tick" */
-    display: block;
+    font-weight: bold;
 }
 /* ==== FIM SEÇÃO - ESTILOS DO QUADRO DE DIAS DA SEMANA PERSEVERANÇA ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS ALVOS CONCLUÍDOS DIARIAMENTE ==== */
-.completed-daily-targets-section {
-    margin-top: 20px; /* Espaço acima da seção de concluídos */
+.completed-daily-targets-section { /* Container for completed today */
+    margin-top: 20px;
     padding: 10px;
-    border-top: 1px solid #ddd; /* Linha separadora */
+    border-top: 1px solid #ddd;
 }
-
 .completed-daily-targets-section h3 {
     text-align: center;
-    color: #777; /* Cor mais suave para o título */
+    color: #777;
     font-size: 1.1em;
     margin-bottom: 10px;
 }
 
-.completed-target {
-    background-color: #f0f0f0; /* Fundo cinza claro para alvos concluídos */
-    color: #777; /* Cor do texto mais suave */
-    border-left: 3px solid #9cbe4a; /* Barra lateral verde para indicar conclusão */
+.completed-target { /* Style applied to target divs when completed today */
+    background-color: #f0f0f0 !important; /* Override alternating background */
+    color: #777;
+    border-left: 3px solid #9cbe4a; /* Green left border */
     margin-bottom: 8px;
-    padding: 10px;
+    padding-left: 10px; /* Indent slightly */
     border-radius: 3px;
+    opacity: 0.8; /* Make them slightly faded */
 }
-
-.completed-target h3 {
-    color: #777; /* Garante que o título também tenha a cor mais suave */
+.completed-target h3, .completed-target p {
+    color: #777 !important; /* Ensure text is also faded */
 }
-
 .completed-target .deadline-tag {
-    background-color: #e0e0e0; /* Tom mais claro para tag em alvos concluídos */
+    background-color: #e0e0e0;
     color: #999;
+}
+.completed-target .pray-button { /* Hide pray button on completed */
+    display: none;
 }
 /* ==== FIM SEÇÃO - ESTILOS DOS ALVOS CONCLUÍDOS DIARIAMENTE ==== */
 
 
 /* ==== INÍCIO SEÇÃO - RESPONSIVIDADE ==== */
-/* Media query para telas menores */
 @media (max-width: 768px) {
-    input, textarea, button, .btn {
-        width: 100%;
+    body { font-size: 15px; padding: 5px; } /* Slightly larger base font */
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.4em; }
+    h3 { font-size: 1.1em; }
+
+    .main-menu { margin-bottom: 15px; }
+    .main-menu .btn { font-size: 13px; padding: 8px 15px; margin: 3px; }
+
+    .form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .auth-section {
+         width: 98%; /* Use more width */
+         padding: 12px; /* Reduce padding */
+         margin: 10px auto;
     }
 
-    body {
-        font-size: 14px; /* Reduz o tamanho da fonte em telas menores */
+    input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, .search-input {
+        width: 95%; /* Use more width */
+        padding: 10px;
     }
+    label { margin-left: 5%; margin-right: 5%; } /* Adjust label indent */
+    .checkbox-container { width: 90%; }
 
-    h1 {
-        font-size: 2em;
-    }
+    .target { padding: 10px 5px; }
+    .target-actions { gap: 3px; }
+    .target .btn { font-size: 12px; padding: 5px 8px; }
 
-    h2 {
-        font-size: 1.5em;
-    }
+    .daily-buttons-container { flex-direction: column; gap: 5px; } /* Stack daily buttons */
+    .daily-buttons-container .btn { width: 80%; margin: 3px auto; }
 
-    .view-html-container {
-        font-size: 14px;
-    }
+    .pagination { flex-direction: column; gap: 5px; }
+    .page-link { padding: 6px 10px; font-size: 0.85em; }
 
-    .view-html-container h1 {
-        font-size: 2em;
-    }
+    .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
-    .view-html-container h2 {
-        font-size: 1.5em;
-    }
+    .perseverance-bar-container { flex-direction: column; gap: 8px; }
+    .perseverance-btn { width: 80%; }
+
+    .days-container { justify-content: space-between; } /* Ensure space even if small */
+    .day-name { font-size: 0.75em; }
+    .day-tick { width: 18px; height: 18px; border-width: 1px; font-size: 0.9em; }
+}
+
+@media (max-width: 480px) {
+     h1 { font-size: 1.8em; }
+     h2 { font-size: 1.3em; }
+     .main-menu .btn { font-size: 12px; padding: 7px 12px; }
+     .auth-section { max-width: 95%; }
+     .auth-btn { font-size: 0.9em; padding: 8px 12px; }
+     .modal-content { margin: 25% auto; }
+     .progress-percentage-left { font-size: 0.75em; padding: 0 8px;}
+     .perseverance-btn { font-size: 0.9em; padding: 7px 10px; }
 }
 /* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
