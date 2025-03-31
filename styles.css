@@ -189,7 +189,9 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="date"],
-textarea {
+textarea,
+select /* Adicionado select aos estilos gerais */
+{
     display: block;
     margin: 10px auto;
     padding: 10px;
@@ -235,6 +237,21 @@ input[type="date"] {
     border-bottom: none;
 }
 
+/* *** Ajuste no H3 para acomodar múltiplos marcadores *** */
+.target h3 {
+    display: flex; /* Usar flexbox para alinhar marcadores e título */
+    align-items: center; /* Alinhar verticalmente */
+    flex-wrap: wrap; /* Permitir quebra de linha se necessário */
+    gap: 5px; /* Espaço entre marcadores e título */
+    margin-top: 0;
+    margin-bottom: 8px; /* Espaço abaixo do título/marcadores */
+}
+/* Garante que os marcadores não forcem o título para baixo desnecessariamente */
+.target h3 .category-tag,
+.target h3 .deadline-tag {
+    flex-shrink: 0; /* Não encolher os marcadores */
+}
+
 /* Target Actions & Buttons */
 .target-actions {
      margin-top: 10px;
@@ -276,6 +293,15 @@ input[type="date"] {
     background-color: #4a77a5;
 }
 
+/* *** NOVO: Estilo Botão Editar Categoria *** */
+.target button.edit-category {
+    background-color: #a1887f; /* Marrom claro/acinzentado */
+    color: white;
+}
+.target button.edit-category:hover {
+    background-color: #8d6e63;
+}
+
 .target button.delete { /* Delete button in Archived */
     background-color: #d9534f; /* Red */
 }
@@ -285,7 +311,7 @@ input[type="date"] {
 
 
 /* Styling for different target views/states */
-.resolved { /* Targets in the Resolved panel */
+.resolved { /* Targets in the Resolved panel AND Archived panel if resolved */
     background-color: #eaffea; /* Light green background */
     border-left: 3px solid #9cbe4a; /* Green left border */
     padding-left: 10px; /* Add padding for border */
@@ -294,6 +320,21 @@ input[type="date"] {
      background-color: #f8f8f8; /* Light grey background */
      opacity: 0.9;
 }
+/* Se um alvo está arquivado E resolvido, ele terá ambas as classes .archived e .resolved */
+/* O estilo de .resolved (background verde claro) prevalecerá sobre .archived se vier depois no CSS */
+
+/* Tag específica para Respondido (opcional, pode complementar a classe .resolved) */
+.resolved-tag {
+    background-color: #DCEDC8; /* Verde mais claro que o .resolved */
+    color: #558B2F; /* Verde escuro */
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    margin-right: 5px;
+    border: 1px solid #AED581;
+}
+
 
 /* Estilo de citação para Alvos Diários */
 #dailyTargets .target {
@@ -308,8 +349,11 @@ input[type="date"] {
 }
 /* #dailyTargets .target:nth-child(even) { background-color: white; } */
 
-/* ==== INÍCIO SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES E EDIÇÃO ==== */
-.add-observation-form, .edit-deadline-form {
+/* ==== INÍCIO SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR/EDITAR ==== */
+.add-observation-form,
+.edit-deadline-form,
+.edit-category-form /* NOVO */
+{
     margin-top: 10px;
     padding: 10px;
     background-color: #f5f5f5;
@@ -320,27 +364,41 @@ input[type="date"] {
 
 .add-observation-form textarea,
 .add-observation-form input[type="date"],
-.edit-deadline-form input[type="date"] {
+.edit-deadline-form input[type="date"],
+.edit-category-form select /* NOVO */
+{
     width: calc(100% - 22px); /* Adjust width considering padding */
-    max-width: none;
-    margin: 0 auto 10px auto;
+    max-width: none; /* Remove max-width for internal forms */
+    margin: 0 auto 10px auto; /* Center within the form */
+    display: block; /* Ensure they are block level */
 }
 
 .add-observation-form .btn,
-.edit-deadline-form .btn {
+.edit-deadline-form .btn,
+.edit-category-form .btn /* NOVO */
+{
     margin: 5px; /* Add margin around buttons */
     display: inline-block; /* Keep inline */
-    background-color: #7cb17c; /* Save Observation - Green */
+    /* background-color: #7cb17c; /* Save Observation - Green - Definido abaixo */
     color: #fff;
     padding: 8px 12px;
     font-size: 14px;
 }
+
+/* Cores específicas para botões de salvar/cancelar nos forms */
+.add-observation-form .btn { background-color: #7cb17c; }
 .add-observation-form .btn:hover { background-color: #649464; }
 
-.edit-deadline-form .save-deadline-btn { background-color: #4CAF50; } /* Save Deadline */
+.edit-deadline-form .save-deadline-btn { background-color: #4CAF50; }
 .edit-deadline-form .save-deadline-btn:hover { background-color: #45a049; }
-.edit-deadline-form .cancel-deadline-btn { background-color: #f44336; } /* Cancel Deadline */
+.edit-deadline-form .cancel-deadline-btn { background-color: #f44336; }
 .edit-deadline-form .cancel-deadline-btn:hover { background-color: #da190b; }
+
+.edit-category-form .save-category-btn { background-color: #4CAF50; } /* NOVO */
+.edit-category-form .save-category-btn:hover { background-color: #45a049; } /* NOVO */
+.edit-category-form .cancel-category-btn { background-color: #f44336; } /* NOVO */
+.edit-category-form .cancel-category-btn:hover { background-color: #da190b; } /* NOVO */
+
 
 /* Observation Display Styles */
 .observations {
@@ -374,7 +432,7 @@ input[type="date"] {
     /* text-decoration: none; */
 }
 
-/* ==== FIM SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR OBSERVAÇÕES ==== */
+/* ==== FIM SEÇÃO - ESTILOS DO FORMULÁRIO DE ADICIONAR/EDITAR ==== */
 /* ==== FIM SEÇÃO - ESTILOS DOS ALVOS ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DO CONTAINER DE LOGIN (REMOVED, merged into Auth Section) ==== */
@@ -423,8 +481,9 @@ input[type="date"] {
      margin-left: 0; /* Reset indent */
 }
 .modal-content input[type="date"] { /* Style date inputs inside modal */
-     width: 100%;
+     width: 100%; /* Ocupa largura total */
      margin-bottom: 15px;
+     box-sizing: border-box; /* Garante que padding não aumente a largura */
 }
 .modal-buttons { /* Container for modal buttons */
      text-align: right;
@@ -432,6 +491,18 @@ input[type="date"] {
 }
 .modal-buttons .btn { /* Buttons inside modal */
      margin-left: 10px; /* Space between buttons */
+}
+.modal-buttons .modal-action-btn { /* Botão de ação principal (Gerar) */
+    background-color: #7a5217; /* Marrom */
+}
+.modal-buttons .modal-action-btn:hover {
+    background-color: #5f4012;
+}
+.modal-buttons .modal-cancel-btn { /* Botão de cancelar */
+    background-color: #948484; /* Cinza */
+}
+.modal-buttons .modal-cancel-btn:hover {
+     background-color: #756b6b;
 }
 
 
@@ -497,12 +568,14 @@ input[type="date"] {
     background-color: #9cbe4a; /* Green */
     color: white;
     border: none;
-    padding: 5px 10px;
-    margin-right: 5px;
+    padding: 8px 15px; /* Aumenta padding */
+    margin-right: 10px; /* Mais espaço à direita */
+    margin-bottom: 5px; /* Espaço abaixo se quebrar linha */
     border-radius: 5px;
     cursor: pointer;
-    font-size: 18px; /* Larger size */
+    font-size: 16px; /* Tamanho um pouco menor que antes */
     transition: background-color 0.2s, opacity 0.2s; /* Add transitions */
+    vertical-align: middle; /* Alinha melhor com texto */
 }
 .daily-section .target .pray-button:hover {
     background-color: #85a739;
@@ -526,17 +599,26 @@ input[type="date"] {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     border-radius: 5px;
     text-align: center;
-    padding: 20px; /* Add padding */
+    padding: 25px; /* Mais padding */
     width: 90%; /* Responsive width */
     max-width: 350px; /* Limit max width */
 }
 .popup-content {
     /* padding: 20px; */ /* Padding moved to .popup */
 }
+.popup h3 {
+    margin-top: 0;
+    color: #4CAF50; /* Verde */
+}
+.popup p {
+    margin-bottom: 10px;
+}
 .popup-verse {
     font-style: italic;
-    margin-top: 10px;
+    margin-top: 15px;
     color: #555; /* Verse color */
+    border-top: 1px dashed #eee; /* Separador */
+    padding-top: 10px;
 }
 /* .popup .btn definido na seção de correção acima */
 /* ==== FIM SEÇÃO - ESTILOS DO POPUP ==== */
@@ -547,7 +629,7 @@ input[type="date"] {
     margin-bottom: 20px;
     font-style: italic;
     color: #555;
-    padding: 8px; /* Add padding */
+    padding: 10px 15px; /* Add padding */
     background-color: #fdfaf6; /* Light cream background */
     border-left: 3px solid #e29420; /* Orange left border */
     border-radius: 3px; /* Slight rounding */
@@ -563,16 +645,41 @@ input[type="date"] {
     margin-right: 8px;
     font-size: 0.8em;
     display: inline-block; /* Ensure it flows inline */
+    border: 1px solid #e6b800; /* Borda mais escura */
+    vertical-align: middle; /* Alinha melhor com texto/outras tags */
 }
 .deadline-tag.expired {
     background-color: #ff6666; /* Red */
     color: #fff;
+    border-color: #ff4d4d;
 }
 .deadline-tag.completed { /* For completed daily targets */
     background-color: #e0e0e0; /* Grey */
     color: #777;
+    border-color: #bdbdbd;
 }
 /* ==== FIM SEÇÃO - ESTILOS PRAZO DE VALIDADE ==== */
+
+/* ==== *** NOVO: INÍCIO SEÇÃO - ESTILOS MARCADOR DE CATEGORIA *** ==== */
+.category-tag {
+    background-color: #81d4fa; /* Azul claro */
+    color: #01579b; /* Azul escuro (texto) */
+    padding: 3px 8px;
+    border-radius: 4px;
+    /* margin-right: 8px; Removido, usar gap no h3 */
+    font-size: 0.8em;
+    font-weight: bold; /* Destaca um pouco */
+    display: inline-block; /* Garante fluxo inline */
+    border: 1px solid #4fc3f7; /* Borda azul um pouco mais escura */
+    vertical-align: middle; /* Alinha melhor com outros elementos na linha */
+}
+/* Estilo para quando o marcador está dentro de um alvo completado (cinza) */
+ .completed-target .category-tag {
+    background-color: #e0e0e0;
+    color: #757575;
+    border-color: #bdbdbd;
+}
+/* ==== FIM SEÇÃO - ESTILOS MARCADOR DE CATEGORIA ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS FILTROS ==== */
 .filter-controls {
@@ -596,6 +703,7 @@ input[type="date"] {
     font-weight: normal;
     display: inline;
     text-align: left;
+    cursor: pointer; /* Adiciona cursor pointer ao label */
 }
 .notification-badge { /* Optional badge for expired count */
      background-color: #f44336;
@@ -631,6 +739,7 @@ input[type="date"] {
     margin: 8px 0;
     width: 100%;
     max-width: none;
+    box-sizing: border-box; /* Garante que padding não aumente */
 }
 .auth-buttons {
     display: flex;
@@ -746,11 +855,17 @@ input[type="date"] {
     font-weight: bold;
     white-space: nowrap; /* Prevent wrapping */
     z-index: 1; /* Ensure it's potentially above progress */
+    position: absolute; /* Posição absoluta para sobrepor */
+    left: 50%; /* Centraliza horizontalmente */
+    transform: translateX(-50%); /* Ajusta a centralização */
+    text-shadow: 0 0 2px white; /* Sombra branca para legibilidade sobre a barra verde */
+
 }
 
 /* Target text (removed, integrated into left text) */
 /* .progress-target-days-right { ... } */
 
+/* Botão de Confirmação Perseverança (removido do HTML, mas estilo mantido caso retorne) */
 .perseverance-btn {
     background-color: #3CB371; /* Green button color */
     color: white;
@@ -827,10 +942,8 @@ input[type="date"] {
 /* ==== FIM SEÇÃO - ESTILOS DO QUADRO DE DIAS DA SEMANA PERSEVERANÇA ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS ALVOS CONCLUÍDOS DIARIAMENTE ==== */
-.completed-daily-targets-section { /* Container for completed today */
-    margin-top: 20px;
-    padding: 10px;
-    border-top: 1px solid #ddd;
+.completed-daily-targets-section { /* Container for completed today (usado internamente em #dailyTargets) */
+    /* Estilos aplicados dinamicamente quando há concluídos */
 }
 .completed-daily-targets-section h3 {
     text-align: center;
@@ -851,10 +964,8 @@ input[type="date"] {
 .completed-target h3, .completed-target p {
     color: #777 !important; /* Ensure text is also faded */
 }
-.completed-target .deadline-tag {
-    background-color: #e0e0e0;
-    color: #999;
-}
+/* Estilos para tags dentro de concluídos já definidos acima */
+
 .completed-target .pray-button { /* Hide pray button on completed */
     display: none;
 }
@@ -877,12 +988,13 @@ input[type="date"] {
          margin: 10px auto;
     }
 
-    input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, .search-input {
+    input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, select, .search-input {
         width: 95%; /* Use more width */
         padding: 10px;
+        max-width: none; /* Remove max-width */
     }
-    label { margin-left: 5%; margin-right: 5%; } /* Adjust label indent */
-    .checkbox-container { width: 90%; }
+    label { margin-left: 2.5%; margin-right: 2.5%; } /* Adjust label indent */
+    .checkbox-container { width: 95%; margin-left: 2.5%;}
 
     .target { padding: 10px 5px; }
     .target-actions { gap: 3px; }
@@ -913,5 +1025,7 @@ input[type="date"] {
      .modal-content { margin: 25% auto; }
      .progress-percentage-left { font-size: 0.75em; padding: 0 8px;}
      .perseverance-btn { font-size: 0.9em; padding: 7px 10px; }
+     .target .btn { font-size: 11px; padding: 4px 6px; } /* Botões ainda menores */
+     .deadline-tag, .category-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px;}
 }
 /* ==== FIM SEÇÃO - RESPONSIVIDADE ==== */
