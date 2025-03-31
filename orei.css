@@ -12,7 +12,8 @@ body {
     color: #333;
 }
 
-.report-container, .zero-interaction-section {
+/* MODIFICADO: Removida referência a .zero-interaction-section aqui */
+.report-container {
     padding: 20px;
     max-width: 960px; /* Limita largura máxima */
     width: 95%; /* Usa a maior parte da largura disponível */
@@ -43,10 +44,11 @@ h2 {
     border-bottom: 1px solid #eee; /* Linha separadora mais suave */
     padding: 15px 5px; /* Mais padding vertical */
     margin-bottom: 10px;
+    background-color: #fff; /* Cor de fundo padrão branca */
 }
 /* Adiciona uma cor de fundo sutil alternada para melhor legibilidade */
 .report-item:nth-child(even) {
-    background-color: #fafafa;
+    background-color: #fafafa; /* Cinza bem claro para itens pares */
 }
 
 
@@ -150,53 +152,24 @@ h2 {
      font-size: 0.95em;
 }
 
-/* Estilos para a seção "Sem Interação" */
-.zero-interaction-section {
-    background-color: #fffaf2; /* Fundo creme muito claro */
-    border: 1px solid #ffecb3; /* Borda amarela clara */
-    margin-bottom: 25px;
-}
+/* REMOVIDOS: Estilos para a seção "Sem Interação" */
+/*
+.zero-interaction-section { ... }
+.zero-interaction-section h2 { ... }
+ul.zero-interaction-name-list { ... }
+ul.zero-interaction-name-list li { ... }
+.zero-interaction-section hr.title-separator { ... }
+p.no-interaction-alert { ... }
+*/
 
-.zero-interaction-section h2 {
-    color: #b56c00; /* Laranja/Marrom escuro */
-}
-
-/* Estilo para a lista de nomes */
-ul.zero-interaction-name-list {
-    list-style: disc; /* Usa marcadores de lista padrão */
-    padding-left: 30px; /* Adiciona indentação */
-    margin-top: 10px;
-    text-align: left; /* Alinha o texto da lista à esquerda */
-}
-ul.zero-interaction-name-list li {
-    margin-bottom: 5px; /* Espaço entre os nomes */
-    font-size: 1.0em; /* Tamanho de fonte padrão ou ligeiramente maior */
-}
-
-
-.zero-interaction-section hr.title-separator {
-    border: none;
-    border-top: 1px dotted #ffcc80; /* Linha pontilhada amarela */
-    margin: 10px auto;
-    width: 60%;
-}
-
-p.no-interaction-alert { /* Alerta específico para falta de interação - Não usado na versão atual, mas mantido */
-    color: #c76a00; /* Tom de laranja mais forte */
-    font-weight: bold;
-    margin-top: 8px !important;
-    font-size: 0.9em !important;
-}
-
-
-/* Tags de Status com Cores Suavizadas */
+/* Tags de Status com Cores Suavizadas (Ajuste para Ativo) */
 .status-tag {
     display: inline-block;
     padding: 3px 10px;
     border-radius: 12px;
     font-size: 0.75em;
     margin-right: 10px;
-    color: white; /* Cor padrão do texto, será sobrescrita se necessário */
+    color: white; /* Cor padrão do texto */
     font-weight: bold;
     line-height: 1.5;
     vertical-align: middle;
@@ -204,10 +177,13 @@ p.no-interaction-alert { /* Alerta específico para falta de interação - Não 
     border: 1px solid transparent; /* Adiciona borda transparente para consistência */
 }
 
+/* MODIFICADO: status-ativo agora não tem fundo, apenas cor de texto */
 .status-ativo {
-    background-color: #66BB6A; /* Verde um pouco mais suave */
-    border-color: #5aae60; /* Borda ligeiramente mais escura */
-    color: white;
+    /* background-color: #66BB6A; */ /* REMOVIDO */
+    /* border-color: #5aae60; */ /* REMOVIDO */
+    color: #388E3C; /* Verde escuro para o texto */
+    background-color: transparent; /* Garante fundo transparente */
+    border-color: transparent; /* Garante borda transparente */
 }
 
 .status-arquivado {
@@ -232,6 +208,8 @@ p.no-interaction-alert { /* Alerta específico para falta de interação - Não 
     border-radius: 5px; /* Bordas arredondadas */
     max-width: 960px; /* Mesma largura dos containers */
     width: 95%;
+    margin-left: auto; /* Centraliza */
+    margin-right: auto; /* Centraliza */
 }
 .auth-status-container-report p {
     margin: 0 0 10px 0; /* Espaço abaixo do texto */
@@ -286,7 +264,8 @@ p.no-interaction-alert { /* Alerta específico para falta de interação - Não 
 
 /* Responsividade */
 @media (max-width: 768px) {
-    .report-container, .zero-interaction-section, .auth-status-container-report {
+    /* MODIFICADO: Removida referência a .zero-interaction-section */
+    .report-container, .auth-status-container-report {
         width: 98%;
         padding: 15px;
     }
@@ -297,6 +276,6 @@ p.no-interaction-alert { /* Alerta específico para falta de interação - Não 
     .pagination a.page-link { padding: 6px 10px; margin: 0 3px; font-size: 0.85em;}
     .pagination span { font-size: 0.9em; }
     .search-input { width: 90%; }
-    ul.zero-interaction-name-list { padding-left: 20px; } /* Menos indentação em telas menores */
+    /* REMOVIDO: ul.zero-interaction-name-list { ... } */
     .click-stats ul { padding-left: 10px; }
 }
