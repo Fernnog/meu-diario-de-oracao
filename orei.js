@@ -25,7 +25,7 @@ let currentReportPage = 1;
 const itemsPerPage = 10;
 let allTargetsForReport = [];
 let filteredTargetsForReport = [];
-let zeroInteractionTargets = [];
+// REMOVIDO: let zeroInteractionTargets = [];
 
 // =============================================
 // === Funções Utilitárias (Completas) ===
@@ -139,7 +139,7 @@ function updateAuthUIReport(user) {
     const btnLogout = document.getElementById('btnLogoutReport');
     const mainMenu = document.getElementById('mainMenu');
     const mainMenuSeparator = document.getElementById('mainMenuSeparator');
-    const reportContainers = document.querySelectorAll('.report-container, .zero-interaction-section');
+    const mainReportContainer = document.getElementById('mainReportContainer'); // Apenas o container principal
 
     if (user) {
         let providerType = 'E-mail/Senha';
@@ -154,8 +154,8 @@ function updateAuthUIReport(user) {
         btnLogout.style.display = 'none';
         if (mainMenu) mainMenu.style.display = 'none';
         if (mainMenuSeparator) mainMenuSeparator.style.display = 'none';
-        reportContainers.forEach(c => c.style.display = 'none');
-        document.getElementById('zeroInteractionList').innerHTML = '';
+        // Esconde apenas o container principal
+        if (mainReportContainer) mainReportContainer.style.display = 'none';
         document.getElementById('reportList').innerHTML = '';
         document.getElementById('pagination').innerHTML = '';
     }
@@ -180,14 +180,14 @@ document.getElementById('btnLogoutReport')?.addEventListener('click', () => {
 
 async function loadPerseveranceReport(userId) {
     console.log(`Carregando relatório para ${userId}`);
-    document.getElementById('zeroInteractionSection').style.display = 'block';
+    // REMOVIDO: document.getElementById('zeroInteractionSection').style.display = 'block';
     document.getElementById('mainReportContainer').style.display = 'block';
-    document.getElementById('zeroInteractionList').innerHTML = '<p>Carregando alvos sem interação...</p>';
-    document.getElementById('reportList').innerHTML = '<p>Carregando relatório principal...</p>';
+    // REMOVIDO: document.getElementById('zeroInteractionList').innerHTML = '<p>Carregando alvos sem interação...</p>';
+    document.getElementById('reportList').innerHTML = '<p>Carregando relatório...</p>';
 
     try {
         await fetchAllTargetsForReport(userId);
-        await processAndRenderZeroInteraction(userId);
+        // REMOVIDO: await processAndRenderZeroInteraction(userId);
 
         // Define filtros iniciais (ex: Ativos) e renderiza o relatório principal
         document.getElementById('filterAtivo').checked = true;
@@ -197,7 +197,7 @@ async function loadPerseveranceReport(userId) {
 
     } catch (error) {
         console.error("Erro ao carregar dados do relatório:", error);
-        document.getElementById('zeroInteractionList').innerHTML = '<p class="error-message">Erro ao carregar alvos sem interação.</p>';
+        // REMOVIDO: document.getElementById('zeroInteractionList').innerHTML = '<p class="error-message">Erro ao carregar alvos sem interação.</p>';
         document.getElementById('reportList').innerHTML = '<p class="error-message">Erro ao carregar relatório principal.</p>';
     }
 }
@@ -225,69 +225,17 @@ async function fetchAllTargetsForReport(userId) {
     }
 }
 
+/*
+// REMOVIDA: Função processAndRenderZeroInteraction
 async function processAndRenderZeroInteraction(userId) {
-    const zeroInteractionListDiv = document.getElementById('zeroInteractionList');
-    zeroInteractionListDiv.innerHTML = '<p>Processando interações...</p>';
-    zeroInteractionTargets = [];
-
-    const activeTargets = allTargetsForReport.filter(t => t.status === 'ativo');
-    if (activeTargets.length === 0) {
-        zeroInteractionListDiv.innerHTML = '<p>Nenhum alvo ativo encontrado.</p>';
-        return;
-    }
-
-    const now = new Date();
-    const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    const promises = activeTargets.map(async (target) => {
-        try {
-            const clickCountsRef = doc(db, "prayerClickCounts", target.id);
-            const clickSnap = await getDoc(clickCountsRef);
-            let hasInteractionThisMonth = false;
-            if (clickSnap.exists()) {
-                const clickData = clickSnap.data();
-                if (clickData.monthlyClicks && clickData.monthlyClicks[currentMonthYear] > 0) {
-                    hasInteractionThisMonth = true;
-                }
-            }
-            if (!hasInteractionThisMonth) return target;
-        } catch (error) {
-            console.error(`Erro ao verificar cliques para ${target.id}:`, error);
-        }
-        return null;
-    });
-
-    const results = await Promise.all(promises);
-    zeroInteractionTargets = results.filter(target => target !== null);
-
-    renderZeroInteractionList(zeroInteractionTargets); // <-- Chamada movida para após o loop
+    // ... (código removido) ...
 }
 
-// --- MODIFICADO --- Renderiza APENAS os nomes na seção "Sem Interação"
+// REMOVIDA: Função renderZeroInteractionList
 function renderZeroInteractionList(targets) {
-    const listDiv = document.getElementById('zeroInteractionList');
-    listDiv.innerHTML = ''; // Limpa
-
-    if (targets.length === 0) {
-        listDiv.innerHTML = '<p>Ótimo! Todos os alvos ativos tiveram interação este mês.</p>';
-        return;
-    }
-
-    // Cria uma lista não ordenada (ul)
-    const ul = document.createElement('ul');
-    ul.classList.add('zero-interaction-name-list'); // Adiciona classe para estilização opcional
-
-    // Ordena por data de criação (mais antigo primeiro)
-    targets.sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
-
-    targets.forEach(target => {
-        const li = document.createElement('li');
-        li.textContent = target.title || 'Sem Título'; // Mostra apenas o título
-        ul.appendChild(li);
-    });
-
-    listDiv.appendChild(ul); // Adiciona a lista ao container
+    // ... (código removido) ...
 }
+*/
 
 
 // Aplica filtros e renderiza a lista principal do relatório
@@ -321,7 +269,7 @@ function applyFiltersAndRenderMainReport() {
     renderMainReportList();
 }
 
-// --- MODIFICADO --- Renderiza a lista principal com DADOS DE PERSEVERANÇA (Cliques)
+// --- MODIFICADO --- Renderiza a lista principal com APENAS a contagem TOTAL de cliques
 function renderMainReportList() {
     const reportListDiv = document.getElementById('reportList');
     reportListDiv.innerHTML = ''; // Limpa a lista antes de renderizar
@@ -338,7 +286,8 @@ function renderMainReportList() {
 
     itemsToDisplay.forEach(target => {
         const itemDiv = document.createElement('div');
-        itemDiv.classList.add('report-item', `status-${target.status}`); // Adiciona classe de status
+        // REMOVIDO: Classe de status `status-${target.status}` para não aplicar cor de fundo
+        itemDiv.classList.add('report-item');
         itemDiv.dataset.targetId = target.id; // Guarda o ID para buscar cliques
 
         let statusLabel = '';
@@ -366,15 +315,15 @@ function renderMainReportList() {
                 <p>Perseverança (Cliques 'Orei!'):</p>
                 <ul>
                     <li>Total: <span id="clicks-total-${target.id}">...</span></li>
-                    <li>Este Mês: <span id="clicks-month-${target.id}">...</span></li>
-                    <li>Este Ano: <span id="clicks-year-${target.id}">...</span></li>
-                    <!-- <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> -->
+                    <!-- REMOVIDO: <li>Este Mês: <span id="clicks-month-${target.id}">...</span></li> -->
+                    <!-- REMOVIDO: <li>Este Ano: <span id="clicks-year-${target.id}">...</span></li> -->
+                    <!-- REMOVIDO: <li>Última Oração: <span id="clicks-last-${target.id}">...</span></li> -->
                 </ul>
             </div>
         `;
         reportListDiv.appendChild(itemDiv);
 
-        // Busca e exibe os dados de cliques para este alvo
+        // Busca e exibe os dados de cliques (agora só o total)
         fetchAndDisplayClickCount(target.id, itemDiv);
     });
 
@@ -382,14 +331,15 @@ function renderMainReportList() {
 }
 
 
-// --- NOVO --- Busca e exibe os dados de cliques para um alvo específico
+// --- MODIFICADO --- Busca e exibe APENAS o total de cliques
 async function fetchAndDisplayClickCount(targetId, itemDiv) {
     const totalSpan = itemDiv.querySelector(`#clicks-total-${targetId}`);
-    const monthSpan = itemDiv.querySelector(`#clicks-month-${targetId}`);
-    const yearSpan = itemDiv.querySelector(`#clicks-year-${targetId}`);
-    // const lastSpan = itemDiv.querySelector(`#clicks-last-${targetId}`); // Se for adicionar data da última
+    // REMOVIDO: const monthSpan = ...
+    // REMOVIDO: const yearSpan = ...
+    // REMOVIDO: const lastSpan = ...
 
-    if (!totalSpan || !monthSpan || !yearSpan) return; // Sai se os elementos não existirem
+    // MODIFICADO: Verifica apenas o totalSpan
+    if (!totalSpan) return; // Sai se o elemento total não existir
 
     try {
         const clickCountsRef = doc(db, "prayerClickCounts", targetId);
@@ -397,29 +347,28 @@ async function fetchAndDisplayClickCount(targetId, itemDiv) {
 
         if (clickSnap.exists()) {
             const data = clickSnap.data();
-            const now = new Date();
-            const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const currentYear = now.getFullYear().toString();
+            // REMOVIDO: const now = new Date();
+            // REMOVIDO: const currentMonthYear = ...
+            // REMOVIDO: const currentYear = ...
 
             totalSpan.textContent = data.totalClicks || 0;
-            monthSpan.textContent = data.monthlyClicks?.[currentMonthYear] || 0;
-            yearSpan.textContent = data.yearlyClicks?.[currentYear] || 0;
-            // Para data da última oração, precisaríamos armazenar um timestamp no `prayerClickCounts`
-            // lastSpan.textContent = data.lastClickTimestamp ? formatDateForDisplay(data.lastClickTimestamp) : 'Nenhuma';
+            // REMOVIDO: monthSpan.textContent = ...
+            // REMOVIDO: yearSpan.textContent = ...
+            // REMOVIDO: lastSpan.textContent = ...
 
         } else {
-            // Se não existe documento de cliques, assume 0 para tudo
+            // Se não existe documento de cliques, assume 0 para total
             totalSpan.textContent = '0';
-            monthSpan.textContent = '0';
-            yearSpan.textContent = '0';
-            // lastSpan.textContent = 'Nenhuma';
+            // REMOVIDO: monthSpan.textContent = '0';
+            // REMOVIDO: yearSpan.textContent = '0';
+            // REMOVIDO: lastSpan.textContent = 'Nenhuma';
         }
     } catch (error) {
         console.error(`Erro ao buscar cliques para ${targetId}:`, error);
         totalSpan.textContent = 'Erro';
-        monthSpan.textContent = 'Erro';
-        yearSpan.textContent = 'Erro';
-        // lastSpan.textContent = 'Erro';
+        // REMOVIDO: monthSpan.textContent = 'Erro';
+        // REMOVIDO: yearSpan.textContent = 'Erro';
+        // REMOVIDO: lastSpan.textContent = 'Erro';
     }
 }
 
