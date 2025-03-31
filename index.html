@@ -11,9 +11,11 @@
 <body>
  <!-- ==== INÍCIO SEÇÃO - CABEÇALHO ==== -->
 <div class="top-bar">
+    <!-- Optional: Add last backup info here if needed -->
+    <!-- <span class="ultimo-backup">Último Backup: Nunca</span> -->
 </div>
 <div class="logo-container">
-    <img src="logo.png" alt="Logo" class="logo">
+    <img src="logo.png" alt="Logo Meu Diário de Oração" class="logo">
 </div>
 <div class="main-title">
     <h1>Meus Alvos de Oração</h1>
@@ -22,7 +24,7 @@
 
     <!-- ==== INÍCIO SEÇÃO - AUTENTICAÇÃO ==== -->
     <div id="authSection" class="auth-section">
-        <div class="auth-form" id="emailPasswordAuthForm">
+        <div class="auth-form" id="emailPasswordAuthForm" style="display: block;"> <!-- Show by default -->
             <input type="email" id="email" placeholder="Seu e-mail" required>
             <input type="password" id="password" placeholder="Sua senha" required>
             <div class="auth-buttons">
@@ -34,19 +36,12 @@
             </div>
         </div>
 
-        <!-- BOTÃO GOOGLE REMOVIDO DAQUI -->
-        <!--
-        <div class="auth-buttons">
-            <button id="btnGoogleLogin" class="btn auth-btn">Entrar com o Google</button>
-        </div>
-         -->
-
-         <!-- Envolve o status e o botão em um container (para Flexbox) -->
-        <div class="auth-status-container">
+        <!-- Status container (shown when logged in) -->
+        <div class="auth-status-container" style="display: none;"> <!-- Hide by default -->
             <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
             <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
         </div>
-        <div id="passwordResetMessage" class="password-reset-message" style="display:none;"></div>
+        <div id="passwordResetMessage" class="password-reset-message" style="display:none; margin-top: 10px;"></div>
     </div>
     <!-- ==== FIM SEÇÃO - AUTENTICAÇÃO ==== -->
 
@@ -54,25 +49,25 @@
     <hr class="menu-separator">
     <div class="main-menu" id="mainMenu">
        <button id="backToMainButton" class="btn">Página Inicial</button>
-       <button id="addNewTargetButton" class="btn">Novo</button> <!-- Botão "Novo" ADICIONADO -->
+       <button id="addNewTargetButton" class="btn">Novo Alvo</button>
        <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
        <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
        <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
     </div>
     <hr class="menu-separator dark">
-    <div class="main-menu" id="mainMenu">
-        <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Geral</button>
-        <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos</button>
-        <!-- BOTÃO "RELATÓRIO DE ORAÇÕES" ADICIONADO AQUI -->
-        <button id="viewReportButton" class="btn action-btn">Perseverança</button>
+    <div class="main-menu" id="secondaryMenu"> <!-- Changed ID for clarity -->
+        <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Atual</button>
+        <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos (Período)</button>
+        <button id="viewReportButton" class="btn action-btn">Relatório de Perseverança</button>
     </div>
     <hr class="menu-separator">
     <!-- ==== FIM SEÇÃO - MENU ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - QUADRO DIAS DA SEMANA PERSEVERANÇA ==== -->
+    <!-- ==== INÍCIO SEÇÃO - QUADRO SEMANAL DE ORAÇÃO (MODIFICADO) ==== -->
     <div class="weekly-perseverance-chart" id="weeklyPerseveranceChart" style="display: none;">
         <div class="weekly-header">
-            <h3>Sua Semana de Perseverança</h3>
+            <!-- MODIFICADO: Title changed -->
+            <h3>Sua Semana de Oração</h3>
         </div>
         <div class="days-container">
             <div class="day">
@@ -90,7 +85,6 @@
             <div class="day">
                 <span class="day-name">Qua</span>
                 <span class="day-tick" id="day-3"></span>
-                <span class="day-tick" id="day-3"></span>
             </div>
             <div class="day">
                 <span class="day-name">Qui</span>
@@ -106,46 +100,53 @@
             </div>
         </div>
     </div>
-    <!-- ==== FIM SEÇÃO - QUADRO DIAS DA SEMANA PERSEVERANÇA ==== -->
+    <!-- ==== FIM SEÇÃO - QUADRO SEMANAL DE ORAÇÃO ==== -->
 
-    <!-- ==== INÍCIO SEÇÃO - BARRA DE PROGRESSO PERSEVERANÇA ==== -->
+    <!-- ==== INÍCIO SEÇÃO - BARRA DE PROGRESSO PERSEVERANÇA (Mantida) ==== -->
     <div class="perseverance-section" id="perseveranceSection" style="display: none;">
         <div class="perseverance-header">
-            <h2>Perseverança na Intercessão</h2>
-            <div class="perseverance-bar-container">
+            <h2>Perseverança na Intercessão (Dias Consecutivos)</h2> <!-- Title clarifies purpose -->
+            <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui"> <!-- Add tooltip -->
                 <div class="progress-bar">
-                    <span class="progress-percentage-left" id="perseverancePercentage">0%</span>
+                    <!-- Updated spans -->
+                    <span class="progress-percentage-left" id="perseverancePercentage">0 / 30 dias</span>
                     <div class="progress" id="perseveranceProgressBar" style="width: 0%;"></div>
-                    <span class="progress-target-days-right">/30 dias</span>
+                    <!-- Removed right span, info combined on left -->
                 </div>
-                <button id="confirmPerseveranceButton" class="btn perseverance-btn">Confirmar Perseverança</button>
+                <button id="confirmPerseveranceButton" class="btn perseverance-btn">Confirmar Perseverança Hoje</button>
             </div>
+             <!-- Optional: Display record -->
+             <!-- <p id="perseveranceRecord" style="font-size: 0.9em; color: #666; margin-top: 5px;">Recorde: 0 dias</p> -->
         </div>
     </div>
     <!-- ==== FIM SEÇÃO - BARRA DE PROGRESSO PERSEVERANÇA ==== -->
 
     <!-- ==== INÍCIO SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
-    <div class="form-section" id="appContent" style="display: none;"> <!-- HIDDEN BY DEFAULT -->
+    <div class="form-section" id="appContent" style="display: none;"> <!-- Hidden by default -->
         <h2>Cadastrar Novo Alvo de Oração</h2>
         <form id="prayerForm">
             <label for="title">Título:</label>
             <input type="text" id="title" placeholder="Ex.: Saúde da Família" required>
+
             <label for="details">Observações:</label>
             <textarea id="details" placeholder="Escreva aqui os detalhes do pedido..."></textarea>
-            <label for="date">Data:</label>
+
+            <label for="date">Data Criação:</label>
             <input type="date" id="date" required>
 
-            <!-- Checkbox para prazo de validade -->
-            <input type="checkbox" id="hasDeadline" name="hasDeadline">
-            <label for="hasDeadline">Este alvo tem prazo de validade?</label>
+            <!-- Checkbox for deadline -->
+            <div class="checkbox-container">
+                <input type="checkbox" id="hasDeadline" name="hasDeadline">
+                <label for="hasDeadline">Este alvo tem prazo de validade?</label>
+            </div>
 
-            <!-- Campo de data para o prazo de validade (inicialmente oculto) -->
+            <!-- Deadline date input (initially hidden) -->
             <div id="deadlineContainer" style="display: none;">
                 <label for="deadlineDate">Prazo de Validade:</label>
                 <input type="date" id="deadlineDate">
             </div>
 
-            <button type="submit" class="btn">Adicionar Alvo</button>
+            <button type="submit" class="btn submit-btn">Adicionar Alvo</button>
         </form>
     </div>
     <!-- ==== FIM SEÇÃO - FORMULÁRIO DE CADASTRO ==== -->
@@ -155,20 +156,24 @@
     <!-- ==== INÍCIO SEÇÃO - ALVOS DO DIA ==== -->
     <div class="daily-section" id="dailySection" style="display: none;">
         <h2>
-            Alvos de oração do dia
+            Alvos de Oração do Dia
             <div class="daily-buttons-container">
-                <button id="refreshDaily" class="btn">Atualizar Alvos do Dia</button>
-                <button id="copyDaily" class="btn">Copiar Alvos do Dia</button>
-                <button id="viewDaily" class="btn daily-view">Visualizar Alvos do Dia</button>
+                <button id="refreshDaily" class="btn daily-action-btn">Atualizar Alvos do Dia</button>
+                <button id="copyDaily" class="btn daily-action-btn">Copiar Alvos Pendentes</button>
+                <button id="viewDaily" class="btn daily-view">Visualizar Detalhes do Dia</button>
             </div>
         </h2>
-        <div id="dailyVerses" class="daily-verses"></div>
-        <div id="dailyTargets"></div>
-        <!-- Popup de Conclusão -->
-        <div id="completionPopup" class="popup">
+        <div id="dailyVerses" class="daily-verses"></div> <!-- Verse display -->
+        <div id="dailyTargets">
+            <!-- Daily targets will be rendered here by JS -->
+            <p>Carregando alvos do dia...</p>
+        </div>
+        <!-- Completion Popup -->
+        <div id="completionPopup" class="popup" style="display: none;"> <!-- Hidden initially -->
             <div class="popup-content">
-                <p>Objetivo de oração diário cumprido com sucesso!</p>
-                <p id="popupVerse" class="popup-verse">“Muito pode, por sua eficácia, a súplica do justo (Tg 5:16).”</p>
+                <h3>Parabéns!</h3>
+                <p>Você orou por todos os alvos selecionados para hoje!</p>
+                <p id="popupVerse" class="popup-verse">“Versículo inspirador aqui.”</p>
                 <button id="closePopup" class="btn">Fechar</button>
             </div>
         </div>
@@ -178,72 +183,77 @@
   <!-- ==== INÍCIO SEÇÃO - PAINÉIS DE ALVOS ==== -->
    <!-- Painel Principal com Alvos Ativos -->
 <div class="targets-section" id="mainPanel" style="display: none;">
-    <h2>Alvos de Oração</h2>
+    <h2>Alvos de Oração Ativos</h2>
     <hr class="title-separator">
-    <input type="text" id="searchMain" placeholder="Pesquisar alvos..." class="search-input">
+    <input type="text" id="searchMain" placeholder="Pesquisar por título, detalhe ou observação..." class="search-input">
     <hr class="search-separator">
-    <div class="filter-container">
-        <input type="checkbox" id="showDeadlineOnly" name="showDeadlineOnly">
-        <label for="showDeadlineOnly">Alvos de oração com prazo de vencimento</label>
-    </div>
-    <div class="filter-container">
-        <input type="checkbox" id="showExpiredOnlyMain" name="showExpiredOnlyMain">
-        <label for="showExpiredOnlyMain">Alvos de oração com prazo já vencido</label>
+    <div class="filter-controls"> <!-- Container for filters -->
+        <div class="filter-container">
+            <input type="checkbox" id="showDeadlineOnly" name="showDeadlineOnly">
+            <label for="showDeadlineOnly">Mostrar apenas com prazo</label>
+        </div>
+        <div class="filter-container">
+            <input type="checkbox" id="showExpiredOnlyMain" name="showExpiredOnlyMain">
+            <label for="showExpiredOnlyMain">Mostrar apenas com prazo vencido</label>
+            <!-- <span id="expiredNotification" class="notification-badge"></span> --> <!-- Optional badge -->
+        </div>
     </div>
     <hr class="filter-separator">
-    <div id="targetList"></div>
-    <div id="pagination-mainPanel"></div>
+    <div id="targetList">
+        <!-- Active targets rendered here -->
+        <p>Carregando alvos...</p>
+    </div>
+    <div id="pagination-mainPanel" class="pagination"></div>
 </div>
 
 <!-- Painel para Alvos Arquivados -->
 <div class="targets-section" id="archivedPanel" style="display: none;">
     <h2>Alvos Arquivados</h2>
     <hr class="title-separator">
-    <input type="text" id="searchArchived" placeholder="Pesquisar alvos..." class="search-input">
+    <input type="text" id="searchArchived" placeholder="Pesquisar nos arquivados..." class="search-input">
     <hr class="search-separator">
-    <div id="archivedList"></div>
-    <div id="pagination-archivedPanel"></div>
+    <div id="archivedList">
+        <!-- Archived targets rendered here -->
+         <p>Carregando arquivados...</p>
+    </div>
+    <div id="pagination-archivedPanel" class="pagination"></div>
 </div>
 
-<!-- Painel para Alvos Respondidos -->
+<!-- Painel para Alvos Respondidos (subset of Archived) -->
 <div class="targets-section" id="resolvedPanel" style="display: none;">
     <h2>Alvos Respondidos</h2>
     <hr class="title-separator">
-    <input type="text" id="searchResolved" placeholder="Pesquisar alvos..." class="search-input">
+    <input type="text" id="searchResolved" placeholder="Pesquisar nos respondidos..." class="search-input">
     <hr class="search-separator">
-    <div id="resolvedList"></div>
-    <div id="pagination-resolvedPanel"></div>
+    <div id="resolvedList">
+        <!-- Resolved targets rendered here -->
+         <p>Carregando respondidos...</p>
+    </div>
+    <div id="pagination-resolvedPanel" class="pagination"></div>
 </div>
 
-<!-- Painel para Alvos com Prazo de Validade -->
+<!-- REMOVED: Standalone Deadline Panel (functionality merged into mainPanel) -->
+<!--
 <div class="targets-section" id="deadlinePanel" style="display: none;">
-    <h2>Alvos com Prazo de Validade</h2>
-    <hr class="title-separator">
-    <input type="text" id="searchDeadline" placeholder="Pesquisar alvos..." class="search-input">
-    <hr class="search-separator">
-    <!-- Checkbox para filtrar alvos vencidos -->
-    <div class="filter-container">
-        <input type="checkbox" id="showExpiredOnly" name="showExpiredOnly">
-        <label for="showExpiredOnly">Vencidos</label>
-    </div>
-    <hr class="filter-separator">
-    <div id="deadlineList"></div>
-    <div id="pagination-deadlinePanel"></div>
+    <h2>Alvos com Prazo de Validade</h2> ...
 </div>
+-->
 <!-- ==== FIM SEÇÃO - PAINÉIS DE ALVOS ==== -->
 
    <!-- ==== INÍCIO SEÇÃO - MODAIS ==== -->
-    <!-- Modal para Seleção de Período -->
+    <!-- Modal para Seleção de Período (View Resolved) -->
     <div id="dateRangeModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <span class="close-button" id="closeDateRangeModal">×</span>
-            <h2>Selecionar Período</h2>
+            <span class="close-button" id="closeDateRangeModal">×</span> <!-- Nicer close button -->
+            <h2>Visualizar Respondidos por Período</h2>
             <label for="startDate">Data de Início:</label>
-            <input type="date" id="startDate">
+            <input type="date" id="startDate" required>
             <label for="endDate">Data de Fim:</label>
-            <input type="date" id="endDate">
-            <button id="generateResolvedView" class="btn">Gerar</button>
-            <button id="cancelDateRange" class="btn">Cancelar</button>
+            <input type="date" id="endDate" required>
+            <div class="modal-buttons">
+                 <button id="generateResolvedView" class="btn modal-action-btn">Gerar Visualização</button>
+                 <button id="cancelDateRange" class="btn modal-cancel-btn">Cancelar</button>
+            </div>
         </div>
     </div>
     <!-- ==== FIM SEÇÃO - MODAIS ==== -->
