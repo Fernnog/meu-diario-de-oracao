@@ -978,6 +978,92 @@ async function updateClickCounts(userId, targetId) {
 // --- Perseverança ---
 
 // --- MODIFICADO --- loadPerseveranceData agora trata weekId e weeklyInteractions
+// Substitua a função loadPerseveranceData existente por esta versão corrigida:
+
+async function loadPerseveranceData(userId) {
+    console.log(`[loadPerseveranceData] Loading for user ${userId}`);
+    const perseveranceDocRef = doc(db, "perseveranceData", userId);
+    let shouldSaveWeekChange = false; // Flag para indicar se a mudança de semana precisa ser salva
+
+    try {
+        const docSnap = await getDoc(perseveranceDocRef);
+        const today = new Date();
+        const weekId = getWeekIdentifier(today); // Identificador da semana atual
+
+        if (docSnap.exists()) {
+            perseveranceData = docSnap.data();
+            // Conversão de Timestamp para Date (barra de progresso)
+            if (perseveranceData.lastInteractionDate instanceof Timestamp) {
+                perseveranceData.lastInteractionDate = perseveranceData.lastInteractionDate.toDate();
+            }
+            // Garante que números sejam números
+            perseveranceData.consecutiveDays = Number(perseveranceData.consecutiveDays) || 0;
+            perseveranceData.recordDays = Number(perseveranceData.recordDays) || 0;
+
+            // --- LÓGICA DO QUADRO SEMANAL ---
+            // Verifica se os dados semanais são da semana atual, senão limpa
+            if (perseveranceData.weekId !== weekId) {
+                console.log(`[loadPerseveranceData] Week changed from ${perseveranceData.weekId} to ${weekId}. Clearing weekly interactions.`);
+                perseveranceData.weeklyInteractions = {}; // Limpa interações da semana passada localmente
+                perseveranceData.weekId = weekId;         // Atualiza o ID da semana localmente
+                shouldSaveWeekChange = true; // MARCA que precisamos salvar esta limpeza
+            } else {
+                 // Garante que weeklyInteractions exista como objeto
+                perseveranceData.weeklyInteractions = perseveranceData.weeklyInteractions || {};
+            }
+            // --- FIM LÓGICA DO QUADRO SEMANAL ---
+
+        } else {
+            // Se não existe, inicializa tudo
+            console.log(`[loadPerseveranceData] No perseverance data found for ${userId}. Initializing.`);
+            perseveranceData = {
+                consecutiveDays: 0, lastInteractionDate: null, recordDays: 0,
+                weeklyInteractions: {}, weekId: weekId
+            };
+            // Não precisa marcar para salvar, pois será criado na primeira interação
+        }
+        currentWeekIdentifier = perseveranceData.weekId; // Atualiza a variável global
+
+        // --- CORREÇÃO: Salva a mudança de semana (limpeza) imediatamente ---
+        if (shouldSaveWeekChange) {
+            console.log("[loadPerseveranceData] Saving week change (cleared interactions and new weekId) to Firestore.");
+            // Cria um objeto APENAS com os campos a serem atualizados devido à mudança de semana
+            const weekChangeData = {
+                weeklyInteractions: {}, // Salva o mapa vazio
+                weekId: perseveranceData.weekId // Salva o novo ID da semana
+            };
+            try {
+                await updatePerseveranceFirestore(userId, weekChangeData);
+                console.log("[loadPerseveranceData] Week change saved successfully.");
+            } catch (saveError) {
+                console.error("[loadPerseveranceData] Failed to save week change to Firestore:", saveError);
+                // Considerar como lidar com erro de salvamento aqui. Talvez alertar o usuário?
+                // Por enquanto, a lógica local foi atualizada, mas o Firestore pode estar dessincronizado.
+            }
+        }
+        // --- FIM DA CORREÇÃO ---
+
+        // ATUALIZA A BARRA DE PROGRESSO (Independente do quadro)
+        updatePerseveranceUI();
+
+        // ATUALIZA O QUADRO SEMANAL (Independente da barra)
+        // Agora lê os dados locais que foram corretamente inicializados ou limpos
+        updateWeeklyChart();
+
+    } catch (error) {
+        console.error("[loadPerseveranceData] Error loading perseverance data:", error);
+         // Estado de erro seguro
+         perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0, weeklyInteractions: {}, weekId: getWeekIdentifier(new Date()) };
+         currentWeekIdentifier = perseveranceData.weekId;
+         updatePerseveranceUI(); // Tenta atualizar UI mesmo em erro
+         updateWeeklyChart();    // Tenta atualizar UI mesmo em erro
+    }
+}
+
+        currentWeekIdentifier = perseveranceData.weekId; // Atualiza a variável global
+
+        // ATUALIZA A BARRA DE PROGRESSO (Independente do quadro)
+        updatePerseveranceUI();
 async function loadPerseveranceData(userId) {
      console.log(`[loadPerseveranceData] Loading for user ${userId}`);
     const perseveranceDocRef = doc(db, "perseveranceData", userId);
@@ -1018,9 +1104,6 @@ async function loadPerseveranceData(userId) {
             };
         }
         currentWeekIdentifier = perseveranceData.weekId; // Atualiza a variável global
-
-        // ATUALIZA A BARRA DE PROGRESSO (Independente do quadro)
-        updatePerseveranceUI();
 
         // ATUALIZA O QUADRO SEMANAL (Independente da barra)
         updateWeeklyChart();
