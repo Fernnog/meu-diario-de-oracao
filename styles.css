@@ -138,6 +138,38 @@ hr.title-separator, hr.search-separator, hr.filter-separator {
  }
 /* ==== FIM SEÇÃO - ESTILOS DOS BOTÕES ==== */
 
+/* ==== INÍCIO SEÇÃO - CORREÇÃO CORES BOTÕES ESPECÍFICOS ==== */
+
+/* Botões de Ação na Seção Daily Section */
+.daily-action-btn {
+    background-color: #654321; /* Marrom Mais Escuro (mesma cor dos botões de ação como "Gerar Visualização") */
+    color: #fff; /* Garante texto branco */
+}
+.daily-action-btn:hover {
+    background-color: #4a301a; /* Marrom Mais Escuro (Hover) */
+}
+
+/* Botão Submit no Formulário de Adicionar Alvo */
+.submit-btn {
+     background-color: #654321; /* Marrom Mais Escuro (consistente com outras ações) */
+     color: #fff; /* Garante texto branco */
+}
+.submit-btn:hover {
+     background-color: #4a301a; /* Marrom Mais Escuro (Hover) */
+}
+
+/* Botão Fechar no Popup de Conclusão */
+.popup .btn {
+    background-color: #948484; /* Cinza (mesma cor dos botões "Ver Arquivados/Respondidos" para uma ação neutra) */
+    color: #fff; /* Garante texto branco */
+}
+.popup .btn:hover {
+     background-color: #756b6b; /* Cinza (Hover) */
+}
+
+/* ==== FIM SEÇÃO - CORREÇÃO CORES BOTÕES ESPECÍFICOS ==== */
+
+
 /* ==== INÍCIO SEÇÃO - ESTILOS DAS SEÇÕES ==== */
 .form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .completed-daily-targets-section {
     margin: 20px auto; /* Center sections */
@@ -506,9 +538,7 @@ input[type="date"] {
     margin-top: 10px;
     color: #555; /* Verse color */
 }
-.popup .btn { /* Close button */
-     margin-top: 15px;
-}
+/* .popup .btn definido na seção de correção acima */
 /* ==== FIM SEÇÃO - ESTILOS DO POPUP ==== */
 
 /* ==== INÍCIO SEÇÃO - ESTILOS DOS VERSÍCULOS ==== */
