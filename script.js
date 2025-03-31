@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, addDoc, increment, Timestamp, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, addDoc, increment, Timestamp, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -32,6 +32,7 @@ let currentSearchTermMain = '';
 let currentSearchTermArchived = '';
 let currentSearchTermResolved = '';
 let showDeadlineOnly = false;
+let currentDailyTargets = []; // Holds IDs of targets currently in the daily list
 
 // Data for the PROGRESS BAR (Consecutive Days)
 let perseveranceData = {
@@ -46,12 +47,12 @@ let weeklyPrayerData = {
     interactions: {}
 };
 
-// *** NOVO: Lista de categorias pré-definidas ***
+// Predefined list of categories
 const predefinedCategories = ["Família", "Pessoal", "Igreja", "Trabalho", "Sonho", "Profético", "Promessas", "Outros"];
 
-// ==== FUNÇÕES UTILITÁRIAS ====
+// ==== UTILITY FUNCTIONS ====
 
-// Função para obter o identificador da semana ISO (Ano-W##) para uma data
+// Function to get the ISO week identifier (Year-W##) for a date
 function getWeekIdentifier(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -64,12 +65,10 @@ function getWeekIdentifier(date) {
 // Helper to create a Date object representing UTC midnight from a YYYY-MM-DD string
 function createUTCDate(dateString) {
     if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        // console.warn("[createUTCDate] Invalid date string format provided:", dateString);
         return null;
     }
     const date = new Date(dateString + 'T00:00:00Z');
     if (isNaN(date.getTime())) {
-        // console.warn("[createUTCDate] Failed to parse date string to valid UTC Date:", dateString);
         return null;
     }
     return date;
@@ -87,7 +86,6 @@ function formatDateToISO(date) {
     }
 
     if (!(dateToFormat instanceof Date) || isNaN(dateToFormat.getTime())) {
-        // console.warn("formatDateToISO received invalid date, defaulting to today:", date);
         dateToFormat = new Date();
     }
 
@@ -108,7 +106,7 @@ function formatDateForDisplay(dateInput) {
         if (typeof dateInput === 'string') {
             dateToFormat = new Date(dateInput.includes('T') || dateInput.includes('Z') ? dateInput : dateInput + 'T00:00:00Z');
          }
-        else { /* console.warn("[formatDateForDisplay] Input is unexpected type:", typeof dateInput, dateInput); */ return 'Data Inválida'; }
+        else { return 'Data Inválida'; }
     }
     if (!dateToFormat || isNaN(dateToFormat.getTime())) { return 'Data Inválida'; }
     const day = String(dateToFormat.getUTCDate()).padStart(2, '0');
@@ -155,7 +153,6 @@ function generateUniqueId() {
 function rehydrateTargets(targets) {
     return targets.map((target) => {
         const rehydratedTarget = { ...target };
-        // Inclui category nos campos a verificar, embora não seja data
         const fieldsToConvert = ['date', 'deadlineDate', 'lastPresentedDate', 'resolutionDate', 'archivedDate'];
 
         fieldsToConvert.forEach(field => {
@@ -166,17 +163,17 @@ function rehydrateTargets(targets) {
                 /* Already Date */
             } else if (originalValue === null || originalValue === undefined) {
                 rehydratedTarget[field] = null;
-            } else if (typeof originalValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(originalValue)) { // Verifica se é string de data
+            } else if (typeof originalValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(originalValue)) { // Check if it's a date string
                 try {
                     const parsedDate = new Date(originalValue.includes('T') || originalValue.includes('Z') ? originalValue : originalValue + 'T00:00:00Z');
                     rehydratedTarget[field] = !isNaN(parsedDate.getTime()) ? parsedDate : null;
                 } catch (e) { rehydratedTarget[field] = null; }
-            } else if (field !== 'category') { // Ignora category aqui
+            } else if (field !== 'category') { // Ignore category here
                  rehydratedTarget[field] = null;
             }
         });
 
-        // Garante que category seja string ou null
+        // Ensure category is string or null
         rehydratedTarget.category = typeof rehydratedTarget.category === 'string' ? rehydratedTarget.category : null;
 
         if (rehydratedTarget.observations && Array.isArray(rehydratedTarget.observations)) {
@@ -198,10 +195,10 @@ function rehydrateTargets(targets) {
         return rehydratedTarget;
     });
 }
-// ==== FIM FUNÇÕES UTILITÁRIAS ====
+// ==== END UTILITY FUNCTIONS ====
 
 
-// ==== AUTENTICAÇÃO ====
+// ==== AUTHENTICATION ====
 function updateAuthUI(user) {
     const authStatus = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
@@ -220,7 +217,6 @@ function updateAuthUI(user) {
         authStatusContainer.style.display = 'none'; // Hide status container when logged out
         btnLogout.style.display = 'none';
         emailPasswordAuthForm.style.display = 'block'; // Show login form
-        // authStatus.textContent = "Nenhum usuário autenticado"; // Not needed if container is hidden
         document.getElementById('passwordResetMessage').style.display = 'none';
     }
 }
@@ -271,12 +267,12 @@ async function resetPassword() {
         passwordResetMessageDiv.style.display = "block";
     }
 }
-// ==== FIM AUTENTICAÇÃO ====
+// ==== END AUTHENTICATION ====
 
 
-// ==== DADOS E LÓGICA PRINCIPAL ====
+// ==== MAIN DATA AND LOGIC ====
 
-// --- Carregamento de Dados ---
+// --- Data Loading ---
 async function loadData(user) {
     updateAuthUI(user);
     const uid = user ? user.uid : null;
@@ -319,7 +315,7 @@ async function loadData(user) {
              console.error("[loadData] Error during data loading process:", error);
              alert("Ocorreu um erro ao carregar seus dados. Por favor, recarregue a página ou tente fazer login novamente.");
              resetPerseveranceUI();
-             prayerTargets = []; archivedTargets = []; resolvedTargets = [];
+             prayerTargets = []; archivedTargets = []; resolvedTargets = []; currentDailyTargets = [];
              renderTargets(); renderArchivedTargets(); renderResolvedTargets();
              document.getElementById("dailyTargets").innerHTML = "<p>Erro ao carregar dados. Faça login novamente.</p>";
          }
@@ -336,7 +332,7 @@ async function loadData(user) {
         document.getElementById('perseveranceSection').style.display = 'none';
 
         // Clear local data
-        prayerTargets = []; archivedTargets = []; resolvedTargets = [];
+        prayerTargets = []; archivedTargets = []; resolvedTargets = []; currentDailyTargets = [];
         renderTargets(); renderArchivedTargets(); renderResolvedTargets();
         document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>";
         document.getElementById('dailyVerses').textContent = '';
@@ -357,11 +353,11 @@ async function fetchPrayerTargets(uid) {
 async function fetchArchivedTargets(uid) {
     archivedTargets = [];
     const archivedRef = collection(db, "users", uid, "archivedTargets");
-    const archivedSnapshot = await getDocs(query(archivedRef, orderBy("date", "desc"))); // Ordenar por data de criação, mas poderia ser por archivedDate
+    const archivedSnapshot = await getDocs(query(archivedRef, orderBy("date", "desc"))); // Order by creation date, could be archivedDate
     console.log(`[fetchArchivedTargets] Found ${archivedSnapshot.size} archived targets for user ${uid}`);
     const rawArchived = archivedSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     archivedTargets = rehydrateTargets(rawArchived);
-    // Ordenar localmente por data de arquivamento (ou criação se não houver) - mais recente primeiro
+    // Sort locally by archive date (or creation if null) - most recent first
     archivedTargets.sort((a, b) => {
         const dateA = a.archivedDate instanceof Date ? a.archivedDate.getTime() : (a.date instanceof Date ? a.date.getTime() : 0);
         const dateB = b.archivedDate instanceof Date ? b.archivedDate.getTime() : (b.date instanceof Date ? b.date.getTime() : 0);
@@ -370,7 +366,7 @@ async function fetchArchivedTargets(uid) {
     console.log("[fetchArchivedTargets] Rehydrated and sorted archivedTargets count:", archivedTargets.length);
 }
 
-// --- Renderização ---
+// --- Rendering ---
 function renderTargets() {
     const targetListDiv = document.getElementById('targetList');
     targetListDiv.innerHTML = '';
@@ -422,7 +418,7 @@ function renderTargets() {
             const formattedDate = formatDateForDisplay(target.date);
             const elapsed = timeElapsed(target.date);
 
-            // Cria o marcador de categoria (se existir)
+            // Create category tag (if exists)
             let categoryTag = '';
             if (target.category) {
                 categoryTag = `<span class="category-tag">${target.category}</span>`;
@@ -452,7 +448,7 @@ function renderTargets() {
                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
                 `;
             targetListDiv.appendChild(targetDiv);
-            renderObservationForm(target.id); // Chama para popular o form de observação (se necessário)
+            renderObservationForm(target.id); // Populate observation form if needed
         });
     }
     renderPagination('mainPanel', currentPage, filteredAndPagedTargets);
@@ -461,7 +457,7 @@ function renderTargets() {
 function renderArchivedTargets() {
     const archivedListDiv = document.getElementById('archivedList');
     archivedListDiv.innerHTML = '';
-    let filteredAndPagedArchived = [...archivedTargets]; // Usa a lista já ordenada no fetch
+    let filteredAndPagedArchived = [...archivedTargets]; // Use list already sorted in fetch
 
     if (currentSearchTermArchived) filteredAndPagedArchived = filterTargets(filteredAndPagedArchived, currentSearchTermArchived);
 
@@ -480,20 +476,20 @@ function renderArchivedTargets() {
              if (!target || !target.id) return;
             const archivedDiv = document.createElement("div");
             archivedDiv.classList.add("target", "archived");
-            if (target.resolved) archivedDiv.classList.add("resolved"); // Adiciona classe se também for resolvido
+            if (target.resolved) archivedDiv.classList.add("resolved"); // Add class if also resolved
             archivedDiv.dataset.targetId = target.id;
 
             const formattedCreationDate = formatDateForDisplay(target.date);
             const formattedArchivedDate = target.archivedDate ? formatDateForDisplay(target.archivedDate) : 'N/A';
             const elapsedCreation = timeElapsed(target.date);
 
-            // Cria o marcador de categoria (se existir)
+            // Create category tag (if exists)
             let categoryTag = '';
             if (target.category) {
                 categoryTag = `<span class="category-tag">${target.category}</span>`;
             }
 
-            // Cria marcador de respondido se aplicável
+            // Create resolved tag if applicable
             let resolvedTag = '';
             if (target.resolved && target.resolutionDate) {
                 resolvedTag = `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>`;
@@ -527,16 +523,16 @@ function renderArchivedTargets() {
 function renderResolvedTargets() {
     const resolvedListDiv = document.getElementById('resolvedList');
     resolvedListDiv.innerHTML = '';
-    // Usa a lista `resolvedTargets` que já foi filtrada e ordenada no loadData/markAsResolved
+    // Use `resolvedTargets` list which was filtered and sorted in loadData/markAsResolved
     let filteredAndPagedResolved = [...resolvedTargets];
 
     if (currentSearchTermResolved) filteredAndPagedResolved = filterTargets(filteredAndPagedResolved, currentSearchTermResolved);
 
-    // Ordenação (já deve estar ordenada por resolutionDate, mas podemos garantir)
+    // Sort (should already be sorted by resolutionDate, but ensure)
     filteredAndPagedResolved.sort((a, b) => {
         const dateA = a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0;
         const dateB = b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0;
-        return dateB - dateA; // Mais recente primeiro
+        return dateB - dateA; // Most recent first
     });
 
 
@@ -554,7 +550,7 @@ function renderResolvedTargets() {
         targetsToDisplay.forEach((target) => {
             if (!target || !target.id) return;
             const resolvedDiv = document.createElement("div");
-            resolvedDiv.classList.add("target", "resolved"); // Adiciona ambas as classes
+            resolvedDiv.classList.add("target", "resolved"); // Add both classes
             resolvedDiv.dataset.targetId = target.id;
 
             const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
@@ -574,7 +570,7 @@ function renderResolvedTargets() {
                                  else { let diffInYears = Math.floor(diffInDays / 365.25); totalTime = `${diffInYears} anos`; }}}}}
             }
 
-            // Cria o marcador de categoria (se existir)
+            // Create category tag (if exists)
             let categoryTag = '';
             if (target.category) {
                 categoryTag = `<span class="category-tag">${target.category}</span>`;
@@ -652,7 +648,7 @@ function handlePageChange(panelId, newPage) {
     if (panelElement) panelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// --- Adição/Edição/Arquivamento ---
+// --- Add/Edit/Archive ---
 document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
@@ -663,11 +659,9 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     const dateInput = document.getElementById("date").value;
     const hasDeadline = document.getElementById("hasDeadline").checked;
     const deadlineDateInput = document.getElementById("deadlineDate").value;
-    const category = document.getElementById("categorySelect").value; // <<< Captura categoria
+    const category = document.getElementById("categorySelect").value;
 
     if (!title || !dateInput) { alert("Título e Data Criação são obrigatórios."); return; }
-    // Opcional: Validar se categoria foi selecionada
-    // if (!category) { alert("Por favor, selecione uma categoria."); return; }
 
     const dateUTC = createUTCDate(dateInput);
     if (!dateUTC) { alert("Data de criação inválida."); return; }
@@ -685,7 +679,7 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
         date: Timestamp.fromDate(dateUTC),
         hasDeadline: hasDeadline,
         deadlineDate: deadlineDateUTC ? Timestamp.fromDate(deadlineDateUTC) : null,
-        category: category || null, // <<< Salva categoria (ou null)
+        category: category || null,
         archived: false,
         resolved: false,
         resolutionDate: null,
@@ -697,15 +691,15 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     try {
         const docRef = await addDoc(collection(db, "users", uid, "prayerTargets"), target);
         const newLocalTarget = rehydrateTargets([{ ...target, id: docRef.id }])[0];
-        prayerTargets.unshift(newLocalTarget); // Adiciona no início
-        // Reordena a lista local
+        prayerTargets.unshift(newLocalTarget); // Add to beginning
+        // Re-sort local list
         prayerTargets.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
 
         document.getElementById("prayerForm").reset();
         document.getElementById('deadlineContainer').style.display = 'none';
-        document.getElementById('categorySelect').value = ''; // Limpa select da categoria
-        document.getElementById('date').value = formatDateToISO(new Date()); // Reseta data
-        showPanel('mainPanel'); currentPage = 1; renderTargets(); // Mostra painel principal e renderiza
+        document.getElementById('categorySelect').value = ''; // Clear category select
+        document.getElementById('date').value = formatDateToISO(new Date()); // Reset date
+        showPanel('mainPanel'); currentPage = 1; renderTargets(); // Show main panel and render
         alert('Alvo de oração adicionado com sucesso!');
     } catch (error) { console.error("Error adding prayer target: ", error); alert("Erro ao adicionar alvo: " + error.message); }
 });
@@ -717,44 +711,44 @@ window.markAsResolved = async function(targetId) {
     if (targetIndex === -1) { alert("Erro: Alvo não encontrado na lista ativa."); return; }
     const targetData = prayerTargets[targetIndex];
     if (!confirm(`Marcar o alvo "${targetData.title || targetId}" como respondido? Ele será movido para Arquivados.`)) return;
-    const resolutionDate = Timestamp.fromDate(new Date()); // Usa a data atual como resolução e arquivamento
+    const resolutionDate = Timestamp.fromDate(new Date()); // Use current date for resolution and archiving
     const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
     const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
     try {
-        // Prepara os dados para arquivar, convertendo Dates locais para Timestamps do Firestore
+        // Prepare data for archiving, converting local Dates to Firestore Timestamps
         const archivedData = {
-            ...targetData, // Copia todos os campos existentes
-            date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date, // Converte data de criação
-            deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate, // Converte prazo
+            ...targetData, // Copy existing fields
+            date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date, // Convert creation date
+            deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate, // Convert deadline
             observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
                 ...obs,
-                date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date // Converte datas das observações
+                date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date // Convert observation dates
             })) : [],
             resolved: true,
             archived: true,
             resolutionDate: resolutionDate,
-            archivedDate: resolutionDate // Data de arquivamento é a mesma da resolução
+            archivedDate: resolutionDate // Archive date is the same as resolution date
          };
-        delete archivedData.id; // Remove ID do objeto a ser salvo (Firestore usa ID do doc)
-        delete archivedData.status; // Remove campo 'status' se existir localmente
+        delete archivedData.id; // Remove ID from object to be saved (Firestore uses doc ID)
+        delete archivedData.status; // Remove 'status' field if it exists locally
 
-        // Usa um batch para garantir atomicidade
+        // Use a batch for atomicity
         const batch = writeBatch(db);
-        batch.delete(activeTargetRef); // Deleta da coleção ativa
-        batch.set(archivedTargetRef, archivedData); // Cria/Sobrescreve na coleção arquivada
+        batch.delete(activeTargetRef); // Delete from active collection
+        batch.set(archivedTargetRef, archivedData); // Create/Overwrite in archived collection
         await batch.commit();
 
-        // Atualiza listas locais
-        prayerTargets.splice(targetIndex, 1); // Remove da lista ativa local
-        const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0]; // Rehidrata para uso local
-        archivedTargets.unshift(newArchivedLocal); // Adiciona ao início da lista arquivada local
+        // Update local lists
+        prayerTargets.splice(targetIndex, 1); // Remove from local active list
+        const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0]; // Rehydrate for local use
+        archivedTargets.unshift(newArchivedLocal); // Add to beginning of local archived list
 
-        // Reordena arquivados e atualiza resolvidos
+        // Re-sort archived and update resolved
         archivedTargets.sort((a, b) => (b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0) - (a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0));
         resolvedTargets = archivedTargets.filter(t => t.resolved);
         resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
 
-        // Re-renderiza as listas afetadas
+        // Re-render affected lists
         renderTargets();
         renderArchivedTargets();
         renderResolvedTargets();
@@ -769,11 +763,11 @@ window.archiveTarget = async function(targetId) {
     if (targetIndex === -1) { alert("Erro: Alvo não encontrado na lista ativa."); return; }
     const targetData = prayerTargets[targetIndex];
     if (!confirm(`Arquivar o alvo "${targetData.title || targetId}"? Ele será movido para Arquivados.`)) return;
-    const archiveTimestamp = Timestamp.fromDate(new Date()); // Data atual para arquivamento
+    const archiveTimestamp = Timestamp.fromDate(new Date()); // Current date for archiving
     const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
     const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
     try {
-         // Prepara os dados para arquivar, convertendo Dates para Timestamps
+         // Prepare data for archiving, converting Dates to Timestamps
          const archivedData = {
             ...targetData,
              date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date,
@@ -782,31 +776,31 @@ window.archiveTarget = async function(targetId) {
                  ...obs,
                  date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date
                 })) : [],
-             resolved: false, // Não está sendo resolvido, apenas arquivado
+             resolved: false, // Not resolved, just archived
              archived: true,
-             archivedDate: archiveTimestamp, // Define a data de arquivamento
-             // resolutionDate permanece como estava (provavelmente null)
+             archivedDate: archiveTimestamp, // Set archive date
+             // resolutionDate remains as it was (likely null)
          };
         delete archivedData.id;
         delete archivedData.status;
 
-        // Usa batch
+        // Use batch
         const batch = writeBatch(db);
         batch.delete(activeTargetRef);
         batch.set(archivedTargetRef, archivedData);
         await batch.commit();
 
-        // Atualiza listas locais
+        // Update local lists
         prayerTargets.splice(targetIndex, 1);
         const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0];
         archivedTargets.unshift(newArchivedLocal);
         archivedTargets.sort((a, b) => (b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0) - (a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0));
-        resolvedTargets = archivedTargets.filter(t => t.resolved); // Atualiza resolvidos (embora este não seja resolvido)
+        resolvedTargets = archivedTargets.filter(t => t.resolved); // Update resolved (although this one isn't resolved)
 
-        // Re-renderiza
+        // Re-render
         renderTargets();
         renderArchivedTargets();
-        renderResolvedTargets(); // Re-renderiza resolvidos caso a ordenação mude algo visualmente
+        renderResolvedTargets(); // Re-render resolved in case order changes anything visually
         alert('Alvo arquivado com sucesso!');
     } catch (error) { console.error("Error archiving target: ", error); alert("Erro ao arquivar alvo: " + error.message); }
 };
@@ -817,21 +811,21 @@ window.deleteArchivedTarget = async function(targetId) {
      const targetTitle = archivedTargets.find(t => t.id === targetId)?.title || targetId;
      if (!confirm(`Tem certeza que deseja excluir PERMANENTEMENTE o alvo arquivado "${targetTitle}"? Esta ação não pode ser desfeita.`)) return;
      const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
-     const clickCountsRef = doc(db, "prayerClickCounts", targetId); // Referência para contagem de cliques
+     const clickCountsRef = doc(db, "prayerClickCounts", targetId); // Reference for click counts
      try {
-         // Usa batch para deletar ambos os documentos
+         // Use batch to delete both documents
          const batch = writeBatch(db);
-         batch.delete(archivedTargetRef); // Deleta o alvo arquivado
-         batch.delete(clickCountsRef); // Deleta a contagem de cliques associada (se existir)
+         batch.delete(archivedTargetRef); // Delete archived target
+         batch.delete(clickCountsRef); // Delete associated click count (if exists)
          await batch.commit();
 
-         // Atualiza listas locais
+         // Update local lists
          const targetIndex = archivedTargets.findIndex(t => t.id === targetId);
          if (targetIndex !== -1) archivedTargets.splice(targetIndex, 1);
-         resolvedTargets = archivedTargets.filter(target => target.resolved); // Atualiza resolvidos
+         resolvedTargets = archivedTargets.filter(target => target.resolved); // Update resolved
          resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
 
-         // Re-renderiza
+         // Re-render
          renderArchivedTargets();
          renderResolvedTargets();
          alert('Alvo excluído permanentemente!');
@@ -839,19 +833,19 @@ window.deleteArchivedTarget = async function(targetId) {
 };
 
 
-// --- Observações ---
+// --- Observations ---
 window.toggleAddObservation = function(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    // Esconde outros forms abertos no mesmo alvo
+    // Hide other open forms in the same target
     const deadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
     const categoryForm = document.getElementById(`editCategoryForm-${targetId}`);
     if(deadlineForm) deadlineForm.style.display = 'none';
     if(categoryForm) categoryForm.style.display = 'none';
 
-    // Mostra/esconde o form de observação
+    // Show/hide observation form
     formDiv.style.display = isVisible ? 'none' : 'block';
     if (!isVisible) {
         formDiv.querySelector('textarea')?.focus();
@@ -884,19 +878,19 @@ window.saveObservation = async function(targetId) {
     const userId = user.uid;
     let targetRef, targetList, targetIndex = -1, isArchived = false, isResolved = false;
 
-    // Procura o alvo na lista ativa
+    // Look for target in active list
     targetIndex = prayerTargets.findIndex(t => t.id === targetId);
     if (targetIndex !== -1) {
         targetRef = doc(db, "users", userId, "prayerTargets", targetId);
         targetList = prayerTargets;
     } else {
-        // Procura o alvo na lista arquivada
+        // Look for target in archived list
         targetIndex = archivedTargets.findIndex(t => t.id === targetId);
         if (targetIndex !== -1) {
             targetRef = doc(db, "users", userId, "archivedTargets", targetId);
             targetList = archivedTargets;
             isArchived = true;
-            isResolved = archivedTargets[targetIndex].resolved; // Verifica se também é resolvido
+            isResolved = archivedTargets[targetIndex].resolved; // Check if also resolved
         } else {
             alert("Erro: Alvo não encontrado.");
             return;
@@ -905,9 +899,9 @@ window.saveObservation = async function(targetId) {
 
     const newObservation = {
         text: observationText,
-        date: Timestamp.fromDate(observationDateUTC), // Salva como Timestamp
-        id: generateUniqueId(), // Gera um ID único para a observação
-        targetId: targetId // Guarda referência ao alvo pai
+        date: Timestamp.fromDate(observationDateUTC), // Save as Timestamp
+        id: generateUniqueId(), // Generate unique ID for observation
+        targetId: targetId // Keep reference to parent target
     };
 
     try {
@@ -915,61 +909,61 @@ window.saveObservation = async function(targetId) {
         if (!targetDocSnap.exists()) throw new Error("Target document does not exist in Firestore.");
 
         const currentData = targetDocSnap.data();
-        const currentObservations = currentData.observations || []; // Pega observações existentes ou array vazio
-        currentObservations.push(newObservation); // Adiciona a nova
+        const currentObservations = currentData.observations || []; // Get existing observations or empty array
+        currentObservations.push(newObservation); // Add the new one
 
-        // Ordena as observações no Firestore pela data (mais recente primeiro)
+        // Sort observations in Firestore by date (most recent first)
         currentObservations.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0));
 
-        // Atualiza o documento no Firestore com o array de observações atualizado
+        // Update document in Firestore with updated observations array
         await updateDoc(targetRef, { observations: currentObservations });
 
-        // Atualiza o objeto local
+        // Update local object
         const currentTargetLocal = targetList[targetIndex];
         if (!Array.isArray(currentTargetLocal.observations)) currentTargetLocal.observations = [];
-        // Adiciona a nova observação reidratada (com Date object)
+        // Add the new rehydrated observation (with Date object)
         currentTargetLocal.observations.push({ ...newObservation, date: newObservation.date.toDate() });
-        // Ordena localmente também
+        // Sort locally as well
         currentTargetLocal.observations.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
 
-        // Re-renderiza as listas apropriadas
+        // Re-render appropriate lists
         if (isArchived) {
-            renderArchivedTargets(); // Renderiza arquivados
+            renderArchivedTargets(); // Render archived
             if (isResolved) {
-                renderResolvedTargets(); // Renderiza resolvidos também
+                renderResolvedTargets(); // Render resolved as well
             }
         } else {
-            renderTargets(); // Renderiza ativos
-             // Se estava na lista diária, atualiza também
+            renderTargets(); // Render active
+             // If it was in the daily list, update that too
             if (document.getElementById('dailyTargets').querySelector(`.target[data-target-id="${targetId}"]`)) {
                  await loadDailyTargets();
              }
         }
 
-        toggleAddObservation(targetId); // Esconde o formulário
-        document.getElementById(`observationText-${targetId}`).value = ''; // Limpa o campo de texto
+        toggleAddObservation(targetId); // Hide the form
+        document.getElementById(`observationText-${targetId}`).value = ''; // Clear text field
 
     } catch (error) { console.error("Error saving observation:", error); alert("Erro ao salvar observação: " + error.message); }
 };
 
 function renderObservations(observations, isExpanded = false, targetId = null) {
     if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
-    // Ordena localmente antes de exibir (já deve estar ordenado, mas garante)
+    // Sort locally before displaying (should already be sorted, but ensures)
     observations.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
-    const displayCount = isExpanded ? observations.length : 1; // Mostra 1 por padrão, ou todas se expandido
+    const displayCount = isExpanded ? observations.length : 1; // Show 1 by default, or all if expanded
     const visibleObservations = observations.slice(0, displayCount);
     const remainingCount = observations.length - displayCount;
 
     let observationsHTML = `<div class="observations">`;
     visibleObservations.forEach(observation => {
-        if (!observation || !observation.date) return; // Pula observações inválidas
+        if (!observation || !observation.date) return; // Skip invalid observations
         const formattedDate = formatDateForDisplay(observation.date);
         const text = observation.text || '(Observação vazia)';
-        // Sanitizar HTML básico aqui seria ideal em produção
+        // Basic HTML sanitization would be ideal here in production
         observationsHTML += `<p class="observation-item"><strong>${formattedDate}:</strong> ${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;
     });
 
-    // Adiciona link para ver mais/menos se houver mais de 1 observação
+    // Add link to see more/less if there's more than 1 observation
     if (targetId && observations.length > 1) {
         if (!isExpanded && remainingCount > 0) {
             observationsHTML += `<a href="#" class="observations-toggle" onclick="window.toggleObservations('${targetId}', event); return false;">Ver mais ${remainingCount} observaç${remainingCount > 1 ? 'ões' : 'ão'}</a>`;
@@ -987,16 +981,16 @@ window.toggleObservations = function(targetId, event) {
     const observationsContainer = targetDiv.querySelector('.observations'); if (!observationsContainer) return;
     const isCurrentlyExpanded = observationsContainer.querySelector('.observations-toggle')?.textContent.includes('Ver menos');
 
-    // Encontra o alvo localmente
+    // Find target locally
     const target = prayerTargets.find(t => t.id === targetId) || archivedTargets.find(t => t.id === targetId); if (!target) return;
 
-    // Renderiza o HTML das observações no novo estado (expandido ou não)
+    // Render observation HTML in the new state (expanded or not)
     const newObservationsHTML = renderObservations(target.observations || [], !isCurrentlyExpanded, targetId);
-    observationsContainer.outerHTML = newObservationsHTML; // Substitui o container antigo pelo novo
+    observationsContainer.outerHTML = newObservationsHTML; // Replace old container with new one
 };
 
 
-// --- Prazos (Deadlines) ---
+// --- Deadlines ---
 document.getElementById('hasDeadline').addEventListener('change', function() {
     document.getElementById('deadlineContainer').style.display = this.checked ? 'block' : 'none';
     if (!this.checked) document.getElementById('deadlineDate').value = '';
@@ -1010,7 +1004,7 @@ function checkExpiredDeadlines() {
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const expiredCount = prayerTargets.filter(target => target.hasDeadline && target.deadlineDate instanceof Date && !isNaN(target.deadlineDate) && target.deadlineDate.getTime() < todayUTCStart.getTime()).length;
     console.log(`[checkExpiredDeadlines] Found ${expiredCount} expired deadlines among active targets.`);
-    // Poderia atualizar um badge na UI aqui se desejado
+    // Could update a UI badge here if desired
 }
 
 window.editDeadline = function(targetId) {
@@ -1019,13 +1013,13 @@ window.editDeadline = function(targetId) {
     const editFormContainer = document.getElementById(`editDeadlineForm-${targetId}`); if (!editFormContainer) return;
     const isVisible = editFormContainer.style.display === 'block';
 
-    // Esconde outros forms abertos no mesmo alvo
+    // Hide other open forms in the same target
     const obsForm = document.getElementById(`observationForm-${targetId}`);
     const categoryForm = document.getElementById(`editCategoryForm-${targetId}`);
     if(obsForm) obsForm.style.display = 'none';
     if(categoryForm) categoryForm.style.display = 'none';
 
-    // Mostra/esconde o form de prazo
+    // Show/hide deadline form
     if (isVisible) { editFormContainer.style.display = 'none'; return; }
 
     let currentDeadlineISO = '';
@@ -1055,40 +1049,40 @@ window.saveEditedDeadline = async function(targetId) {
         const newDeadlineUTC = createUTCDate(newDeadlineValue);
         if (!newDeadlineUTC) { alert("Data do prazo inválida."); return; }
         const target = prayerTargets.find(t => t.id === targetId);
-         // Validação: Prazo não pode ser antes da criação
+         // Validation: Deadline cannot be before creation
          if (target && target.date instanceof Date && newDeadlineUTC.getTime() < target.date.getTime()) {
             alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return;
          }
         newDeadlineTimestamp = Timestamp.fromDate(newDeadlineUTC);
         newHasDeadline = true;
     } else {
-        // Confirmação se o usuário está removendo o prazo
+        // Confirm if user is removing the deadline
         if (!confirm("Nenhuma data selecionada. Tem certeza que deseja remover o prazo?")) return;
     }
 
-    // Atualiza no Firestore e localmente
+    // Update in Firestore and locally
     await updateDeadlineInFirestoreAndLocal(targetId, newDeadlineTimestamp, newHasDeadline);
-    cancelEditDeadline(targetId); // Esconde o formulário após salvar
+    cancelEditDeadline(targetId); // Hide form after saving
 };
 
 async function updateDeadlineInFirestoreAndLocal(targetId, newDeadlineTimestamp, newHasDeadline) {
      const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
      const userId = user.uid;
-     const targetRef = doc(db, "users", userId, "prayerTargets", targetId); // Só edita prazo em alvos ativos
+     const targetRef = doc(db, "users", userId, "prayerTargets", targetId); // Only edit deadlines on active targets
      try {
          await updateDoc(targetRef, {
-             deadlineDate: newDeadlineTimestamp, // Salva Timestamp ou null
+             deadlineDate: newDeadlineTimestamp, // Save Timestamp or null
              hasDeadline: newHasDeadline
          });
 
-         // Atualiza localmente
+         // Update locally
          const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
          if (targetIndex !== -1) {
              prayerTargets[targetIndex].deadlineDate = newDeadlineTimestamp ? newDeadlineTimestamp.toDate() : null;
              prayerTargets[targetIndex].hasDeadline = newHasDeadline;
          }
 
-         renderTargets(); // Re-renderiza a lista principal
+         renderTargets(); // Re-render main list
          alert('Prazo atualizado com sucesso!');
      } catch (error) {
         console.error(`Error updating deadline for ${targetId}:`, error);
@@ -1100,14 +1094,14 @@ window.cancelEditDeadline = function(targetId) {
      const editFormContainer = document.getElementById(`editDeadlineForm-${targetId}`);
      if (editFormContainer) {
          editFormContainer.style.display = 'none';
-         editFormContainer.innerHTML = ''; // Limpa o conteúdo
+         editFormContainer.innerHTML = ''; // Clear content
      }
 };
 
 
-// --- Edição de Categoria ---
+// --- Category Editing ---
 window.editCategory = function(targetId) {
-    // Encontra o alvo em qualquer uma das listas relevantes (ativa ou arquivada)
+    // Find target in relevant lists (active or archived)
     let target = prayerTargets.find(t => t.id === targetId) || archivedTargets.find(t => t.id === targetId);
     if (!target) { alert("Erro: Alvo não encontrado."); return; }
 
@@ -1118,20 +1112,20 @@ window.editCategory = function(targetId) {
 
     const isVisible = editFormContainer.style.display === 'block';
 
-    // Esconde outros formulários de edição abertos no mesmo alvo
+    // Hide other open edit forms in the same target
     const obsForm = document.getElementById(`observationForm-${targetId}`);
     const deadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
     if(obsForm) obsForm.style.display = 'none';
     if(deadlineForm) deadlineForm.style.display = 'none';
 
-    // Mostra/esconde o form de categoria
+    // Show/hide category form
     if (isVisible) {
-        editFormContainer.style.display = 'none'; // Esconde se já estiver visível
+        editFormContainer.style.display = 'none'; // Hide if already visible
         return;
     }
 
-    // Cria as opções do select dinamicamente
-    let optionsHTML = '<option value="">-- Remover Categoria --</option>'; // Opção para remover
+    // Create select options dynamically
+    let optionsHTML = '<option value="">-- Remover Categoria --</option>'; // Option to remove
     predefinedCategories.forEach(cat => {
         const selected = target.category === cat ? 'selected' : '';
         optionsHTML += `<option value="${cat}" ${selected}>${cat}</option>`;
@@ -1155,7 +1149,7 @@ window.editCategory = function(targetId) {
 window.saveEditedCategory = async function(targetId) {
     const newCategorySelect = document.getElementById(`editCategorySelect-${targetId}`);
     if (!newCategorySelect) return;
-    const newCategoryValue = newCategorySelect.value; // Pode ser "" para remover
+    const newCategoryValue = newCategorySelect.value; // Can be "" to remove
 
     const user = auth.currentUser;
     if (!user) { alert("Erro: Usuário não autenticado."); return; }
@@ -1167,19 +1161,19 @@ window.saveEditedCategory = async function(targetId) {
     let isArchived = false;
     let isResolved = false;
 
-    // Verifica na lista ativa
+    // Check active list
     targetIndex = prayerTargets.findIndex(t => t.id === targetId);
     if (targetIndex !== -1) {
         targetRef = doc(db, "users", userId, "prayerTargets", targetId);
         targetList = prayerTargets;
     } else {
-        // Verifica na lista arquivada
+        // Check archived list
         targetIndex = archivedTargets.findIndex(t => t.id === targetId);
         if (targetIndex !== -1) {
             targetRef = doc(db, "users", userId, "archivedTargets", targetId);
             targetList = archivedTargets;
             isArchived = true;
-            isResolved = archivedTargets[targetIndex].resolved; // Verifica se também está nos resolvidos
+            isResolved = archivedTargets[targetIndex].resolved; // Check if also in resolved
         } else {
             alert("Erro: Alvo não encontrado para atualização.");
             return;
@@ -1188,21 +1182,21 @@ window.saveEditedCategory = async function(targetId) {
 
     try {
         await updateDoc(targetRef, {
-            category: newCategoryValue || null // Salva null se "" for selecionado
+            category: newCategoryValue || null // Save null if "" is selected
         });
 
-        // Atualiza o objeto local
+        // Update local object
         targetList[targetIndex].category = newCategoryValue || null;
 
-        // Re-renderiza a(s) lista(s) apropriada(s)
+        // Re-render appropriate list(s)
         if (isArchived) {
             renderArchivedTargets();
             if (isResolved) {
-                renderResolvedTargets(); // Re-renderiza resolvidos também se o alvo editado estava lá
+                renderResolvedTargets(); // Re-render resolved too if edited target was there
             }
         } else {
-            renderTargets(); // Re-renderiza ativos
-             // Se o alvo editado estava na lista diária, atualiza a diária também
+            renderTargets(); // Re-render active
+             // If edited target was in daily list, update daily too
              if (document.getElementById('dailyTargets').querySelector(`.target[data-target-id="${targetId}"]`)) {
                  console.log("Target was in daily list, refreshing daily targets.");
                  await loadDailyTargets();
@@ -1210,7 +1204,7 @@ window.saveEditedCategory = async function(targetId) {
         }
 
         alert('Categoria atualizada com sucesso!');
-        cancelEditCategory(targetId); // Esconde o formulário
+        cancelEditCategory(targetId); // Hide form
 
     } catch (error) {
         console.error(`Error updating category for ${targetId}:`, error);
@@ -1222,40 +1216,46 @@ window.cancelEditCategory = function(targetId) {
     const editFormContainer = document.getElementById(`editCategoryForm-${targetId}`);
     if (editFormContainer) {
         editFormContainer.style.display = 'none';
-        editFormContainer.innerHTML = ''; // Limpa o conteúdo
+        editFormContainer.innerHTML = ''; // Clear content
     }
 };
-// --- Fim Edição de Categoria ---
+// --- End Category Editing ---
 
 
-// --- Alvos Diários ---
+// --- Daily Targets ---
 async function loadDailyTargets() {
     const userId = auth.currentUser ? auth.currentUser.uid : null;
-    if (!userId) { document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>"; return; }
+    if (!userId) { document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>"; currentDailyTargets = []; return; }
     const today = new Date(); const todayStr = formatDateToISO(today); const dailyDocId = `${userId}_${todayStr}`;
     const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
     const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = '<p>Carregando alvos do dia...</p>'; // Feedback inicial
+    dailyTargetsDiv.innerHTML = '<p>Carregando alvos do dia...</p>'; // Initial feedback
+    currentDailyTargets = []; // Reset local list before loading
 
     try {
         let dailyTargetsData; const dailySnapshot = await getDoc(dailyRef);
-        if (!dailySnapshot.exists() || !dailySnapshot.data()?.targets) { // Verifica se existe e tem a prop targets
+        if (!dailySnapshot.exists() || !dailySnapshot.data()?.targets) { // Check if exists and has targets property
             console.log(`[loadDailyTargets] Daily document for ${dailyDocId} not found or invalid, generating.`);
             dailyTargetsData = await generateDailyTargets(userId, todayStr);
-            await setDoc(dailyRef, dailyTargetsData); // Salva o novo documento gerado
+            await setDoc(dailyRef, dailyTargetsData); // Save the newly generated document
             console.log(`[loadDailyTargets] Daily document ${dailyDocId} created.`);
         } else {
             dailyTargetsData = dailySnapshot.data();
             console.log(`[loadDailyTargets] Daily document ${dailyDocId} loaded.`);
         }
 
-        // Valida se os dados carregados são válidos
+        // Validate if loaded data is valid
         if (!dailyTargetsData || !Array.isArray(dailyTargetsData.targets)) {
             console.error("[loadDailyTargets] Invalid daily data structure after load/generate:", dailyTargetsData);
             dailyTargetsDiv.innerHTML = "<p>Erro ao carregar alvos diários (dados inválidos).</p>";
             displayRandomVerse();
+            currentDailyTargets = []; // Ensure it's empty on error
             return;
         }
+
+        // Populate currentDailyTargets with IDs from the day
+        currentDailyTargets = dailyTargetsData.targets.map(t => t?.targetId).filter(id => id);
+        console.log(`[loadDailyTargets] Current daily target IDs:`, currentDailyTargets);
 
         const pendingTargetIds = dailyTargetsData.targets.filter(t => t && t.targetId && !t.completed).map(t => t.targetId);
         const completedTargetIds = dailyTargetsData.targets.filter(t => t && t.targetId && t.completed).map(t => t.targetId);
@@ -1265,13 +1265,13 @@ async function loadDailyTargets() {
         if (allTargetIds.length === 0) {
             dailyTargetsDiv.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
             displayRandomVerse();
-            return;
+            return; // currentDailyTargets is already empty
         }
 
-        // Busca detalhes dos alvos ativos que estão na lista diária
+        // Fetch details of active targets that are in the daily list
         const targetsToDisplayDetails = prayerTargets.filter(pt => pt && pt.id && allTargetIds.includes(pt.id));
 
-        // Separa os detalhes em pendentes e concluídos
+        // Separate details into pending and completed
         const pendingTargetsDetails = targetsToDisplayDetails.filter(t => pendingTargetIds.includes(t.id));
         const completedTargetsDetails = targetsToDisplayDetails.filter(t => completedTargetIds.includes(t.id));
 
@@ -1283,14 +1283,15 @@ async function loadDailyTargets() {
     } catch (error) {
         console.error("[loadDailyTargets] Error:", error);
         dailyTargetsDiv.innerHTML = "<p>Erro ao carregar alvos diários. Tente recarregar a página.</p>";
-        displayRandomVerse(); // Mostra o versículo mesmo em caso de erro
+        displayRandomVerse(); // Show verse even on error
+        currentDailyTargets = []; // Clear on error
     }
 }
 
 async function generateDailyTargets(userId, dateStr) {
     console.log(`[generateDailyTargets] Generating for ${userId} on ${dateStr}`);
     try {
-        // Considera apenas alvos ativos e válidos
+        // Consider only valid active targets
         const availableTargets = prayerTargets.filter(t => t && t.id && !t.archived && !t.resolved);
         if (availableTargets.length === 0) {
             console.log("[generateDailyTargets] No active targets available.");
@@ -1303,10 +1304,10 @@ async function generateDailyTargets(userId, dateStr) {
             return { userId, date: dateStr, targets: [] };
         }
 
-        // --- Lógica de Seleção (Ciclo e Exclusão) ---
-        let pool = [...availableTargets]; // Começa com todos os ativos
+        // --- Selection Logic (Cycle and Exclusion) ---
+        let pool = [...availableTargets]; // Start with all active
 
-        // Busca dados dos últimos N dias para evitar repetição muito próxima (ex: 7 dias)
+        // Fetch data from last N days to avoid close repetition (e.g., 7 days)
         const historyDays = 7;
         const presentedInHistory = new Set();
         for (let i = 1; i <= historyDays; i++) {
@@ -1327,39 +1328,39 @@ async function generateDailyTargets(userId, dateStr) {
         }
         console.log(`[generateDailyTargets] Targets presented in the last ${historyDays} days:`, presentedInHistory.size);
 
-        // Filtra o pool inicial para remover os que apareceram recentemente
+        // Filter initial pool to remove recently presented ones
         pool = pool.filter(target => !presentedInHistory.has(target.id));
         console.log(`[generateDailyTargets] Pool size after filtering recent history: ${pool.length}`);
 
-        // Se o pool ficou vazio após filtrar o histórico, reinicia com TODOS os ativos
+        // If pool is empty after filtering history, reset with ALL active targets
         if (pool.length === 0 && availableTargets.length > 0) {
             console.log("[generateDailyTargets] Pool empty after history filter, resetting pool to all available targets.");
             pool = [...availableTargets];
-            // Opcional: Prioriza os que não foram apresentados há mais tempo
+            // Optional: Prioritize those not presented longest ago
             pool.sort((a, b) => {
                  const dateA = a.lastPresentedDate instanceof Date ? a.lastPresentedDate.getTime() : 0;
                  const dateB = b.lastPresentedDate instanceof Date ? b.lastPresentedDate.getTime() : 0;
-                 return dateA - dateB; // Menor data (mais antigo) primeiro
+                 return dateA - dateB; // Earliest date (oldest) first
              });
         } else if (pool.length > 0) {
-             // Embaralha o pool restante ou ordena por lastPresentedDate (mais antigo primeiro)
+             // Sort remaining pool by lastPresentedDate (oldest first)
              pool.sort((a, b) => {
                  const dateA = a.lastPresentedDate instanceof Date ? a.lastPresentedDate.getTime() : 0;
                  const dateB = b.lastPresentedDate instanceof Date ? b.lastPresentedDate.getTime() : 0;
-                 return dateA - dateB; // Apresenta os mais antigos primeiro
+                 return dateA - dateB; // Present oldest first
              });
-             // Ou embaralha se preferir aleatoriedade total dentro do pool filtrado:
+             // Or shuffle for total randomness within the filtered pool:
              // pool.sort(() => 0.5 - Math.random());
          }
 
-        // Seleciona até 10 alvos
+        // Select up to 10 targets
         const maxDailyTargets = 10;
         const selectedTargets = pool.slice(0, Math.min(maxDailyTargets, pool.length));
 
-        // Prepara para Firestore
+        // Prepare for Firestore
         const targetsForFirestore = selectedTargets.map(target => ({ targetId: target.id, completed: false }));
 
-        // Atualiza lastPresentedDate em background (sem esperar)
+        // Update lastPresentedDate in background (no await)
         updateLastPresentedDates(userId, selectedTargets).catch(err => console.error("[generateDailyTargets] BG error updating lastPresented:", err));
 
         console.log(`[generateDailyTargets] Generated ${targetsForFirestore.length} targets for ${dateStr}.`);
@@ -1367,7 +1368,7 @@ async function generateDailyTargets(userId, dateStr) {
 
     } catch (error) {
         console.error("[generateDailyTargets] Unexpected Error:", error);
-        return { userId: userId, date: dateStr, targets: [] }; // Retorna vazio em caso de erro grave
+        return { userId: userId, date: dateStr, targets: [] }; // Return empty on severe error
     }
 }
 
@@ -1380,7 +1381,7 @@ async function updateLastPresentedDates(userId, selectedTargets) {
     selectedTargets.forEach(target => {
         if (target?.id) {
             batch.update(doc(db, "users", userId, "prayerTargets", target.id), { lastPresentedDate: nowTimestamp });
-            // Atualiza localmente também
+            // Update locally too
             const localTargetIndex = prayerTargets.findIndex(pt => pt.id === target.id);
             if (localTargetIndex !== -1) {
                  prayerTargets[localTargetIndex].lastPresentedDate = nowTimestamp.toDate();
@@ -1399,49 +1400,49 @@ async function updateLastPresentedDates(userId, selectedTargets) {
 
 function renderDailyTargets(pendingTargets, completedTargets) {
     const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = ''; // Limpa antes de renderizar
+    dailyTargetsDiv.innerHTML = ''; // Clear before rendering
 
     if (pendingTargets.length === 0 && completedTargets.length === 0) {
         dailyTargetsDiv.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
         return;
     }
 
-    // Renderiza Pendentes
+    // Render Pending
     if (pendingTargets.length > 0) {
         pendingTargets.forEach((target) => {
             if (!target || !target.id) return;
-            const dailyDiv = createTargetElement(target, false); // false = não completado
-            addPrayButtonFunctionality(dailyDiv, target.id); // Adiciona botão "Orei!"
+            const dailyDiv = createTargetElement(target, false); // false = not completed
+            addPrayButtonFunctionality(dailyDiv, target.id); // Add "Orei!" button
             dailyTargetsDiv.appendChild(dailyDiv);
         });
     } else if (completedTargets.length > 0) {
-        // Mensagem se não há pendentes mas há concluídos
+        // Message if no pending but there are completed
         dailyTargetsDiv.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
     }
 
-    // Renderiza Concluídos (se houver algum)
+    // Render Completed (if any)
     if (completedTargets.length > 0) {
-        // Adiciona separador se necessário
+        // Add separator if needed
         if (pendingTargets.length > 0 || dailyTargetsDiv.innerHTML.includes("todos os alvos de hoje")) {
              const separator = document.createElement('hr');
              separator.style.cssText = 'border: none; border-top: 1px solid #eee; margin-top:20px; margin-bottom:15px;';
              dailyTargetsDiv.appendChild(separator);
          }
-         // Título para concluídos
+         // Title for completed
          const completedTitle = document.createElement('h3');
          completedTitle.textContent = "Concluídos Hoje";
-         completedTitle.style.cssText = 'color:#777; font-size:1.1em; margin-top:15px; margin-bottom:10px; text-align: center;'; // Centralizado
+         completedTitle.style.cssText = 'color:#777; font-size:1.1em; margin-top:15px; margin-bottom:10px; text-align: center;'; // Centered
          dailyTargetsDiv.appendChild(completedTitle);
 
-        // Renderiza os concluídos
+        // Render completed items
         completedTargets.forEach((target) => {
              if (!target || !target.id) return;
-            const dailyDiv = createTargetElement(target, true); // true = completado
+            const dailyDiv = createTargetElement(target, true); // true = completed
             dailyTargetsDiv.appendChild(dailyDiv);
         });
     }
 
-    // Mostra popup de conclusão se não houver mais pendentes
+    // Show completion popup if no more pending
     if (pendingTargets.length === 0 && completedTargets.length > 0) {
         displayCompletionPopup();
     }
@@ -1454,19 +1455,19 @@ function createTargetElement(target, isCompleted) {
     if (isCompleted) dailyDiv.classList.add("completed-target");
     dailyDiv.dataset.targetId = target.id;
 
-    // Cria o marcador de categoria (se existir)
+    // Create category tag (if exists)
     let categoryTag = '';
     if (target.category) {
         categoryTag = `<span class="category-tag">${target.category}</span>`;
     }
 
-    // Cria o marcador de prazo (se existir)
+    // Create deadline tag (if exists)
     let deadlineTag = '';
     if (target.hasDeadline && target.deadlineDate) {
         deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''} ${isCompleted ? 'completed' : ''}">${formatDateForDisplay(target.deadlineDate)}</span>`;
     }
 
-    // Renderiza observações (apenas a mais recente por padrão)
+    // Render observations (only most recent by default)
     const observationsHTML = renderObservations(target.observations || [], false, target.id);
 
     dailyDiv.innerHTML = `
@@ -1474,7 +1475,7 @@ function createTargetElement(target, isCompleted) {
         <p>${target.details || 'Detalhes Indisponíveis'}</p>
         <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
         <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-        ${observationsHTML}`; // Inclui as observações
+        ${observationsHTML}`; // Include observations
     return dailyDiv;
 }
 
@@ -1482,25 +1483,25 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
     const prayButton = document.createElement("button");
     prayButton.textContent = "Orei!";
     prayButton.classList.add("pray-button", "btn");
-    prayButton.dataset.targetId = targetId; // Guarda o ID no botão
+    prayButton.dataset.targetId = targetId; // Store ID on button
 
     prayButton.onclick = async () => {
         const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
         const userId = user.uid; const todayStr = formatDateToISO(new Date()); const dailyDocId = `${userId}_${todayStr}`;
         const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
 
-        // Desabilita o botão imediatamente para evitar cliques duplos
+        // Disable button immediately to prevent double clicks
         prayButton.disabled = true;
         prayButton.textContent = "Orado!";
         prayButton.style.opacity = 0.6;
 
         try {
-            // Lê o documento diário atual
+            // Read current daily document
             const dailySnap = await getDoc(dailyRef);
             if (!dailySnap.exists()) {
                 console.error("Daily doc not found during 'Orei!' click:", dailyDocId);
                 alert("Erro: Documento diário não encontrado. Tente recarregar.");
-                // Reabilita o botão em caso de erro de leitura
+                // Re-enable button on read error
                 prayButton.disabled = false; prayButton.textContent = "Orei!"; prayButton.style.opacity = 1;
                 return;
             }
@@ -1508,7 +1509,7 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
             const dailyData = dailySnap.data();
             let targetUpdated = false;
 
-            // Mapeia os alvos, marcando o clicado como completed: true
+            // Map targets, marking the clicked one as completed: true
             const updatedTargets = dailyData.targets.map(t => {
                 if (t && t.targetId === targetId) {
                     targetUpdated = true;
@@ -1519,80 +1520,80 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
 
             if (!targetUpdated) {
                 console.warn(`Target ${targetId} not found in daily doc ${dailyDocId} during 'Orei!' click.`);
-                // Mesmo se não encontrou (pode ser um erro), continua para registrar o clique
+                // Even if not found (could be an error), proceed to register the click
             }
 
-             // --- Atualiza Firestore ---
-             // 1. Atualiza o documento diário com o alvo marcado como completo (se foi encontrado)
+             // --- Update Firestore ---
+             // 1. Update daily document with target marked as complete (if found)
              if (targetUpdated) {
                  await updateDoc(dailyRef, { targets: updatedTargets });
              }
 
-             // 2. Atualiza as contagens de cliques, dados semanais e barra de perseverança
-             await updateClickCounts(userId, targetId); // Esta função agora lida com tudo isso
+             // 2. Update click counts, weekly data, and perseverance bar
+             await updateClickCounts(userId, targetId); // This function handles all of that now
 
-            // --- Atualiza UI ---
-            // Recarrega e re-renderiza a lista diária para refletir a mudança
+            // --- Update UI ---
+            // Reload and re-render daily list to reflect the change
             await loadDailyTargets();
 
         } catch (error) {
             console.error("Error registering 'Orei!':", error);
             alert("Erro ao registrar oração: " + error.message);
-            // Reabilita o botão em caso de erro de escrita/processamento
+            // Re-enable button on write/processing error
             prayButton.disabled = false; prayButton.textContent = "Orei!"; prayButton.style.opacity = 1;
         }
     };
 
-     // Adiciona o botão ao início do div do alvo, logo após o H3
+     // Add button to the target div, right after the H3
      const heading = dailyDiv.querySelector('h3');
      if (heading && heading.nextSibling) {
-         dailyDiv.insertBefore(prayButton, heading.nextSibling); // Insere após o h3
+         dailyDiv.insertBefore(prayButton, heading.nextSibling); // Insert after h3
      } else if (heading) {
-         dailyDiv.appendChild(prayButton); // Se não houver nada após h3
+         dailyDiv.appendChild(prayButton); // If nothing after h3
      } else if (dailyDiv.firstChild) {
-          dailyDiv.insertBefore(prayButton, dailyDiv.firstChild); // Se não houver h3, insere no início
+          dailyDiv.insertBefore(prayButton, dailyDiv.firstChild); // If no h3, insert at beginning
      } else {
-         dailyDiv.appendChild(prayButton); // Se div estiver vazio
+         dailyDiv.appendChild(prayButton); // If div is empty
      }
 }
 
 
 async function updateClickCounts(userId, targetId) {
-     // --- Referências ---
+     // --- References ---
      const clickCountsRef = doc(db, "prayerClickCounts", targetId);
      const weeklyDocRef = doc(db, "weeklyInteractions", userId);
      const perseveranceDocRef = doc(db, "perseveranceData", userId); // Ref for bar data
      const now = new Date();
 
-     // --- Dados de Tempo ---
+     // --- Time Data ---
      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
      const year = now.getFullYear().toString();
      const todayUTCStr = formatDateToISO(now); // YYYY-MM-DD
      const weekId = getWeekIdentifier(now); // YYYY-W##
-     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // Início do dia UTC
+     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // Start of UTC day
 
-     // --- Flags e Dados para Salvar ---
+     // --- Flags and Data to Save ---
      let needsPerseveranceUpdate = false;
      let dataToSaveForPerseverance = {};
      let weeklyDataNeedsUpdate = false;
 
-     // --- Lógica de Atualização da BARRA DE PERSEVERANÇA ---
-     // Verifica se a última interação registrada foi *antes* do início do dia de hoje (UTC)
+     // --- PERSEVERANCE BAR Update Logic ---
+     // Check if last recorded interaction was *before* the start of today (UTC)
      let lastInteractionUTCStart = null;
      if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
          const li = perseveranceData.lastInteractionDate;
          lastInteractionUTCStart = new Date(Date.UTC(li.getUTCFullYear(), li.getUTCMonth(), li.getUTCDate()));
      }
 
-     // Se não há data anterior OU a data anterior é de um dia anterior a hoje
+     // If no previous date OR previous date is from a day before today
      if (!lastInteractionUTCStart || todayUTCStart.getTime() > lastInteractionUTCStart.getTime()) {
-         needsPerseveranceUpdate = true; // Marca para salvar no Firestore
+         needsPerseveranceUpdate = true; // Mark to save to Firestore
          console.log(`[updateClickCounts] First 'Orei!' interaction detected for ${todayUTCStr}. Updating perseverance bar.`);
 
          let isConsecutive = false;
          if (lastInteractionUTCStart) {
-             // Verifica se a última interação foi exatamente no dia anterior
-             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000); // Subtrai 24h
+             // Check if last interaction was exactly the previous day
+             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000); // Subtract 24h
              if (lastInteractionUTCStart.getTime() === expectedYesterdayUTCStart.getTime()) {
                  isConsecutive = true;
                  console.log("[updateClickCounts] Consecutive day detected.");
@@ -1603,91 +1604,91 @@ async function updateClickCounts(userId, targetId) {
               console.log("[updateClickCounts] No previous interaction date found, starting streak at 1.");
          }
 
-         // Calcula novos dias consecutivos e recorde
+         // Calculate new consecutive days and record
          const newConsecutiveDays = isConsecutive ? (perseveranceData.consecutiveDays || 0) + 1 : 1;
          const newRecordDays = Math.max(perseveranceData.recordDays || 0, newConsecutiveDays);
 
-         // Atualiza dados locais IMEDIATAMENTE para UI
+         // Update local data IMMEDIATELY for UI
          perseveranceData.consecutiveDays = newConsecutiveDays;
-         perseveranceData.lastInteractionDate = todayUTCStart; // Salva a data do início do dia UTC
+         perseveranceData.lastInteractionDate = todayUTCStart; // Save date of UTC day start
          perseveranceData.recordDays = newRecordDays;
 
-         // Prepara dados para Firestore (usando Timestamp)
+         // Prepare data for Firestore (using Timestamp)
          dataToSaveForPerseverance = {
              consecutiveDays: newConsecutiveDays,
              lastInteractionDate: Timestamp.fromDate(todayUTCStart),
              recordDays: newRecordDays
          };
 
-         // Atualiza UI da barra IMEDIATAMENTE
+         // Update bar UI IMMEDIATELY
          updatePerseveranceUI();
 
      } else {
          console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Bar already updated today.`);
      }
 
-     // --- Lógica de Atualização do QUADRO SEMANAL ---
-     weeklyPrayerData.interactions = weeklyPrayerData.interactions || {}; // Garante que existe
-     // Se a semana mudou ou não há dados para hoje
+     // --- WEEKLY CHART Update Logic ---
+     weeklyPrayerData.interactions = weeklyPrayerData.interactions || {}; // Ensure exists
+     // If week changed or no data for today
      if (weeklyPrayerData.weekId !== weekId || weeklyPrayerData.interactions[todayUTCStr] !== true) {
-         // Se a semana mudou, reseta as interações
+         // If week changed, reset interactions
          if (weeklyPrayerData.weekId !== weekId) {
              console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
              weeklyPrayerData.interactions = {};
              weeklyPrayerData.weekId = weekId;
          }
-         // Marca hoje como interagido (se já não estava)
+         // Mark today as interacted (if not already)
          if(weeklyPrayerData.interactions[todayUTCStr] !== true) {
              weeklyPrayerData.interactions[todayUTCStr] = true;
-             weeklyDataNeedsUpdate = true; // Marca para salvar no Firestore
+             weeklyDataNeedsUpdate = true; // Mark to save to Firestore
              console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
          }
      }
 
-     // --- Salvar no Firestore ---
+     // --- Save to Firestore ---
      try {
-         // 1. Salvar Contagem de Cliques (sempre que 'Orei!' é clicado)
-         // Usa set com merge: true para criar/atualizar e incrementar campos aninhados
+         // 1. Save Click Counts (every time 'Orei!' is clicked)
+         // Use set with merge: true to create/update and increment nested fields
          await setDoc(clickCountsRef, {
              targetId: targetId,
              userId: userId,
              totalClicks: increment(1),
-             [`monthlyClicks.${yearMonth}`]: increment(1), // Incrementa contador do mês atual
-             [`yearlyClicks.${year}`]: increment(1)       // Incrementa contador do ano atual
+             [`monthlyClicks.${yearMonth}`]: increment(1), // Increment current month counter
+             [`yearlyClicks.${year}`]: increment(1)       // Increment current year counter
             }, { merge: true });
          console.log(`[updateClickCounts] Click count updated for ${targetId}.`);
 
-         // 2. Salvar Dados do Quadro Semanal (se necessário)
+         // 2. Save Weekly Chart Data (if needed)
          if (weeklyDataNeedsUpdate) {
-             // Usa set com merge: false para sobrescrever o documento com os dados da semana atual
+             // Use set with merge: false to overwrite document with current week's data
              await setDoc(weeklyDocRef, {
-                 userId: userId, // Adiciona userId para referência
+                 userId: userId, // Add userId for reference
                  weekId: weeklyPrayerData.weekId,
                  interactions: weeklyPrayerData.interactions
                 }, { merge: false });
              console.log(`[updateClickCounts] Weekly interaction data updated for week ${weeklyPrayerData.weekId}.`);
          }
-         // Atualiza UI do quadro (sempre, pois a lógica local já foi atualizada)
+         // Update chart UI (always, as local data was already updated)
          updateWeeklyChart();
 
-         // 3. Salvar Dados da Barra de Perseverança (se necessário)
+         // 3. Save Perseverance Bar Data (if needed)
          if (needsPerseveranceUpdate && Object.keys(dataToSaveForPerseverance).length > 0) {
-             // Usa set com merge: true para criar/atualizar os campos de perseverança
+             // Use set with merge: true to create/update perseverance fields
              await setDoc(perseveranceDocRef, { userId: userId, ...dataToSaveForPerseverance } , { merge: true });
              console.log(`[updateClickCounts] Perseverance bar data updated in Firestore.`);
-             // UI da barra já foi atualizada antes, quando needsPerseveranceUpdate foi detectado
+             // Bar UI was already updated earlier when needsPerseveranceUpdate was detected
          }
 
      } catch (error) {
          console.error(`[updateClickCounts] Error during Firestore updates for target ${targetId}:`, error);
-         // Tenta atualizar UIs mesmo em erro de salvamento, baseado nos dados locais
+         // Try to update UIs even on save error, based on local data
          updateWeeklyChart();
-         // Não re-atualiza a UI da barra aqui, pois a mudança local já foi feita
+         // Don't re-update bar UI here, as local change was already made
      }
  }
 
 
-// --- Perseverança (Barra de Progresso e Quadro Semanal) ---
+// --- Perseverance (Progress Bar and Weekly Chart) ---
 
 async function loadPerseveranceData(userId) {
     console.log(`[loadPerseveranceData] Loading PROGRESS BAR data for user ${userId}`);
@@ -1696,7 +1697,7 @@ async function loadPerseveranceData(userId) {
         const docSnap = await getDoc(perseveranceDocRef);
         if (docSnap.exists()) {
             const data = docSnap.data();
-            // Converte Timestamp para Date e garante tipos numéricos
+            // Convert Timestamp to Date and ensure numeric types
             perseveranceData.lastInteractionDate = data.lastInteractionDate instanceof Timestamp ? data.lastInteractionDate.toDate() : null;
             perseveranceData.consecutiveDays = Number(data.consecutiveDays) || 0;
             perseveranceData.recordDays = Number(data.recordDays) || 0;
@@ -1705,19 +1706,19 @@ async function loadPerseveranceData(userId) {
             console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
             perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
         }
-        updatePerseveranceUI(); // Update UI da barra com dados carregados/inicializados
-        await loadWeeklyPrayerData(userId); // Carrega dados do quadro em seguida
+        updatePerseveranceUI(); // Update bar UI with loaded/initialized data
+        await loadWeeklyPrayerData(userId); // Load chart data next
 
     } catch (error) {
         console.error("[loadPerseveranceData] Error loading progress bar data:", error);
-         perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; // Reseta localmente em erro
-         updatePerseveranceUI(); // Atualiza UI com dados resetados
-         // Tenta carregar dados semanais mesmo assim
+         perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; // Reset locally on error
+         updatePerseveranceUI(); // Update UI with reset data
+         // Try loading weekly data anyway
          try { await loadWeeklyPrayerData(userId); }
          catch (weeklyError) {
             console.error("[loadPerseveranceData] Error loading weekly data after bar error:", weeklyError);
              weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-             resetWeeklyChart(); // Reseta UI semanal se também falhar
+             resetWeeklyChart(); // Reset weekly UI if it also fails
          }
     }
 }
@@ -1731,53 +1732,53 @@ async function loadWeeklyPrayerData(userId) {
 
         if (docSnap.exists()) {
             const loadedData = docSnap.data();
-            // Verifica se a semana armazenada é a semana atual
+            // Check if stored week is the current week
             if (loadedData.weekId === currentWeekId) {
                 weeklyPrayerData = {
                     weekId: loadedData.weekId,
-                    interactions: loadedData.interactions || {} // Garante que interactions é um objeto
+                    interactions: loadedData.interactions || {} // Ensure interactions is an object
                 };
                 console.log("[loadWeeklyPrayerData] Weekly chart data loaded for current week:", weeklyPrayerData);
             } else {
-                // Se a semana mudou, reseta os dados locais e salva no Firestore
+                // If week changed, reset local data and save to Firestore
                 console.log(`[loadWeeklyPrayerData] Week changed from ${loadedData.weekId} to ${currentWeekId}. Resetting weekly data.`);
                 weeklyPrayerData = { weekId: currentWeekId, interactions: {} };
-                await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }, { merge: false }); // Sobrescreve com a nova semana
+                await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }, { merge: false }); // Overwrite with new week
                 console.log(`[loadWeeklyPrayerData] Reset weekly data saved for new week.`);
             }
         } else {
-            // Se não existe documento, inicializa localmente e salva no Firestore
+            // If document doesn't exist, initialize locally and save to Firestore
             console.log(`[loadWeeklyPrayerData] No weekly data found. Initializing for ${currentWeekId}.`);
             weeklyPrayerData = { weekId: currentWeekId, interactions: {} };
-            await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }); // Cria o documento
+            await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }); // Create document
             console.log(`[loadWeeklyPrayerData] Initial weekly data saved.`);
         }
-        updateWeeklyChart(); // Update UI do quadro com os dados corretos
+        updateWeeklyChart(); // Update chart UI with correct data
 
     } catch (error) {
         console.error("[loadWeeklyPrayerData] Error loading/initializing weekly chart data:", error);
-         // Em caso de erro, inicializa localmente com a semana atual
+         // On error, initialize locally with current week
          weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-         resetWeeklyChart(); // Reseta a UI visualmente
+         resetWeeklyChart(); // Reset UI visually
     }
 }
 
 
-// Atualiza APENAS a UI da BARRA de progresso
+// Updates ONLY the progress BAR UI
 function updatePerseveranceUI() {
      const consecutiveDays = perseveranceData.consecutiveDays || 0;
      const recordDays = perseveranceData.recordDays || 0;
-     const targetDays = 30; // Meta de dias
-     const percentage = Math.min((consecutiveDays / targetDays) * 100, 100); // Calcula porcentagem (máx 100)
+     const targetDays = 30; // Goal days
+     const percentage = Math.min((consecutiveDays / targetDays) * 100, 100); // Calculate percentage (max 100)
 
      const progressBar = document.getElementById('perseveranceProgressBar');
      const percentageDisplay = document.getElementById('perseverancePercentage');
-     const barContainer = document.querySelector('.perseverance-bar-container'); // Para o tooltip
+     const barContainer = document.querySelector('.perseverance-bar-container'); // For tooltip
 
      if (progressBar && percentageDisplay && barContainer) {
          progressBar.style.width = `${percentage}%`;
          percentageDisplay.textContent = `${consecutiveDays} / ${targetDays} dias`;
-         // Atualiza o tooltip com o progresso e o recorde
+         // Update tooltip with progress and record
          barContainer.title = `Progresso: ${Math.round(percentage)}% (${consecutiveDays} dias consecutivos)\nRecorde: ${recordDays} dias`;
      } else {
           console.warn("[updatePerseveranceUI] Could not find all progress bar elements.");
@@ -1785,7 +1786,7 @@ function updatePerseveranceUI() {
      console.log("[updatePerseveranceUI] Progress bar UI updated.");
  }
 
-// Reseta AMBAS as estruturas de dados locais e UIs relacionadas
+// Resets BOTH local data structures and related UIs
 function resetPerseveranceUI() {
     // Bar
     const progressBar = document.getElementById('perseveranceProgressBar');
@@ -1794,52 +1795,52 @@ function resetPerseveranceUI() {
     if (progressBar && percentageDisplay && barContainer) {
         progressBar.style.width = `0%`;
         percentageDisplay.textContent = `0 / 30 dias`;
-        barContainer.title = ''; // Limpa tooltip
+        barContainer.title = ''; // Clear tooltip
     }
     perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
     console.log("[resetPerseveranceUI] Progress bar data and UI reset.");
 
     // Chart
     weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-    resetWeeklyChart(); // Reseta a UI do quadro
+    resetWeeklyChart(); // Reset chart UI
     console.log("[resetPerseveranceUI] Weekly chart data and UI reset.");
 }
 
-// Atualiza APENAS a UI do QUADRO semanal
+// Updates ONLY the weekly CHART UI
 function updateWeeklyChart() {
     const today = new Date();
-    const currentDayOfWeek = today.getDay(); // 0 = Domingo, 1 = Segunda, ... 6 = Sábado
+    const currentDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
 
-    // Calcula o início da semana (Domingo) em UTC
+    // Calculate start of week (Sunday) in UTC
     const firstDayOfWeek = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - currentDayOfWeek));
-    firstDayOfWeek.setUTCHours(0, 0, 0, 0); // Garante que é meia-noite UTC
+    firstDayOfWeek.setUTCHours(0, 0, 0, 0); // Ensure it's midnight UTC
 
-    const interactions = weeklyPrayerData.interactions || {}; // Garante que é um objeto
-    const currentWeekId = weeklyPrayerData.weekId || getWeekIdentifier(today); // Usa a weekId guardada ou calcula
+    const interactions = weeklyPrayerData.interactions || {}; // Ensure it's an object
+    const currentWeekId = weeklyPrayerData.weekId || getWeekIdentifier(today); // Use stored weekId or calculate
     console.log("[updateWeeklyChart] Checking interactions for week:", currentWeekId, "Data:", interactions);
 
-    // Itera pelos 7 dias da semana (0 a 6)
+    // Iterate through 7 days of the week (0 to 6)
     for (let i = 0; i < 7; i++) {
-        const dayTick = document.getElementById(`day-${i}`); // Pega o elemento do dia (day-0, day-1, ...)
-        if (!dayTick) continue; // Pula se o elemento não existir
+        const dayTick = document.getElementById(`day-${i}`); // Get day element (day-0, day-1, ...)
+        if (!dayTick) continue; // Skip if element doesn't exist
 
-        // Calcula a data UTC para o dia atual no loop
+        // Calculate UTC date for current day in loop
         const currentDayInLoop = new Date(firstDayOfWeek);
-        currentDayInLoop.setUTCDate(firstDayOfWeek.getUTCDate() + i); // Adiciona 'i' dias ao primeiro dia da semana
+        currentDayInLoop.setUTCDate(firstDayOfWeek.getUTCDate() + i); // Add 'i' days to first day of week
 
-        // Formata a data no formato YYYY-MM-DD para checar nas interações
+        // Format date as YYYY-MM-DD to check in interactions
         const dateStringUTC = formatDateToISO(currentDayInLoop);
 
-        // Verifica se existe interação registrada para essa data na semana atual
+        // Check if interaction exists for this date in the current week
         if (interactions[dateStringUTC] === true) {
-            dayTick.classList.add('active'); // Adiciona classe 'active' se houve interação
+            dayTick.classList.add('active'); // Add 'active' class if interaction occurred
         } else {
-            dayTick.classList.remove('active'); // Remove classe 'active' se não houve
+            dayTick.classList.remove('active'); // Remove 'active' class if not
         }
     }
 }
 
-// Limpa visualmente os ticks do quadro
+// Visually clears chart ticks
 function resetWeeklyChart() {
     for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
@@ -1849,14 +1850,14 @@ function resetWeeklyChart() {
 }
 
 
-// --- Visualizações e Filtros ---
+// --- Views and Filters ---
 function generateViewHTML(targetsToInclude = lastDisplayedTargets) {
     let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Visualização de Alvos</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos de Oração (Visão Atual)</h1>`;
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
         viewHTML += "<p style='text-align:center;'>Nenhum alvo para exibir na visão atual.</p>";
     } else {
         targetsToInclude.forEach(target => {
-            if (target?.id) viewHTML += generateTargetViewHTML(target, false); // false = não é visão de completados
+            if (target?.id) viewHTML += generateTargetViewHTML(target, false); // false = not completed view
         });
     }
     viewHTML += `</body></html>`;
@@ -1881,11 +1882,11 @@ function generateDailyViewHTML() {
         if (pendingDivs.length > 0) {
             pendingDivs.forEach(div => {
                 const targetId = div.dataset.targetId;
-                // Busca o alvo nos dados locais (ativos, pois só ativos vão pro diário)
+                // Find target in local data (active, since only active go to daily)
                 const targetData = prayerTargets.find(t => t.id === targetId);
                 if (targetData) {
                     pendingCount++;
-                    viewHTML += generateTargetViewHTML(targetData, false); // false = não completado
+                    viewHTML += generateTargetViewHTML(targetData, false); // false = not completed
                 } else {
                     console.warn(`Target data not found for pending daily ID: ${targetId}`);
                 }
@@ -1898,10 +1899,10 @@ function generateDailyViewHTML() {
          if (completedDivs.length > 0) {
              completedDivs.forEach(div => {
                  const targetId = div.dataset.targetId;
-                 const targetData = prayerTargets.find(t => t.id === targetId); // Ainda busca nos ativos
+                 const targetData = prayerTargets.find(t => t.id === targetId); // Still look in active
                  if (targetData) {
                     completedCount++;
-                    viewHTML += generateTargetViewHTML(targetData, true); // true = completado
+                    viewHTML += generateTargetViewHTML(targetData, true); // true = completed
                  } else {
                     console.warn(`Target data not found for completed daily ID: ${targetId}`);
                  }
@@ -1922,33 +1923,33 @@ function generateDailyViewHTML() {
      }
 }
 
-// Função auxiliar para gerar HTML de UM alvo para as visualizações
+// Helper function to generate HTML for ONE target for views
 function generateTargetViewHTML(target, isCompletedView = false) {
-     if (!target?.id) return ''; // Retorna string vazia se alvo for inválido
+     if (!target?.id) return ''; // Return empty string if target is invalid
      const formattedDate = formatDateForDisplay(target.date);
      const elapsed = timeElapsed(target.date);
 
-     // Cria marcador de categoria
+     // Create category tag
      let categoryTag = '';
      if (target.category) {
          categoryTag = `<span class="category-tag">${target.category}</span>`;
      }
 
-     // Cria marcador de prazo
+     // Create deadline tag
      let deadlineTag = '';
      if (target.hasDeadline && target.deadlineDate) {
         const formattedDeadline = formatDateForDisplay(target.deadlineDate);
         deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formattedDeadline}</span>`;
      }
 
-     // Renderiza TODAS as observações para a visualização
+     // Render ALL observations for the view
      const observations = Array.isArray(target.observations) ? target.observations : [];
-     const observationsHTML = renderObservations(observations, true, target.id); // true = expandido
+     const observationsHTML = renderObservations(observations, true, target.id); // true = expanded
 
-     // Define a classe CSS se for uma visão de alvo completado (para daily view)
+     // Define CSS class if it's a completed target view (for daily view)
      const completedClass = isCompletedView ? 'completed-target' : '';
 
-     // Monta o HTML do alvo
+     // Build target HTML
      return `
          <div class="target ${completedClass}" data-target-id="${target.id}">
              <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
@@ -1963,19 +1964,19 @@ function generateTargetViewHTML(target, isCompletedView = false) {
 async function generateResolvedViewHTML(startDate, endDate) {
     const user = auth.currentUser; if (!user) { alert("Você precisa estar logado."); return; } const uid = user.uid;
 
-    // Cria datas UTC para a consulta
+    // Create UTC dates for query
     const startUTC = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
-    const endNextDay = new Date(endDate); endNextDay.setUTCDate(endDate.getUTCDate() + 1); // Pega o dia seguinte
-    const endUTCStartOfNextDay = new Date(Date.UTC(endNextDay.getFullYear(), endNextDay.getMonth(), endNextDay.getDate())); // Meia-noite do dia seguinte
+    const endNextDay = new Date(endDate); endNextDay.setUTCDate(endDate.getUTCDate() + 1); // Get next day
+    const endUTCStartOfNextDay = new Date(Date.UTC(endNextDay.getFullYear(), endNextDay.getMonth(), endNextDay.getDate())); // Midnight of next day
 
-    // Cria Timestamps para a consulta Firestore
+    // Create Timestamps for Firestore query
     const startTimestamp = Timestamp.fromDate(startUTC);
-    const endTimestamp = Timestamp.fromDate(endUTCStartOfNextDay); // Consulta até < meia-noite do dia seguinte
+    const endTimestamp = Timestamp.fromDate(endUTCStartOfNextDay); // Query up to < midnight of next day
 
     console.log(`[generateResolvedViewHTML] Querying resolved targets between: ${startUTC.toISOString()} and ${endUTCStartOfNextDay.toISOString()}`);
 
     const archivedRef = collection(db, "users", uid, "archivedTargets");
-    // Query: busca em arquivados, onde resolved=true, resolutionDate >= start, resolutionDate < end, ordena por resolutionDate desc
+    // Query: search in archived, where resolved=true, resolutionDate >= start, resolutionDate < end, order by resolutionDate desc
     const q = query(archivedRef,
         where("resolved", "==", true),
         where("resolutionDate", ">=", startTimestamp),
@@ -1987,7 +1988,7 @@ async function generateResolvedViewHTML(startDate, endDate) {
     try {
         const querySnapshot = await getDocs(q);
         const rawTargets = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        filteredResolvedTargets = rehydrateTargets(rawTargets); // Converte Timestamps para Dates
+        filteredResolvedTargets = rehydrateTargets(rawTargets); // Convert Timestamps to Dates
         console.log(`[generateResolvedViewHTML] Found ${filteredResolvedTargets.length} resolved targets in the period.`);
     } catch (error) {
         console.error("Error fetching resolved targets for view:", error);
@@ -1995,14 +1996,14 @@ async function generateResolvedViewHTML(startDate, endDate) {
         return;
     }
 
-    // Gera o HTML da visualização
+    // Generate view HTML
     let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; } </style></head><body><h1>Alvos Respondidos</h1>`;
     viewHTML += `<h2>Período: ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}</h2><hr/>`;
 
      if (filteredResolvedTargets.length === 0) {
          viewHTML += "<p style='text-align:center;'>Nenhum alvo respondido encontrado neste período.</p>";
      } else {
-         // Itera sobre os alvos encontrados e gera o HTML para cada um
+         // Iterate over found targets and generate HTML for each
          filteredResolvedTargets.forEach(target => {
              viewHTML += generateTargetViewHTMLForResolved(target);
          });
@@ -2010,7 +2011,7 @@ async function generateResolvedViewHTML(startDate, endDate) {
 
     viewHTML += `</body></html>`;
 
-    // Abre em nova aba
+    // Open in new tab
     const viewTab = window.open('', '_blank');
     if (viewTab) {
         viewTab.document.write(viewHTML);
@@ -2020,7 +2021,7 @@ async function generateResolvedViewHTML(startDate, endDate) {
     }
 }
 
-// Função auxiliar para gerar HTML de UM alvo RESPONDIDO para a visualização
+// Helper function to generate HTML for ONE RESOLVED target for the view
 function generateTargetViewHTMLForResolved(target) {
      if (!target?.id) return '';
      const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
@@ -2035,18 +2036,18 @@ function generateTargetViewHTMLForResolved(target) {
                          else { let diffInYears = Math.floor(diffInDays / 365.25); totalTime = `${diffInYears} anos`; }}}}}
      }
 
-     // Cria marcador de categoria
+     // Create category tag
      let categoryTag = '';
      if (target.category) {
          categoryTag = `<span class="category-tag">${target.category}</span>`;
      }
 
-     // Renderiza TODAS as observações
+     // Render ALL observations
      const observations = Array.isArray(target.observations) ? target.observations : [];
-     const observationsHTML = renderObservations(observations, true, target.id); // true = expandido
+     const observationsHTML = renderObservations(observations, true, target.id); // true = expanded
 
      return `
-         <div class="target resolved"> {/* Classe resolved aplicada */}
+         <div class="target resolved"> {/* Resolved class applied */}
              <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
              <p>${target.details || 'Sem Detalhes'}</p>
              <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
@@ -2061,11 +2062,11 @@ function filterTargets(targets, searchTerm) {
     if (!searchTerm) return targets;
     const lowerSearchTerm = searchTerm.toLowerCase();
     return targets.filter(target => {
-        if (!target) return false; // Adiciona verificação se target é válido
-         // Verifica título, detalhes, categoria e observações
+        if (!target) return false; // Add check if target is valid
+         // Check title, details, category, and observations
          const titleMatch = target.title?.toLowerCase().includes(lowerSearchTerm);
          const detailsMatch = target.details?.toLowerCase().includes(lowerSearchTerm);
-         const categoryMatch = target.category?.toLowerCase().includes(lowerSearchTerm); // <<< Filtra por categoria
+         const categoryMatch = target.category?.toLowerCase().includes(lowerSearchTerm); // Filter by category
          const observationMatch = Array.isArray(target.observations) &&
              target.observations.some(obs => obs?.text?.toLowerCase().includes(lowerSearchTerm));
         return titleMatch || detailsMatch || categoryMatch || observationMatch;
@@ -2077,21 +2078,21 @@ function handleSearchResolved(event) { currentSearchTermResolved = event.target.
 
 function showPanel(panelIdToShow) {
     const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel'];
-    const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator']; // Elementos mostrados junto com 'dailySection'
+    const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator']; // Elements shown with 'dailySection'
 
-    // Esconde todos os painéis principais
+    // Hide all main panels
     allPanels.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
     });
 
-    // Esconde os elementos relacionados à seção diária por padrão
+    // Hide daily-related elements by default
     dailyRelatedElements.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
     });
 
-    // Mostra o painel solicitado
+    // Show requested panel
     const panelToShow = document.getElementById(panelIdToShow);
     if(panelToShow) {
         panelToShow.style.display = 'block';
@@ -2099,7 +2100,7 @@ function showPanel(panelIdToShow) {
         console.warn(`Panel ${panelIdToShow} not found.`);
     }
 
-    // Se o painel a ser mostrado for a seção diária, mostra também os elementos relacionados
+    // If showing daily section, also show related elements
     if (panelIdToShow === 'dailySection') {
         dailyRelatedElements.forEach(id => {
             const el = document.getElementById(id);
@@ -2109,8 +2110,8 @@ function showPanel(panelIdToShow) {
     console.log(`Showing panel: ${panelIdToShow}`);
 }
 
-// --- Versículos e Popups ---
-const verses = [ // Array de versículos
+// --- Verses and Popups ---
+const verses = [ // Array of verses
     "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5", "“Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças; e a paz de Deus, que excede todo o entendimento, guardará os vossos corações e os vossos pensamentos em Cristo Jesus.” - Filipenses 4:6-7", "“Orai sem cessar.” - 1 Tessalonicenses 5:17", "“Confessai, pois, os vossos pecados uns aos outros, e orai uns pelos outros, para serdes curados. Muito pode, por sua eficácia, a súplica do justo.” - Tiago 5:16", "“E tudo quanto pedirdes em meu nome, eu o farei, para que o Pai seja glorificado no Filho.” - João 14:13", "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á. Pois todo o que pede, recebe; e quem busca, encontra; e a quem bate, abrir-se-lhe-á.” - Mateus 7:7-8", "“Se vós, pois, sendo maus, sabeis dar boas dádivas aos vossos filhos, quanto mais vosso Pai celestial dará o Espírito Santo àqueles que lho pedirem?” - Lucas 11:13", "“Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.” - Salmos 118:24", "“Antes de clamarem, eu responderei; ainda não estarão falando, e eu já terei ouvido.” - Isaías 65:24", "“Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e ocultas, que não sabes.” - Jeremias 33:3"
 ];
 function displayRandomVerse() {
@@ -2123,7 +2124,7 @@ function displayRandomVerse() {
 function displayCompletionPopup() {
     const popup = document.getElementById('completionPopup');
     if (popup) {
-        popup.style.display = 'flex'; // Usa flex para centralizar conteúdo
+        popup.style.display = 'flex'; // Use flex to center content
         const popupVerseElement = popup.querySelector('#popupVerse');
         if (popupVerseElement) {
             const randomIndex = Math.floor(Math.random() * verses.length);
@@ -2132,17 +2133,156 @@ function displayCompletionPopup() {
     }
 }
 
+// --- Manual Addition of Target to Daily List ---
+
+// Opens the modal and prepares the search
+function openManualTargetModal() {
+    const modal = document.getElementById('manualTargetModal');
+    const searchInput = document.getElementById('manualTargetSearchInput');
+    const resultsDiv = document.getElementById('manualTargetSearchResults');
+    if (!modal || !searchInput || !resultsDiv) {
+        console.error("Manual target addition modal elements not found.");
+        return;
+    }
+
+    searchInput.value = ''; // Clear previous search
+    resultsDiv.innerHTML = '<p>Digite algo para buscar...</p>'; // Initial message
+    modal.style.display = 'block';
+    searchInput.focus();
+}
+
+// Handles search as user types
+async function handleManualTargetSearch() {
+    const searchInput = document.getElementById('manualTargetSearchInput');
+    const resultsDiv = document.getElementById('manualTargetSearchResults');
+    const searchTerm = searchInput.value.toLowerCase().trim();
+
+    if (searchTerm.length < 2) { // Start searching after 2 chars
+        resultsDiv.innerHTML = '<p>Digite pelo menos 2 caracteres...</p>';
+        return;
+    }
+
+    resultsDiv.innerHTML = '<p>Buscando...</p>';
+
+    // Filter ACTIVE targets matching search term
+    const filteredActiveTargets = prayerTargets.filter(target => {
+        if (!target || target.archived || target.resolved) return false; // Ensure active
+        const titleMatch = target.title?.toLowerCase().includes(searchTerm);
+        const detailsMatch = target.details?.toLowerCase().includes(searchTerm);
+        const categoryMatch = target.category?.toLowerCase().includes(searchTerm);
+        return titleMatch || detailsMatch || categoryMatch;
+    });
+
+    // Filter out targets ALREADY in the current daily list (uses global variable)
+    const targetsNotInDailyList = filteredActiveTargets.filter(target => !currentDailyTargets.includes(target.id));
+
+    renderManualSearchResults(targetsNotInDailyList);
+}
+
+// Renders search results in the modal
+function renderManualSearchResults(targets) {
+    const resultsDiv = document.getElementById('manualTargetSearchResults');
+    resultsDiv.innerHTML = ''; // Clear previous results
+
+    if (targets.length === 0) {
+        resultsDiv.innerHTML = '<p>Nenhum alvo ativo encontrado ou todos já estão na lista do dia.</p>';
+        return;
+    }
+
+    targets.forEach(target => {
+        const itemDiv = document.createElement('div');
+        itemDiv.classList.add('manual-target-item');
+        itemDiv.onclick = () => selectManualTarget(target.id, target.title); // Pass ID and title
+
+        let categoryInfo = target.category ? `[${target.category}] ` : '';
+        let detailsSnippet = target.details ? `- ${target.details.substring(0, 50)}...` : '';
+
+        itemDiv.innerHTML = `
+            <h4>${target.title || 'Sem Título'}</h4>
+            <span>${categoryInfo}${formatDateForDisplay(target.date)} ${detailsSnippet}</span>
+        `;
+        resultsDiv.appendChild(itemDiv);
+    });
+}
+
+// Called when a target is selected in the modal
+async function selectManualTarget(targetId, targetTitle) {
+    if (!confirm(`Adicionar "${targetTitle || targetId}" à lista de oração de hoje?`)) {
+        return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) { alert("Você precisa estar logado."); return; }
+    const userId = user.uid;
+    const todayStr = formatDateToISO(new Date());
+    const dailyDocId = `${userId}_${todayStr}`;
+    const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
+    const modal = document.getElementById('manualTargetModal');
+
+    console.log(`[selectManualTarget] Attempting to add ${targetId} to daily doc ${dailyDocId}`);
+
+    try {
+        // Use Transaction for safety (atomic read and write)
+        await runTransaction(db, async (transaction) => {
+            const dailyDocSnap = await transaction.get(dailyRef);
+            let currentTargetsArray = [];
+
+            if (dailyDocSnap.exists()) {
+                currentTargetsArray = dailyDocSnap.data().targets || [];
+            } else {
+                // If daily doc doesn't exist, something is wrong as loadDailyTargets should create it.
+                // Alerting is safer than trying to create it here.
+                console.warn(`[selectManualTarget] Daily document ${dailyDocId} does not exist during transaction!`);
+                throw new Error("Documento diário não encontrado. Tente recarregar a página.");
+            }
+
+            // Check if already exists in list (safe redundancy)
+            const alreadyExists = currentTargetsArray.some(t => t?.targetId === targetId);
+            if (alreadyExists) {
+                alert(`"${targetTitle || targetId}" já está na lista de hoje.`);
+                console.log(`[selectManualTarget] Target ${targetId} already in list.`);
+                return; // Exit transaction without writing
+            }
+
+            // Add the new target
+            const newTargetEntry = {
+                targetId: targetId,
+                completed: false,
+                manuallyAdded: true // Mark as manually added
+            };
+            const updatedTargetsArray = [...currentTargetsArray, newTargetEntry];
+
+            // Update the document in the transaction
+            transaction.update(dailyRef, { targets: updatedTargetsArray });
+            console.log(`[selectManualTarget] Target ${targetId} added to daily doc via transaction.`);
+        });
+
+        // Transaction successful
+        alert(`"${targetTitle || targetId}" adicionado à lista do dia!`);
+        if (modal) modal.style.display = 'none'; // Close modal
+
+        // Update UI by reloading daily targets
+        await loadDailyTargets();
+
+    } catch (error) {
+        console.error("Error adding manual target to daily list:", error);
+        alert("Erro ao adicionar alvo manual: " + error.message);
+        // Keep modal open on error for user to retry or cancel.
+    }
+}
+
+
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[DOMContentLoaded] DOM fully loaded. Setting up listeners.");
     try {
         const dateInput = document.getElementById('date');
-        if (dateInput) dateInput.value = formatDateToISO(new Date()); // Define data padrão no form
+        if (dateInput) dateInput.value = formatDateToISO(new Date()); // Set default date in form
     } catch (e) {
         console.error("Error setting default date:", e);
     }
 
-    // Observa mudanças no estado de autenticação
+    // Observe authentication state changes
     onAuthStateChanged(auth, (user) => loadData(user));
 
     // Search & Filter Listeners
@@ -2171,14 +2311,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
             document.getElementById("dailyTargets").innerHTML = '<p>Gerando nova lista...</p>'; // Feedback
             try {
-                const newTargetsData = await generateDailyTargets(userId, todayStr); // Gera a nova lista
-                await setDoc(dailyRef, newTargetsData); // Salva (sobrescreve) no Firestore
-                await loadDailyTargets(); // Recarrega e renderiza a nova lista
+                const newTargetsData = await generateDailyTargets(userId, todayStr); // Generate new list
+                await setDoc(dailyRef, newTargetsData); // Save (overwrite) in Firestore
+                await loadDailyTargets(); // Reload and render new list
                 alert("Nova lista de alvos do dia gerada!");
             } catch (error) {
                 console.error("Error refreshing daily targets:", error);
                 alert("Erro ao gerar nova lista de alvos: " + error.message);
-                await loadDailyTargets(); // Tenta recarregar a lista antiga em caso de erro
+                await loadDailyTargets(); // Try reloading old list on error
             }
         }
      });
@@ -2187,21 +2327,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let textToCopy = 'Alvos Pendentes Hoje:\n\n';
         let count = 0;
         if (!dailyTargetsDiv) return;
-        const targetDivs = dailyTargetsDiv.querySelectorAll('.target:not(.completed-target)'); // Pega só os pendentes
+        const targetDivs = dailyTargetsDiv.querySelectorAll('.target:not(.completed-target)'); // Get only pending
         targetDivs.forEach((div) => {
-            // Extrai título (considerando tags antes)
+            // Extract title (considering preceding tags)
             const titleElement = div.querySelector('h3');
             let titleText = 'Sem Título';
             if(titleElement && titleElement.lastChild && titleElement.lastChild.nodeType === Node.TEXT_NODE) {
                  titleText = titleElement.lastChild.textContent.trim();
             } else if (titleElement) {
-                // Fallback se não houver texto direto (pode acontecer se só tiver tags)
-                titleText = titleElement.textContent.replace(/Prazo:.*?\d{2}\/\d{2}\/\d{4}/, '').trim(); // Tenta remover prazo se existir
-                predefinedCategories.forEach(cat => titleText = titleText.replace(cat, '')); // Tenta remover categoria
+                // Fallback if no direct text (can happen if only tags)
+                titleText = titleElement.textContent.replace(/Prazo:.*?\d{2}\/\d{2}\/\d{4}/, '').trim(); // Try removing deadline if exists
+                predefinedCategories.forEach(cat => titleText = titleText.replace(cat, '')); // Try removing category
                 titleText = titleText.trim() || 'Sem Título';
             }
 
-            const detailsElement = div.querySelector('p:nth-of-type(1)'); // Pega primeiro parágrafo como detalhe
+            const detailsElement = div.querySelector('p:nth-of-type(1)'); // Get first paragraph as detail
             const detailsText = detailsElement ? detailsElement.textContent.trim() : 'Sem Detalhes';
             count++;
             textToCopy += `${count}. ${titleText}\n   ${detailsText}\n\n`;
@@ -2218,14 +2358,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
      });
 
+    // Listener for Manual Add Button
+    document.getElementById("addManualTargetButton")?.addEventListener('click', () => {
+        const user = auth.currentUser;
+        if (!user) { alert("Você precisa estar logado para adicionar alvos."); return; }
+        openManualTargetModal();
+    });
+
      // View Generation Button Listeners
-     document.getElementById('generateViewButton')?.addEventListener('click', () => generateViewHTML(lastDisplayedTargets)); // Usa a última lista renderizada no painel ativo
+     document.getElementById('generateViewButton')?.addEventListener('click', () => generateViewHTML(lastDisplayedTargets)); // Use last rendered list in active panel
      document.getElementById('viewDaily')?.addEventListener('click', generateDailyViewHTML);
      document.getElementById("viewResolvedViewButton")?.addEventListener("click", () => {
          const modal = document.getElementById("dateRangeModal");
          if(modal) {
             modal.style.display = "block";
-            // Preenche datas padrão (hoje e 30 dias atrás)
+            // Fill default dates (today and 30 days ago)
             const today = new Date();
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -2254,7 +2401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDateStr = document.getElementById("startDate").value;
         const endDateStr = document.getElementById("endDate").value;
         if (startDateStr && endDateStr) {
-            // Converte strings para objetos Date (considera como local, mas usará UTC na função)
+            // Convert strings to Date objects (considers local, but uses UTC in function)
             const start = new Date(startDateStr + 'T00:00:00');
             const end = new Date(endDateStr + 'T00:00:00');
              if (isNaN(start.getTime()) || isNaN(end.getTime())) {
@@ -2265,24 +2412,34 @@ document.addEventListener('DOMContentLoaded', () => {
                  alert("A data de início não pode ser posterior à data de fim.");
                  return;
              }
-            generateResolvedViewHTML(start, end); // Chama a função que usa UTC
-            if(dateRangeModal) dateRangeModal.style.display = "none"; // Fecha o modal
+            generateResolvedViewHTML(start, end); // Call function that uses UTC
+            if(dateRangeModal) dateRangeModal.style.display = "none"; // Close modal
         } else {
             alert("Por favor, selecione as datas de início e fim.");
         }
     });
     document.getElementById("cancelDateRange")?.addEventListener("click", () => {if(dateRangeModal) dateRangeModal.style.display = "none"});
-    // Fecha o modal se clicar fora dele
+
+    // Manual Target Modal Listeners
+    const manualTargetModal = document.getElementById("manualTargetModal");
+    document.getElementById("closeManualTargetModal")?.addEventListener("click", () => { if(manualTargetModal) manualTargetModal.style.display = "none" });
+    // Listener for search input
+    document.getElementById("manualTargetSearchInput")?.addEventListener('input', handleManualTargetSearch);
+
+    // Close modals if clicked outside
     window.addEventListener('click', (event) => {
         if (event.target == dateRangeModal) {
             dateRangeModal.style.display = "none";
+        }
+        if (event.target == manualTargetModal) {
+            manualTargetModal.style.display = "none";
         }
     });
 
 }); // End of DOMContentLoaded
 
-// --- Adiciona funções globais ao window para serem acessíveis pelo HTML inline onclick ---
-// (Necessário pois o script é type="module")
+// --- Add global functions to window for HTML inline onclick access ---
+// (Needed because script is type="module")
 window.markAsResolved = markAsResolved;
 window.archiveTarget = archiveTarget;
 window.deleteArchivedTarget = deleteArchivedTarget;
@@ -2295,3 +2452,7 @@ window.cancelEditDeadline = cancelEditDeadline;
 window.editCategory = editCategory;
 window.saveEditedCategory = saveEditedCategory;
 window.cancelEditCategory = cancelEditCategory;
+// Add new functions to window
+window.openManualTargetModal = openManualTargetModal;
+window.handleManualTargetSearch = handleManualTargetSearch;
+window.selectManualTarget = selectManualTarget;
