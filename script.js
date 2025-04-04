@@ -47,7 +47,6 @@ let weeklyPrayerData = {
     interactions: {}
 };
 
-// MODIFICADO: Adicionadas novas categorias
 const predefinedCategories = [
     "Família", "Pessoal", "Igreja", "Trabalho", "Sonho",
     "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"
@@ -55,7 +54,6 @@ const predefinedCategories = [
 
 // ==== UTILITY FUNCTIONS ====
 
-// Function to get the ISO week identifier (Year-W##) for a date
 function getWeekIdentifier(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -65,7 +63,6 @@ function getWeekIdentifier(date) {
     return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
-// Helper to create a Date object representing UTC midnight from a YYYY-MM-DD string
 function createUTCDate(dateString) {
     if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
         return null;
@@ -77,7 +74,6 @@ function createUTCDate(dateString) {
     return date;
 }
 
-// Formats a date input (Date object, Timestamp, or string) into YYYY-MM-DD for date inputs (using UTC)
 function formatDateToISO(date) {
     let dateToFormat;
     if (date instanceof Timestamp) {
@@ -99,7 +95,6 @@ function formatDateToISO(date) {
 }
 
 
-// Formats a date input (Date object expected) for display as DD/MM/YYYY using UTC components
 function formatDateForDisplay(dateInput) {
     if (!dateInput) { return 'Data Inválida'; }
     let dateToFormat;
@@ -119,7 +114,6 @@ function formatDateForDisplay(dateInput) {
     return formattedDate;
 }
 
-// Calculates time elapsed from a given past date (Date object expected) until now
 function timeElapsed(date) {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) { return 'Data Inválida'; }
     const now = new Date();
@@ -140,7 +134,6 @@ function timeElapsed(date) {
     return `${diffInYears} anos`;
 }
 
-// Checks if a given date (Date object expected, representing UTC midnight) is before the start of today (UTC)
 function isDateExpired(date) {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
     const now = new Date();
@@ -156,7 +149,8 @@ function generateUniqueId() {
 function rehydrateTargets(targets) {
     return targets.map((target) => {
         const rehydratedTarget = { ...target };
-        const fieldsToConvert = ['date', 'deadlineDate', 'lastPresentedDate', 'resolutionDate', 'archivedDate'];
+        // MODIFICADO: Adicionado 'lastPrayedDate', removido 'lastPresentedDate'
+        const fieldsToConvert = ['date', 'deadlineDate', 'lastPrayedDate', 'resolutionDate', 'archivedDate'];
 
         fieldsToConvert.forEach(field => {
             const originalValue = rehydratedTarget[field];
@@ -688,7 +682,8 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
         resolutionDate: null,
         observations: [],
         userId: uid,
-        lastPresentedDate: null
+        // REMOVIDO: lastPresentedDate: null
+        lastPrayedDate: null // MODIFICADO: Inicializa lastPrayedDate como null
     };
 
     try {
@@ -723,6 +718,8 @@ window.markAsResolved = async function(targetId) {
             ...targetData, // Copy existing fields
             date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date, // Convert creation date
             deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate, // Convert deadline
+            // MODIFICADO: Converte lastPrayedDate se existir
+            lastPrayedDate: targetData.lastPrayedDate instanceof Date ? Timestamp.fromDate(targetData.lastPrayedDate) : targetData.lastPrayedDate,
             observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
                 ...obs,
                 date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date // Convert observation dates
@@ -734,6 +731,7 @@ window.markAsResolved = async function(targetId) {
          };
         delete archivedData.id; // Remove ID from object to be saved (Firestore uses doc ID)
         delete archivedData.status; // Remove 'status' field if it exists locally
+        // REMOVIDO: delete archivedData.lastPresentedDate; // Remove o campo antigo se ainda existir por alguma razão
 
         // Use a batch for atomicity
         const batch = writeBatch(db);
@@ -775,6 +773,8 @@ window.archiveTarget = async function(targetId) {
             ...targetData,
              date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date,
              deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate,
+             // MODIFICADO: Converte lastPrayedDate se existir
+             lastPrayedDate: targetData.lastPrayedDate instanceof Date ? Timestamp.fromDate(targetData.lastPrayedDate) : targetData.lastPrayedDate,
              observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
                  ...obs,
                  date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date
@@ -786,6 +786,7 @@ window.archiveTarget = async function(targetId) {
          };
         delete archivedData.id;
         delete archivedData.status;
+        // REMOVIDO: delete archivedData.lastPresentedDate;
 
         // Use batch
         const batch = writeBatch(db);
@@ -1307,12 +1308,12 @@ async function generateDailyTargets(userId, dateStr) {
             return { userId, date: dateStr, targets: [] };
         }
 
-        // --- Selection Logic (Cycle and Exclusion) ---
+        // --- MODIFICADO: Selection Logic (Cycle and Exclusion based on Completion) ---
         let pool = [...availableTargets]; // Start with all active
 
-        // Fetch data from last N days to avoid close repetition (e.g., 7 days)
+        // Fetch data from last N days to avoid selecting recently *completed* targets
         const historyDays = 7;
-        const presentedInHistory = new Set();
+        const completedInHistory = new Set(); // MODIFICADO: Nome do Set
         for (let i = 1; i <= historyDays; i++) {
             const pastDate = new Date(todayUTC.getTime() - i * 86400000);
             const pastDateStr = formatDateToISO(pastDate);
@@ -1322,38 +1323,41 @@ async function generateDailyTargets(userId, dateStr) {
                 if (pastSnap.exists()) {
                     const pastData = pastSnap.data();
                     if (pastData?.targets && Array.isArray(pastData.targets)) {
-                        pastData.targets.forEach(t => { if (t && t.targetId) presentedInHistory.add(t.targetId); });
+                        pastData.targets.forEach(t => {
+                            // MODIFICADO: Adiciona ao Set APENAS se t.completed for true
+                            if (t && t.targetId && t.completed === true) {
+                                completedInHistory.add(t.targetId);
+                            }
+                        });
                     }
                 }
             } catch (err) {
                 console.warn(`[generateDailyTargets] Error fetching history for ${pastDateStr}:`, err);
             }
         }
-        console.log(`[generateDailyTargets] Targets presented in the last ${historyDays} days:`, presentedInHistory.size);
+        console.log(`[generateDailyTargets] Targets COMPLETED in the last ${historyDays} days:`, completedInHistory.size);
 
-        // Filter initial pool to remove recently presented ones
-        pool = pool.filter(target => !presentedInHistory.has(target.id));
-        console.log(`[generateDailyTargets] Pool size after filtering recent history: ${pool.length}`);
+        // MODIFICADO: Filter initial pool to remove recently COMPLETED ones
+        pool = pool.filter(target => !completedInHistory.has(target.id));
+        console.log(`[generateDailyTargets] Pool size after filtering recent completions: ${pool.length}`);
 
-        // If pool is empty after filtering history, reset with ALL active targets
+        // If pool is empty after filtering completions, reset with ALL active targets
         if (pool.length === 0 && availableTargets.length > 0) {
-            console.log("[generateDailyTargets] Pool empty after history filter, resetting pool to all available targets.");
+            console.log("[generateDailyTargets] Pool empty after completion filter, resetting pool to all available targets.");
             pool = [...availableTargets];
-            // Optional: Prioritize those not presented longest ago
-            pool.sort((a, b) => {
-                 const dateA = a.lastPresentedDate instanceof Date ? a.lastPresentedDate.getTime() : 0;
-                 const dateB = b.lastPresentedDate instanceof Date ? b.lastPresentedDate.getTime() : 0;
-                 return dateA - dateB; // Earliest date (oldest) first
+            // MODIFICADO: Prioritize those prayed for longest ago
+             pool.sort((a, b) => {
+                 const dateA = a.lastPrayedDate instanceof Date ? a.lastPrayedDate.getTime() : 0; // Treat null as very old
+                 const dateB = b.lastPrayedDate instanceof Date ? b.lastPrayedDate.getTime() : 0;
+                 return dateA - dateB; // Earliest prayed date (oldest) first
              });
         } else if (pool.length > 0) {
-             // Sort remaining pool by lastPresentedDate (oldest first)
+             // MODIFICADO: Sort remaining pool by lastPrayedDate (oldest first)
              pool.sort((a, b) => {
-                 const dateA = a.lastPresentedDate instanceof Date ? a.lastPresentedDate.getTime() : 0;
-                 const dateB = b.lastPresentedDate instanceof Date ? b.lastPresentedDate.getTime() : 0;
-                 return dateA - dateB; // Present oldest first
+                 const dateA = a.lastPrayedDate instanceof Date ? a.lastPrayedDate.getTime() : 0; // Treat null as very old
+                 const dateB = b.lastPrayedDate instanceof Date ? b.lastPrayedDate.getTime() : 0;
+                 return dateA - dateB; // Present oldest prayed first
              });
-             // Or shuffle for total randomness within the filtered pool:
-             // pool.sort(() => 0.5 - Math.random());
          }
 
         // Select up to 10 targets
@@ -1363,8 +1367,8 @@ async function generateDailyTargets(userId, dateStr) {
         // Prepare for Firestore
         const targetsForFirestore = selectedTargets.map(target => ({ targetId: target.id, completed: false }));
 
-        // Update lastPresentedDate in background (no await)
-        updateLastPresentedDates(userId, selectedTargets).catch(err => console.error("[generateDailyTargets] BG error updating lastPresented:", err));
+        // REMOVIDO: A chamada para updateLastPresentedDates foi removida daqui.
+        // A atualização de lastPrayedDate acontece apenas no 'Orei!'
 
         console.log(`[generateDailyTargets] Generated ${targetsForFirestore.length} targets for ${dateStr}.`);
         return { userId: userId, date: dateStr, targets: targetsForFirestore };
@@ -1375,31 +1379,12 @@ async function generateDailyTargets(userId, dateStr) {
     }
 }
 
-
+// REMOVIDO: Função updateLastPresentedDates inteira
+/*
 async function updateLastPresentedDates(userId, selectedTargets) {
-    if (!selectedTargets || selectedTargets.length === 0) return;
-    const batch = writeBatch(db);
-    const nowTimestamp = Timestamp.fromDate(new Date());
-    let updatedCount = 0;
-    selectedTargets.forEach(target => {
-        if (target?.id) {
-            batch.update(doc(db, "users", userId, "prayerTargets", target.id), { lastPresentedDate: nowTimestamp });
-            // Update locally too
-            const localTargetIndex = prayerTargets.findIndex(pt => pt.id === target.id);
-            if (localTargetIndex !== -1) {
-                 prayerTargets[localTargetIndex].lastPresentedDate = nowTimestamp.toDate();
-            }
-            updatedCount++;
-        }
-    });
-    try {
-        if (updatedCount > 0) {
-            await batch.commit();
-            console.log(`[updateLastPresentedDates] Updated lastPresentedDate for ${updatedCount} targets.`);
-        }
-    }
-    catch (error) { console.error("[updateLastPresentedDates] Error committing batch:", error); }
+    // ... (código removido) ...
 }
+*/
 
 function renderDailyTargets(pendingTargets, completedTargets) {
     const dailyTargetsDiv = document.getElementById("dailyTargets");
@@ -1510,30 +1495,26 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
             }
 
             const dailyData = dailySnap.data();
-            let targetUpdated = false;
+            let targetUpdatedInDaily = false;
 
             // Map targets, marking the clicked one as completed: true
             const updatedTargets = dailyData.targets.map(t => {
                 if (t && t.targetId === targetId) {
-                    targetUpdated = true;
+                    targetUpdatedInDaily = true;
                     return { ...t, completed: true };
                 }
                 return t;
             });
 
-            if (!targetUpdated) {
+            if (!targetUpdatedInDaily) {
                 console.warn(`Target ${targetId} not found in daily doc ${dailyDocId} during 'Orei!' click.`);
-                // Even if not found (could be an error), proceed to register the click
+                // Even if not found (could be an error), proceed to register the click stats etc.
             }
 
              // --- Update Firestore ---
-             // 1. Update daily document with target marked as complete (if found)
-             if (targetUpdated) {
-                 await updateDoc(dailyRef, { targets: updatedTargets });
-             }
-
-             // 2. Update click counts, weekly data, and perseverance bar
-             await updateClickCounts(userId, targetId); // This function handles all of that now
+             // MODIFICADO: updateClickCounts agora lida com TODAS as atualizações necessárias pós-clique
+             // incluindo: cliques, weekly, perseverance E lastPrayedDate
+             await updateClickCounts(userId, targetId, targetUpdatedInDaily, updatedTargets, dailyRef);
 
             // --- Update UI ---
             // Reload and re-render daily list to reflect the change
@@ -1561,12 +1542,17 @@ function addPrayButtonFunctionality(dailyDiv, targetId) {
 }
 
 
-async function updateClickCounts(userId, targetId) {
+// MODIFICADO: Refatorado para usar WriteBatch e incluir atualização de lastPrayedDate
+async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updatedDailyTargets, dailyRef) {
      // --- References ---
      const clickCountsRef = doc(db, "prayerClickCounts", targetId);
      const weeklyDocRef = doc(db, "weeklyInteractions", userId);
-     const perseveranceDocRef = doc(db, "perseveranceData", userId); // Ref for bar data
+     const perseveranceDocRef = doc(db, "perseveranceData", userId);
+     // MODIFICADO: Referência ao alvo ATIVO para atualizar lastPrayedDate
+     const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
+
      const now = new Date();
+     const nowTimestamp = Timestamp.fromDate(now); // Timestamp para Firestore
 
      // --- Time Data ---
      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1575,118 +1561,115 @@ async function updateClickCounts(userId, targetId) {
      const weekId = getWeekIdentifier(now); // YYYY-W##
      const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // Start of UTC day
 
-     // --- Flags and Data to Save ---
+     // --- Flags and Data for Batch ---
+     const batch = writeBatch(db);
      let needsPerseveranceUpdate = false;
      let dataToSaveForPerseverance = {};
      let weeklyDataNeedsUpdate = false;
 
-     // --- PERSEVERANCE BAR Update Logic ---
-     // Check if last recorded interaction was *before* the start of today (UTC)
+     // --- PERSEVERANCE BAR Update Logic (calculates changes, adds to batch if needed) ---
      let lastInteractionUTCStart = null;
      if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
          const li = perseveranceData.lastInteractionDate;
          lastInteractionUTCStart = new Date(Date.UTC(li.getUTCFullYear(), li.getUTCMonth(), li.getUTCDate()));
      }
-
-     // If no previous date OR previous date is from a day before today
      if (!lastInteractionUTCStart || todayUTCStart.getTime() > lastInteractionUTCStart.getTime()) {
-         needsPerseveranceUpdate = true; // Mark to save to Firestore
-         console.log(`[updateClickCounts] First 'Orei!' interaction detected for ${todayUTCStr}. Updating perseverance bar.`);
-
+         needsPerseveranceUpdate = true;
+         console.log(`[updateClickCounts] First 'Orei!' interaction detected for ${todayUTCStr}. Updating perseverance.`);
          let isConsecutive = false;
          if (lastInteractionUTCStart) {
-             // Check if last interaction was exactly the previous day
-             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000); // Subtract 24h
+             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000);
              if (lastInteractionUTCStart.getTime() === expectedYesterdayUTCStart.getTime()) {
                  isConsecutive = true;
-                 console.log("[updateClickCounts] Consecutive day detected.");
-             } else {
-                 console.log("[updateClickCounts] Not a consecutive day.");
              }
-         } else {
-              console.log("[updateClickCounts] No previous interaction date found, starting streak at 1.");
          }
-
-         // Calculate new consecutive days and record
          const newConsecutiveDays = isConsecutive ? (perseveranceData.consecutiveDays || 0) + 1 : 1;
          const newRecordDays = Math.max(perseveranceData.recordDays || 0, newConsecutiveDays);
 
-         // Update local data IMMEDIATELY for UI
+         // Update local data IMMEDIATELY
          perseveranceData.consecutiveDays = newConsecutiveDays;
-         perseveranceData.lastInteractionDate = todayUTCStart; // Save date of UTC day start
+         perseveranceData.lastInteractionDate = todayUTCStart;
          perseveranceData.recordDays = newRecordDays;
 
-         // Prepare data for Firestore (using Timestamp)
+         // Prepare data for Batch
          dataToSaveForPerseverance = {
              consecutiveDays: newConsecutiveDays,
-             lastInteractionDate: Timestamp.fromDate(todayUTCStart),
+             lastInteractionDate: Timestamp.fromDate(todayUTCStart), // Use Timestamp for Firestore
              recordDays: newRecordDays
          };
-
+         // Add perseverance update to batch
+         batch.set(perseveranceDocRef, { userId: userId, ...dataToSaveForPerseverance }, { merge: true });
          // Update bar UI IMMEDIATELY
          updatePerseveranceUI();
-
      } else {
-         console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Bar already updated today.`);
+         console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Bar unchanged.`);
      }
 
-     // --- WEEKLY CHART Update Logic ---
-     weeklyPrayerData.interactions = weeklyPrayerData.interactions || {}; // Ensure exists
-     // If week changed or no data for today
-     if (weeklyPrayerData.weekId !== weekId || weeklyPrayerData.interactions[todayUTCStr] !== true) {
-         // If week changed, reset interactions
-         if (weeklyPrayerData.weekId !== weekId) {
-             console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
-             weeklyPrayerData.interactions = {};
-             weeklyPrayerData.weekId = weekId;
-         }
-         // Mark today as interacted (if not already)
-         if(weeklyPrayerData.interactions[todayUTCStr] !== true) {
-             weeklyPrayerData.interactions[todayUTCStr] = true;
-             weeklyDataNeedsUpdate = true; // Mark to save to Firestore
-             console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
-         }
+     // --- WEEKLY CHART Update Logic (calculates changes, adds to batch if needed) ---
+     weeklyPrayerData.interactions = weeklyPrayerData.interactions || {};
+     if (weeklyPrayerData.weekId !== weekId) { // Week changed
+         console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
+         weeklyPrayerData.interactions = {};
+         weeklyPrayerData.weekId = weekId;
+         weeklyPrayerData.interactions[todayUTCStr] = true; // Mark today in new week
+         weeklyDataNeedsUpdate = true;
+     } else if (weeklyPrayerData.interactions[todayUTCStr] !== true) { // Same week, first interaction today
+         weeklyPrayerData.interactions[todayUTCStr] = true;
+         weeklyDataNeedsUpdate = true;
+         console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
      }
-
-     // --- Save to Firestore ---
-     try {
-         // 1. Save Click Counts (every time 'Orei!' is clicked)
-         // Use set with merge: true to create/update and increment nested fields
-         await setDoc(clickCountsRef, {
-             targetId: targetId,
+     if (weeklyDataNeedsUpdate) {
+         // Add weekly update to batch
+         batch.set(weeklyDocRef, {
              userId: userId,
-             totalClicks: increment(1),
-             [`monthlyClicks.${yearMonth}`]: increment(1), // Increment current month counter
-             [`yearlyClicks.${year}`]: increment(1)       // Increment current year counter
-            }, { merge: true });
-         console.log(`[updateClickCounts] Click count updated for ${targetId}.`);
+             weekId: weeklyPrayerData.weekId,
+             interactions: weeklyPrayerData.interactions
+            }, { merge: false }); // Overwrite document for the week
+     }
+     // Update chart UI (always, based on potentially updated local data)
+     updateWeeklyChart();
 
-         // 2. Save Weekly Chart Data (if needed)
-         if (weeklyDataNeedsUpdate) {
-             // Use set with merge: false to overwrite document with current week's data
-             await setDoc(weeklyDocRef, {
-                 userId: userId, // Add userId for reference
-                 weekId: weeklyPrayerData.weekId,
-                 interactions: weeklyPrayerData.interactions
-                }, { merge: false });
-             console.log(`[updateClickCounts] Weekly interaction data updated for week ${weeklyPrayerData.weekId}.`);
-         }
-         // Update chart UI (always, as local data was already updated)
-         updateWeeklyChart();
 
-         // 3. Save Perseverance Bar Data (if needed)
-         if (needsPerseveranceUpdate && Object.keys(dataToSaveForPerseverance).length > 0) {
-             // Use set with merge: true to create/update perseverance fields
-             await setDoc(perseveranceDocRef, { userId: userId, ...dataToSaveForPerseverance } , { merge: true });
-             console.log(`[updateClickCounts] Perseverance bar data updated in Firestore.`);
-             // Bar UI was already updated earlier when needsPerseveranceUpdate was detected
+     // --- Add Updates to Batch ---
+
+     // 1. Click Counts (always increment)
+     batch.set(clickCountsRef, {
+         targetId: targetId,
+         userId: userId,
+         totalClicks: increment(1),
+         [`monthlyClicks.${yearMonth}`]: increment(1),
+         [`yearlyClicks.${year}`]: increment(1)
+        }, { merge: true });
+
+     // 2. MODIFICADO: Update lastPrayedDate on the ACTIVE target document
+     batch.update(activeTargetRef, { lastPrayedDate: nowTimestamp });
+
+     // 3. Update Daily Document (if the target was found and needs marking as complete)
+     if (targetUpdatedInDaily) {
+         batch.update(dailyRef, { targets: updatedDailyTargets });
+     }
+
+     // (Weekly and Perseverance updates were already added to batch if needed)
+
+     // --- Commit Batch & Update Local lastPrayedDate ---
+     try {
+         await batch.commit();
+         console.log(`[updateClickCounts] Batch committed successfully for ${targetId}.`);
+
+         // Update lastPrayedDate locally AFTER successful commit
+         const targetIndexLocal = prayerTargets.findIndex(t => t.id === targetId);
+         if (targetIndexLocal !== -1) {
+             prayerTargets[targetIndexLocal].lastPrayedDate = now.toDate(); // Use the Date object locally
+             console.log(`[updateClickCounts] Local lastPrayedDate updated for ${targetId}`);
+         } else {
+             console.warn(`[updateClickCounts] Target ${targetId} not found in local prayerTargets array after batch commit.`);
          }
 
      } catch (error) {
-         console.error(`[updateClickCounts] Error during Firestore updates for target ${targetId}:`, error);
-         // Try to update UIs even on save error, based on local data
-         updateWeeklyChart();
-         // Don't re-update bar UI here, as local change was already made
+         console.error(`[updateClickCounts] Error committing batch for target ${targetId}:`, error);
+         // Note: UI updates for bar/chart happened before commit attempt based on local data
+         // Re-throw or handle the error as needed
+         throw error; // Propagate error to the calling function (addPrayButtonFunctionality)
      }
  }
 
@@ -1855,7 +1838,7 @@ function resetWeeklyChart() {
 
 // --- Views and Filters ---
 
-// MODIFICADO: generateViewHTML agora pode receber um título opcional para a página
+// generateViewHTML agora pode receber um título opcional para a página
 function generateViewHTML(targetsToInclude = lastDisplayedTargets, pageTitle = "Alvos de Oração (Visão Atual)") {
     let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>${pageTitle}</h1>`;
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
@@ -2506,7 +2489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listener for search input
     document.getElementById("manualTargetSearchInput")?.addEventListener('input', handleManualTargetSearch);
 
-    // NOVO: Category Selection Modal Listeners
+    // Category Selection Modal Listeners
     const categoryModal = document.getElementById('categorySelectionModal');
     document.getElementById('closeCategoryModal')?.addEventListener('click', () => { if(categoryModal) categoryModal.style.display = 'none'; });
     document.getElementById('cancelCategoryView')?.addEventListener('click', () => { if(categoryModal) categoryModal.style.display = 'none'; });
@@ -2521,7 +2504,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target == manualTargetModal) {
             manualTargetModal.style.display = "none";
         }
-        // NOVO: Close category modal on outside click
         if (event.target == categoryModal) {
              categoryModal.style.display = "none";
         }
@@ -2547,6 +2529,8 @@ window.cancelEditCategory = cancelEditCategory;
 window.openManualTargetModal = openManualTargetModal;
 window.handleManualTargetSearch = handleManualTargetSearch;
 window.selectManualTarget = selectManualTarget;
-// NOVO: Expor funções do modal de categoria se necessário (não são chamadas por onclick direto no HTML, mas boa prática se fossem)
+// Expor funções do modal de categoria se necessário
 // window.openCategorySelectionModal = openCategorySelectionModal;
 // window.generateCategoryFilteredView = generateCategoryFilteredView;
+
+// END OF MODIFIED script.js
