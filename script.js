@@ -1659,13 +1659,16 @@ async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updated
          // Update lastPrayedDate locally AFTER successful commit
          const targetIndexLocal = prayerTargets.findIndex(t => t.id === targetId);
          if (targetIndexLocal !== -1) {
-             prayerTargets[targetIndexLocal].lastPrayedDate = now.toDate(); // Use the Date object locally
+             // LINHA INCORRETA:
+             // prayerTargets[targetIndexLocal].lastPrayedDate = now.toDate(); // Use the Date object locally
+             // LINHA CORRETA:
+             prayerTargets[targetIndexLocal].lastPrayedDate = now; // 'now' já é um objeto Date
              console.log(`[updateClickCounts] Local lastPrayedDate updated for ${targetId}`);
          } else {
              console.warn(`[updateClickCounts] Target ${targetId} not found in local prayerTargets array after batch commit.`);
          }
 
-     } catch (error) {
+         } catch (error) {
          console.error(`[updateClickCounts] Error committing batch for target ${targetId}:`, error);
          // Note: UI updates for bar/chart happened before commit attempt based on local data
          // Re-throw or handle the error as needed
