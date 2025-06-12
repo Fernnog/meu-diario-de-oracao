@@ -826,7 +826,7 @@ window.deleteArchivedTarget = async function(targetId) {
          // Update local lists
          const targetIndex = archivedTargets.findIndex(t => t.id === targetId);
          if (targetIndex !== -1) archivedTargets.splice(targetIndex, 1);
-         resolvedTargets = archivedTargets.filter(target => target.resolved); // Update resolved
+         resolvedTargets = archivedTargets.filter(target => t.resolved); // Update resolved
          resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
 
          // Re-render
@@ -951,48 +951,29 @@ window.saveObservation = async function(targetId) {
 };
 
 function renderObservations(observations, isExpanded = false, targetId = null) {
+    // MODIFICAÇÃO: A função agora ignora 'isExpanded' e sempre exibe todas as observações.
+    // O link de "Ver mais/menos" foi removido para corrigir o bug de expansão.
     if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
-    // Sort locally before displaying (should already be sorted, but ensures)
+    
+    // Sort locally before displaying (most recent first)
     observations.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
-    const displayCount = isExpanded ? observations.length : 1; // Show 1 by default, or all if expanded
-    const visibleObservations = observations.slice(0, displayCount);
-    const remainingCount = observations.length - displayCount;
+    
+    // Sempre exibe todas as observações
+    const visibleObservations = observations; 
 
     let observationsHTML = `<div class="observations">`;
     visibleObservations.forEach(observation => {
         if (!observation || !observation.date) return; // Skip invalid observations
         const formattedDate = formatDateForDisplay(observation.date);
         const text = observation.text || '(Observação vazia)';
-        // Basic HTML sanitization would be ideal here in production
         observationsHTML += `<p class="observation-item"><strong>${formattedDate}:</strong> ${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;
     });
 
-    // Add link to see more/less if there's more than 1 observation
-    if (targetId && observations.length > 1) {
-        if (!isExpanded && remainingCount > 0) {
-            observationsHTML += `<a href="#" class="observations-toggle" onclick="window.toggleObservations('${targetId}', event); return false;">Ver mais ${remainingCount} observaç${remainingCount > 1 ? 'ões' : 'ão'}</a>`;
-        } else if (isExpanded) {
-            observationsHTML += `<a href="#" class="observations-toggle" onclick="window.toggleObservations('${targetId}', event); return false;">Ver menos observações</a>`;
-        }
-    }
+    // O link para expandir/recolher foi completamente removido.
+    
     observationsHTML += `</div>`;
     return observationsHTML;
 }
-
-window.toggleObservations = function(targetId, event) {
-    if (event) event.preventDefault();
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`); if (!targetDiv) return;
-    const observationsContainer = targetDiv.querySelector('.observations'); if (!observationsContainer) return;
-    const isCurrentlyExpanded = observationsContainer.querySelector('.observations-toggle')?.textContent.includes('Ver menos');
-
-    // Find target locally
-    const target = prayerTargets.find(t => t.id === targetId) || archivedTargets.find(t => t.id === targetId); if (!target) return;
-
-    // Render observation HTML in the new state (expanded or not)
-    const newObservationsHTML = renderObservations(target.observations || [], !isCurrentlyExpanded, targetId);
-    observationsContainer.outerHTML = newObservationsHTML; // Replace old container with new one
-};
-
 
 // --- Deadlines ---
 document.getElementById('hasDeadline').addEventListener('change', function() {
@@ -1378,13 +1359,6 @@ async function generateDailyTargets(userId, dateStr) {
         return { userId: userId, date: dateStr, targets: [] }; // Return empty on severe error
     }
 }
-
-// REMOVIDO: Função updateLastPresentedDates inteira
-/*
-async function updateLastPresentedDates(userId, selectedTargets) {
-    // ... (código removido) ...
-}
-*/
 
 function renderDailyTargets(pendingTargets, completedTargets) {
     const dailyTargetsDiv = document.getElementById("dailyTargets");
@@ -2521,7 +2495,6 @@ window.archiveTarget = archiveTarget;
 window.deleteArchivedTarget = deleteArchivedTarget;
 window.toggleAddObservation = toggleAddObservation;
 window.saveObservation = saveObservation;
-window.toggleObservations = toggleObservations;
 window.editDeadline = editDeadline;
 window.saveEditedDeadline = saveEditedDeadline;
 window.cancelEditDeadline = cancelEditDeadline;
