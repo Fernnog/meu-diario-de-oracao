@@ -951,11 +951,23 @@ input[type="date"] {
     border-color: #f9a825;     /* Matching border */
     color: #fff; /* Keep tick white */
 }
-
 .day-tick.active::before {
     content: '✓'; /* Tick character */
     font-weight: bold;
 }
+
+/* Inactive tick style for weekly chart (NEW) */
+.day-tick.inactive {
+    background-color: #ffebee; /* Light pink/red background for X */
+    border-color: #ef9a9a;     /* Muted red border for X */
+    color: #f44336;            /* Red color for X character */
+}
+.day-tick.inactive::before {
+    content: '×';            /* Multiplication sign for X, or 'X' */
+    font-weight: normal;       /* Can be bold if preferred */
+    font-size: 1.1em;          /* Slightly larger X if needed */
+}
+
 
 /* ==== COMPLETED DAILY TARGETS STYLES ==== */
 .completed-daily-targets-section {
