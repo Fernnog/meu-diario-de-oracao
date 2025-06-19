@@ -158,17 +158,31 @@ hr.title-separator, hr.search-separator, hr.filter-separator {
  }
 
 /* ==== SECTION STYLES ==== */
-.form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .completed-daily-targets-section {
+.form-section, .targets-section, .daily-section, .completed-daily-targets-section {
     margin: 20px auto; /* Center sections */
     padding: 15px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    background-color: #fff;
+    background-color: #fff; /* Default background for most sections */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
     width: 95%; /* Responsive width */
     max-width: 800px; /* Max width */
 }
+
+/* MODIFIED: Specific background for perseverance sections */
+.perseverance-section, .weekly-perseverance-chart {
+    margin: 20px auto;
+    padding: 15px;
+    border: 1px solid #e0d8cc; /* Slightly darker border to complement new background */
+    border-radius: 8px; /* Slightly more rounded */
+    background-color: #fffcf2; /* Light cream/beige background */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    width: 95%;
+    max-width: 800px;
+}
+
 
 /* ==== INPUT STYLES ==== */
 input[type="text"],
@@ -845,9 +859,7 @@ input[type="date"] {
 }
 
 /* ==== PERSEVERANCE PROGRESS BAR STYLES ==== */
-.perseverance-section {
-    max-width: 700px;
-}
+/* .perseverance-section is now styled with other sections, but has specific background */
 
 .perseverance-header h2 {
     font-size: 1.4em;
@@ -865,7 +877,7 @@ input[type="date"] {
 }
 
 .progress-bar {
-    background-color: #f0f0f0;
+    background-color: #e9e0d2; /* Slightly darker than section bg for contrast */
     border-radius: 10px;
     height: 20px;
     position: relative;
@@ -873,6 +885,7 @@ input[type="date"] {
     align-items: center;
     flex-grow: 1;
     overflow: hidden;
+    border: 1px solid #dcd3c5;
 }
 
 .progress {
@@ -893,15 +906,12 @@ input[type="date"] {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    text-shadow: 0 0 2px white; /* White shadow for readability over green bar */
+    text-shadow: 0 0 2px #fffcf2; /* Match section bg for readability */
 }
 
 /* ==== WEEKLY PERSEVERANCE CHART STYLES ==== */
-.weekly-perseverance-chart {
-    margin-bottom: 15px;
-    padding: 15px;
-    text-align: center;
-}
+/* .weekly-perseverance-chart is now styled with other sections, but has specific background */
+
 
 .weekly-header h3 {
     margin-top: 0;
@@ -940,12 +950,13 @@ input[type="date"] {
     border: 2px solid #ccc;
     text-align: center;
     font-size: 1em;
-    color: #fff; /* Tick color */
-    background-color: #e0e0e0; /* Default background */
-    transition: background-color 0.3s, border-color 0.3s;
+    color: #fff; /* Tick color for active */
+    background-color: #e0e0e0; /* Default background for future/non-interacted today */
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    position: relative; /* For current day highlight */
 }
 
-/* Active tick style for weekly chart */
+/* Active tick style for weekly chart (interaction occurred) */
 .day-tick.active {
     background-color: #f9a825; /* Orange-yellow from logo/buttons */
     border-color: #f9a825;     /* Matching border */
@@ -956,16 +967,32 @@ input[type="date"] {
     font-weight: bold;
 }
 
-/* Inactive tick style for weekly chart (NEW) */
+/* Inactive tick style for weekly chart (past day, no interaction) */
 .day-tick.inactive {
     background-color: #ffebee; /* Light pink/red background for X */
     border-color: #ef9a9a;     /* Muted red border for X */
     color: #f44336;            /* Red color for X character */
 }
 .day-tick.inactive::before {
-    content: '×';            /* Multiplication sign for X, or 'X' */
-    font-weight: normal;       /* Can be bold if preferred */
-    font-size: 1.1em;          /* Slightly larger X if needed */
+    content: '×';            /* Multiplication sign for X */
+    font-weight: normal;
+    font-size: 1.1em;
+}
+
+/* Current day highlight style (NEW) */
+.day-tick.current-day {
+    /* Subtle background highlight */
+    /* This will be under the active/inactive colors if they apply */
+    box-shadow: 0 0 0 2px rgba(226, 148, 32, 0.3); /* Soft orange glow */
+}
+/* Ensure default background for current day if no interaction yet, but not X */
+.day-tick.current-day:not(.active):not(.inactive) {
+    background-color: #e0e0e0; /* Default grey, no tick/X */
+    border-color: #ccc;
+    color: transparent; /* No visible character */
+}
+.day-tick.current-day:not(.active):not(.inactive)::before {
+    content: ''; /* No character if current day and no interaction */
 }
 
 
@@ -1008,7 +1035,7 @@ input[type="date"] {
     .main-menu { margin-bottom: 15px; }
     .main-menu .btn { font-size: 13px; padding: 8px 15px; margin: 3px; }
 
-    .form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .auth-section {
+    .form-section, .targets-section, .daily-section, .perseverance-section, .weekly-perseverance-chart, .auth-section, .completed-daily-targets-section {
          width: 98%;
          padding: 12px;
          margin: 10px auto;
@@ -1020,7 +1047,6 @@ input[type="date"] {
         max-width: none;
     }
     label { margin-left: 2.5%; margin-right: 2.5%; }
-    /* .checkbox-container { width: 95%; margin-left: 2.5%;} */ /* Checkbox container in form seems ok */
 
     .target { padding: 10px 5px; }
     .target-actions { gap: 3px; }
