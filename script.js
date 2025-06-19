@@ -1796,9 +1796,11 @@ function updateWeeklyChart() {
 
         // Check if interaction exists for this date in the current week
         if (interactions[dateStringUTC] === true) {
-            dayTick.classList.add('active'); // Add 'active' class if interaction occurred
+            dayTick.classList.add('active');
+            dayTick.classList.remove('inactive'); // Ensure inactive is removed
         } else {
-            dayTick.classList.remove('active'); // Remove 'active' class if not
+            dayTick.classList.remove('active');
+            dayTick.classList.add('inactive'); // Add inactive class for X
         }
     }
 }
@@ -1807,7 +1809,10 @@ function updateWeeklyChart() {
 function resetWeeklyChart() {
     for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
-        if (dayTick) dayTick.classList.remove('active');
+        if (dayTick) {
+            dayTick.classList.remove('active');
+            dayTick.classList.remove('inactive'); // Also remove inactive
+        }
     }
     console.log("[resetWeeklyChart] Weekly chart ticks visually cleared.");
 }
