@@ -52,7 +52,7 @@ const predefinedCategories = [
     "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"
 ];
 
-// ==== UTILITY FUNCTIONS ====
+// ==== UTILITY FUNCTIONS (REESCRITAS PARA MAIOR ROBUSTEZ) ====
 
 function getWeekIdentifier(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -63,74 +63,61 @@ function getWeekIdentifier(date) {
     return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
-function createUTCDate(dateString) {
-    if (!dateString || typeof dateString !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+// Converte um valor (Timestamp, string, Date) para um objeto Date válido ou null
+function convertToDate(value) {
+    if (!value) {
         return null;
     }
-    const date = new Date(dateString + 'T00:00:00Z');
-    if (isNaN(date.getTime())) {
-        return null;
+    if (value instanceof Timestamp) {
+        return value.toDate();
     }
-    return date;
+    if (value instanceof Date) {
+        return !isNaN(value.getTime()) ? value : null;
+    }
+    if (typeof value === 'string') {
+        const parsedDate = new Date(value);
+        return !isNaN(parsedDate.getTime()) ? parsedDate : null;
+    }
+    return null;
 }
 
 function formatDateToISO(date) {
-    let dateToFormat;
-    if (date instanceof Timestamp) {
-        dateToFormat = date.toDate();
-    } else if (date instanceof Date && !isNaN(date)) {
-        dateToFormat = date;
-    } else if (typeof date === 'string') {
-        dateToFormat = new Date(date.includes('T') || date.includes('Z') ? date : date + 'T00:00:00Z');
-    }
-
-    if (!(dateToFormat instanceof Date) || isNaN(dateToFormat.getTime())) {
-        dateToFormat = new Date(); // Fallback to current date if input is utterly unparsable
-    }
-    
-    // Ensure the date object is valid before trying to get parts
-    if (isNaN(dateToFormat.getTime())) {
-         // Fallback for completely invalid date object after attempts
-        const now = new Date();
-        const year = now.getUTCFullYear();
-        const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(now.getUTCDate()).padStart(2, '0');
+    const validDate = convertToDate(date);
+    if (!validDate) {
+        // Fallback para hoje se a data for inválida, útil para inputs de data
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-
-    const year = dateToFormat.getUTCFullYear();
-    const month = String(dateToFormat.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(dateToFormat.getUTCDate()).padStart(2, '0');
+    
+    const year = validDate.getUTCFullYear();
+    const month = String(validDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(validDate.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
 
-function formatDateForDisplay(dateInput) {
-    if (!dateInput) { return 'Data Inválida'; }
-    let dateToFormat;
-    if (dateInput instanceof Timestamp) { dateToFormat = dateInput.toDate(); }
-    else if (dateInput instanceof Date && !isNaN(dateInput)) { dateToFormat = dateToFormat; }
-    else {
-        if (typeof dateInput === 'string') {
-            dateToFormat = new Date(dateInput.includes('T') || dateInput.includes('Z') ? dateInput : dateInput + 'T00:00:00Z');
-         }
-        else { return 'Data Inválida'; }
+function formatDateForDisplay(date) {
+    const validDate = convertToDate(date);
+    if (!validDate) {
+        return 'Data Inválida';
     }
-    if (!dateToFormat || isNaN(dateToFormat.getTime())) { return 'Data Inválida'; }
-    const day = String(dateToFormat.getUTCDate()).padStart(2, '0');
-    const month = String(dateToFormat.getUTCMonth() + 1).padStart(2, '0');
-    const year = dateToFormat.getUTCFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
-    return formattedDate;
+    const day = String(validDate.getUTCDate()).padStart(2, '0');
+    const month = String(validDate.getUTCMonth() + 1).padStart(2, '0');
+    const year = validDate.getUTCFullYear();
+    return `${day}/${month}/${year}`;
 }
 
 function timeElapsed(date) {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) { return 'Data Inválida'; }
+    const validDate = convertToDate(date);
+    if (!validDate) { return 'Tempo desconhecido'; }
+
     const now = new Date();
-    const pastMillis = date.getTime();
-    const nowMillis = now.getTime();
-    let diffInSeconds = Math.floor((nowMillis - pastMillis) / 1000);
+    let diffInSeconds = Math.floor((now.getTime() - validDate.getTime()) / 1000);
     if (diffInSeconds < 0) diffInSeconds = 0;
+
     if (diffInSeconds < 60) return `${diffInSeconds} seg`;
     let diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) return `${diffInMinutes} min`;
@@ -145,59 +132,42 @@ function timeElapsed(date) {
 }
 
 function isDateExpired(date) {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
+    const validDate = convertToDate(date);
+    if (!validDate) return false;
     const now = new Date();
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    return date.getTime() < todayUTCStart.getTime();
+    return validDate.getTime() < todayUTCStart.getTime();
 }
 
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
 }
 
-// Rehydrates Firestore data (Timestamps to Date objects)
+// Rehydrates Firestore data (Timestamps to Date objects) - FUNÇÃO CRÍTICA CORRIGIDA
 function rehydrateTargets(targets) {
-    return targets.map((target) => {
-        const rehydratedTarget = { ...target };
-        const fieldsToConvert = ['date', 'deadlineDate', 'lastPrayedDate', 'resolutionDate', 'archivedDate'];
+    return targets.map(target => {
+        const rehydrated = { ...target };
 
-        fieldsToConvert.forEach(field => {
-            const originalValue = rehydratedTarget[field];
-            if (originalValue instanceof Timestamp) {
-                rehydratedTarget[field] = originalValue.toDate();
-            } else if (originalValue instanceof Date && !isNaN(originalValue)) {
-                /* Already Date */
-            } else if (originalValue === null || originalValue === undefined) {
-                rehydratedTarget[field] = null;
-            } else if (typeof originalValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(originalValue)) { 
-                try {
-                    const parsedDate = new Date(originalValue.includes('T') || originalValue.includes('Z') ? originalValue : originalValue + 'T00:00:00Z');
-                    rehydratedTarget[field] = !isNaN(parsedDate.getTime()) ? parsedDate : null;
-                } catch (e) { rehydratedTarget[field] = null; }
-            } else if (field !== 'category') { 
-                 rehydratedTarget[field] = null;
-            }
+        // Converte todos os campos de data conhecidos
+        const dateFields = ['date', 'deadlineDate', 'lastPrayedDate', 'resolutionDate', 'archivedDate', 'lastInteractionDate'];
+        dateFields.forEach(field => {
+            rehydrated[field] = convertToDate(rehydrated[field]);
         });
 
-        rehydratedTarget.category = typeof rehydratedTarget.category === 'string' ? rehydratedTarget.category : null;
-
-        if (rehydratedTarget.observations && Array.isArray(rehydratedTarget.observations)) {
-            rehydratedTarget.observations = rehydratedTarget.observations.map(obs => {
-                let obsDateFinal = null;
-                if (obs.date instanceof Timestamp) obsDateFinal = obs.date.toDate();
-                else if (obs.date instanceof Date && !isNaN(obs.date)) obsDateFinal = obs.date;
-                else if (typeof obs.date === 'string') {
-                    try {
-                         const parsedObsDate = new Date(obs.date.includes('T') || obs.date.includes('Z') ? obs.date : obs.date + 'T00:00:00Z');
-                         if (!isNaN(parsedObsDate.getTime())) obsDateFinal = parsedObsDate;
-                     } catch(e) { /* ignore */ }
-                }
-                return { ...obs, date: obsDateFinal };
-            }).sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
+        // Garante que as observações e suas datas sejam válidas
+        if (Array.isArray(rehydrated.observations)) {
+            rehydrated.observations = rehydrated.observations
+                .map(obs => ({
+                    ...obs,
+                    date: convertToDate(obs.date)
+                }))
+                .filter(obs => obs.date) // Remove observações com data inválida
+                .sort((a, b) => b.date.getTime() - a.date.getTime());
         } else {
-            rehydratedTarget.observations = [];
+            rehydrated.observations = [];
         }
-        return rehydratedTarget;
+
+        return rehydrated;
     });
 }
 // ==== END UTILITY FUNCTIONS ====
@@ -349,8 +319,8 @@ async function fetchArchivedTargets(uid) {
     const rawArchived = archivedSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     archivedTargets = rehydrateTargets(rawArchived);
     archivedTargets.sort((a, b) => {
-        const dateA = a.archivedDate instanceof Date ? a.archivedDate.getTime() : (a.date instanceof Date ? a.date.getTime() : 0);
-        const dateB = b.archivedDate instanceof Date ? b.archivedDate.getTime() : (b.date instanceof Date ? b.date.getTime() : 0);
+        const dateA = a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0;
+        const dateB = b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0;
         return dateB - dateA;
     });
     console.log("[fetchArchivedTargets] Rehydrated and sorted archivedTargets count:", archivedTargets.length);
@@ -369,17 +339,17 @@ function renderTargets() {
 
      if (showDeadlineOnly || showExpiredOnlyMainCheckbox?.checked) {
         filteredAndPagedTargets.sort((a, b) => {
-            const dateA = a.deadlineDate instanceof Date && !isNaN(a.deadlineDate) ? a.deadlineDate.getTime() : Infinity;
-            const dateB = b.deadlineDate instanceof Date && !isNaN(b.deadlineDate) ? b.deadlineDate.getTime() : Infinity;
+            const dateA = a.deadlineDate ? a.deadlineDate.getTime() : Infinity;
+            const dateB = b.deadlineDate ? b.deadlineDate.getTime() : Infinity;
             if (dateA !== dateB) return dateA - dateB; 
-             const creationDateA = (a.date instanceof Date && !isNaN(a.date)) ? a.date.getTime() : 0;
-             const creationDateB = (b.date instanceof Date && !isNaN(b.date)) ? b.date.getTime() : 0;
+             const creationDateA = a.date ? a.date.getTime() : 0;
+             const creationDateB = b.date ? b.date.getTime() : 0;
              return creationDateB - creationDateA; 
         });
     } else {
         filteredAndPagedTargets.sort((a, b) => {
-             const creationDateA = (a.date instanceof Date && !isNaN(a.date)) ? a.date.getTime() : 0;
-             const creationDateB = (b.date instanceof Date && !isNaN(b.date)) ? b.date.getTime() : 0;
+             const creationDateA = a.date ? a.date.getTime() : 0;
+             const creationDateB = b.date ? b.date.getTime() : 0;
              return creationDateB - creationDateA;
          });
     }
@@ -415,7 +385,7 @@ function renderTargets() {
             const observations = Array.isArray(target.observations) ? target.observations : [];
             targetDiv.innerHTML = `
                 <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
-                <p>${target.details || 'Sem Detalhes'}</p>
+                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
                 <p><strong>Data Criação:</strong> ${formattedDate}</p>
                 <p><strong>Tempo Decorrido:</strong> ${elapsed}</p>
                 ${renderObservations(observations, false, target.id)}
@@ -479,7 +449,7 @@ function renderArchivedTargets() {
             const observations = Array.isArray(target.observations) ? target.observations : [];
             archivedDiv.innerHTML = `
                 <h3>${categoryTag} ${resolvedTag} ${target.title || 'Sem Título'}</h3>
-                <p>${target.details || 'Sem Detalhes'}</p>
+                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
                 <p><strong>Data Criação:</strong> ${formattedCreationDate}</p>
                 <p><strong>Data Arquivamento:</strong> ${formattedArchivedDate}</p>
                 <p><strong>Tempo Decorrido (Criação):</strong> ${elapsedCreation}</p>
@@ -507,8 +477,8 @@ function renderResolvedTargets() {
     if (currentSearchTermResolved) filteredAndPagedResolved = filterTargets(filteredAndPagedResolved, currentSearchTermResolved);
 
     filteredAndPagedResolved.sort((a, b) => {
-        const dateA = a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0;
-        const dateB = b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0;
+        const dateA = a.resolutionDate ? a.resolutionDate.getTime() : 0;
+        const dateB = b.resolutionDate ? b.resolutionDate.getTime() : 0;
         return dateB - dateA; 
     });
 
@@ -530,7 +500,7 @@ function renderResolvedTargets() {
 
             const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
             let totalTime = 'N/A';
-            if (target.date instanceof Date && target.resolutionDate instanceof Date) {
+            if (target.date && target.resolutionDate) {
                  let diffInSeconds = Math.floor((target.resolutionDate.getTime() - target.date.getTime()) / 1000);
                  if (diffInSeconds < 0) diffInSeconds = 0;
                  if (diffInSeconds < 60) totalTime = `${diffInSeconds} seg`;
@@ -553,7 +523,7 @@ function renderResolvedTargets() {
             const observations = Array.isArray(target.observations) ? target.observations : [];
             resolvedDiv.innerHTML = `
                 <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
-                <p>${target.details || 'Sem Detalhes'}</p>
+                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
                 <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
                 <p><strong>Data Respondido:</strong> ${formattedResolutionDate}</p>
                 <p><strong>Tempo Total (Criação -> Resposta):</strong> ${totalTime}</p>
@@ -633,22 +603,24 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
 
     if (!title || !dateInput) { alert("Título e Data Criação são obrigatórios."); return; }
 
-    const dateUTC = createUTCDate(dateInput);
-    if (!dateUTC) { alert("Data de criação inválida."); return; }
-    let deadlineDateUTC = null;
+    // Usando new Date() que já considera o fuso horário local ao pegar do input type=date
+    const dateLocal = new Date(dateInput + 'T00:00:00');
+    if (isNaN(dateLocal.getTime())) { alert("Data de criação inválida."); return; }
+
+    let deadlineDateLocal = null;
     if (hasDeadline) {
         if (!deadlineDateInput) { alert("Selecione o Prazo de Validade."); return; }
-        deadlineDateUTC = createUTCDate(deadlineDateInput);
-        if (!deadlineDateUTC) { alert("Data do Prazo de Validade inválida."); return; }
-        if (deadlineDateUTC.getTime() < dateUTC.getTime()) { alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return; }
+        deadlineDateLocal = new Date(deadlineDateInput + 'T00:00:00');
+        if (isNaN(deadlineDateLocal.getTime())) { alert("Data do Prazo de Validade inválida."); return; }
+        if (deadlineDateLocal.getTime() < dateLocal.getTime()) { alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return; }
     }
 
     const target = {
         title: title,
         details: details,
-        date: Timestamp.fromDate(dateUTC),
+        date: Timestamp.fromDate(dateLocal),
         hasDeadline: hasDeadline,
-        deadlineDate: deadlineDateUTC ? Timestamp.fromDate(deadlineDateUTC) : null,
+        deadlineDate: deadlineDateLocal ? Timestamp.fromDate(deadlineDateLocal) : null,
         category: category || null,
         archived: false,
         resolved: false,
@@ -662,7 +634,7 @@ document.getElementById("prayerForm").addEventListener("submit", async (e) => {
         const docRef = await addDoc(collection(db, "users", uid, "prayerTargets"), target);
         const newLocalTarget = rehydrateTargets([{ ...target, id: docRef.id }])[0];
         prayerTargets.unshift(newLocalTarget); 
-        prayerTargets.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
+        prayerTargets.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
 
         document.getElementById("prayerForm").reset();
         document.getElementById('deadlineContainer').style.display = 'none';
@@ -686,12 +658,12 @@ window.markAsResolved = async function(targetId) {
     try {
         const archivedData = {
             ...targetData, 
-            date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date, 
-            deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate, 
-            lastPrayedDate: targetData.lastPrayedDate instanceof Date ? Timestamp.fromDate(targetData.lastPrayedDate) : targetData.lastPrayedDate,
+            date: targetData.date ? Timestamp.fromDate(targetData.date) : null,
+            deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
+            lastPrayedDate: targetData.lastPrayedDate ? Timestamp.fromDate(targetData.lastPrayedDate) : null,
             observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
                 ...obs,
-                date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date 
+                date: obs.date ? Timestamp.fromDate(obs.date) : null
             })) : [],
             resolved: true,
             archived: true,
@@ -699,7 +671,6 @@ window.markAsResolved = async function(targetId) {
             archivedDate: resolutionDate 
          };
         delete archivedData.id; 
-        delete archivedData.status; 
         
         const batch = writeBatch(db);
         batch.delete(activeTargetRef); 
@@ -710,9 +681,9 @@ window.markAsResolved = async function(targetId) {
         const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0]; 
         archivedTargets.unshift(newArchivedLocal); 
 
-        archivedTargets.sort((a, b) => (b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0) - (a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0));
+        archivedTargets.sort((a, b) => (b.archivedDate ? b.archivedDate.getTime() : 0) - (a.archivedDate ? a.archivedDate.getTime() : 0));
         resolvedTargets = archivedTargets.filter(t => t.resolved);
-        resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
+        resolvedTargets.sort((a, b) => (b.resolutionDate ? b.resolutionDate.getTime() : 0) - (a.resolutionDate ? a.resolutionDate.getTime() : 0));
 
         renderTargets();
         renderArchivedTargets();
@@ -734,19 +705,18 @@ window.archiveTarget = async function(targetId) {
     try {
          const archivedData = {
             ...targetData,
-             date: targetData.date instanceof Date ? Timestamp.fromDate(targetData.date) : targetData.date,
-             deadlineDate: targetData.deadlineDate instanceof Date ? Timestamp.fromDate(targetData.deadlineDate) : targetData.deadlineDate,
-             lastPrayedDate: targetData.lastPrayedDate instanceof Date ? Timestamp.fromDate(targetData.lastPrayedDate) : targetData.lastPrayedDate,
+             date: targetData.date ? Timestamp.fromDate(targetData.date) : null,
+             deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
+             lastPrayedDate: targetData.lastPrayedDate ? Timestamp.fromDate(targetData.lastPrayedDate) : null,
              observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
                  ...obs,
-                 date: obs.date instanceof Date ? Timestamp.fromDate(obs.date) : obs.date
+                 date: obs.date ? Timestamp.fromDate(obs.date) : null
                 })) : [],
              resolved: false, 
              archived: true,
              archivedDate: archiveTimestamp, 
          };
         delete archivedData.id;
-        delete archivedData.status;
         
         const batch = writeBatch(db);
         batch.delete(activeTargetRef);
@@ -756,7 +726,7 @@ window.archiveTarget = async function(targetId) {
         prayerTargets.splice(targetIndex, 1);
         const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0];
         archivedTargets.unshift(newArchivedLocal);
-        archivedTargets.sort((a, b) => (b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0) - (a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0));
+        archivedTargets.sort((a, b) => (b.archivedDate ? b.archivedDate.getTime() : 0) - (a.archivedDate ? a.archivedDate.getTime() : 0));
         resolvedTargets = archivedTargets.filter(t => t.resolved); 
 
         renderTargets();
@@ -782,7 +752,7 @@ window.deleteArchivedTarget = async function(targetId) {
          const targetIndex = archivedTargets.findIndex(t => t.id === targetId);
          if (targetIndex !== -1) archivedTargets.splice(targetIndex, 1);
          resolvedTargets = archivedTargets.filter(target => target.resolved); 
-         resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
+         resolvedTargets.sort((a, b) => (b.resolutionDate ? b.resolutionDate.getTime() : 0) - (a.resolutionDate ? a.resolutionDate.getTime() : 0));
 
          renderArchivedTargets();
          renderResolvedTargets();
@@ -805,10 +775,8 @@ window.toggleAddObservation = function(targetId) {
     formDiv.style.display = isVisible ? 'none' : 'block';
     if (!isVisible) {
         formDiv.querySelector('textarea')?.focus();
-        try {
-            const dateInput = formDiv.querySelector(`#observationDate-${targetId}`);
-            if (dateInput && !dateInput.value) dateInput.value = formatDateToISO(new Date());
-        } catch (e) { /* ignore */ }
+        const dateInput = formDiv.querySelector(`#observationDate-${targetId}`);
+        if (dateInput && !dateInput.value) dateInput.value = formatDateToISO(new Date());
     }
 };
 
@@ -820,16 +788,17 @@ function renderObservationForm(targetId) {
         <input type="date" id="observationDate-${targetId}" style="width: 95%; margin-bottom: 5px;">
         <button class="btn" onclick="saveObservation('${targetId}')" style="background-color: #7cb17c;">Salvar Observação</button>
     `;
-    try { document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date()); }
-    catch (e) { document.getElementById(`observationDate-${targetId}`).value = ''; }
+    document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
 }
 
 window.saveObservation = async function(targetId) {
     const observationText = document.getElementById(`observationText-${targetId}`)?.value.trim();
     const observationDateInput = document.getElementById(`observationDate-${targetId}`)?.value;
     if (!observationText || !observationDateInput) { alert('Texto e Data da observação são obrigatórios.'); return; }
-    const observationDateUTC = createUTCDate(observationDateInput);
-    if (!observationDateUTC) { alert('Data da observação inválida.'); return; }
+    
+    const observationDateLocal = new Date(observationDateInput + 'T00:00:00');
+    if (isNaN(observationDateLocal.getTime())) { alert('Data da observação inválida.'); return; }
+
     const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
     const userId = user.uid;
     let targetRef, targetList, targetIndex = -1, isArchived = false, isResolved = false;
@@ -853,7 +822,7 @@ window.saveObservation = async function(targetId) {
 
     const newObservation = {
         text: observationText,
-        date: Timestamp.fromDate(observationDateUTC), 
+        date: Timestamp.fromDate(observationDateLocal), 
         id: generateUniqueId(), 
         targetId: targetId 
     };
@@ -873,7 +842,7 @@ window.saveObservation = async function(targetId) {
         const currentTargetLocal = targetList[targetIndex];
         if (!Array.isArray(currentTargetLocal.observations)) currentTargetLocal.observations = [];
         currentTargetLocal.observations.push({ ...newObservation, date: newObservation.date.toDate() });
-        currentTargetLocal.observations.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
+        currentTargetLocal.observations.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
 
         if (isArchived) {
             renderArchivedTargets(); 
@@ -896,7 +865,7 @@ window.saveObservation = async function(targetId) {
 function renderObservations(observations, isExpanded = false, targetId = null) {
     if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
     
-    observations.sort((a, b) => (b.date instanceof Date ? b.date.getTime() : 0) - (a.date instanceof Date ? a.date.getTime() : 0));
+    observations.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
     
     const visibleObservations = observations; 
 
@@ -924,7 +893,7 @@ function handleExpiredOnlyMainChange() { currentPage = 1; renderTargets(); }
 function checkExpiredDeadlines() {
     const now = new Date();
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const expiredCount = prayerTargets.filter(target => target.hasDeadline && target.deadlineDate instanceof Date && !isNaN(target.deadlineDate) && target.deadlineDate.getTime() < todayUTCStart.getTime()).length;
+    const expiredCount = prayerTargets.filter(target => target.hasDeadline && target.deadlineDate && target.deadlineDate.getTime() < todayUTCStart.getTime()).length;
     console.log(`[checkExpiredDeadlines] Found ${expiredCount} expired deadlines among active targets.`);
 }
 
@@ -942,7 +911,7 @@ window.editDeadline = function(targetId) {
     if (isVisible) { editFormContainer.style.display = 'none'; return; }
 
     let currentDeadlineISO = '';
-    if (target.deadlineDate instanceof Date && !isNaN(target.deadlineDate)) {
+    if (target.deadlineDate) {
         currentDeadlineISO = formatDateToISO(target.deadlineDate);
     }
 
@@ -965,13 +934,13 @@ window.saveEditedDeadline = async function(targetId) {
     let newDeadlineTimestamp = null; let newHasDeadline = false;
 
     if (newDeadlineValue) {
-        const newDeadlineUTC = createUTCDate(newDeadlineValue);
-        if (!newDeadlineUTC) { alert("Data do prazo inválida."); return; }
+        const newDeadlineLocal = new Date(newDeadlineValue + 'T00:00:00');
+        if (isNaN(newDeadlineLocal.getTime())) { alert("Data do prazo inválida."); return; }
         const target = prayerTargets.find(t => t.id === targetId);
-         if (target && target.date instanceof Date && newDeadlineUTC.getTime() < target.date.getTime()) {
+         if (target && target.date && newDeadlineLocal.getTime() < target.date.getTime()) {
             alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return;
          }
-        newDeadlineTimestamp = Timestamp.fromDate(newDeadlineUTC);
+        newDeadlineTimestamp = Timestamp.fromDate(newDeadlineLocal);
         newHasDeadline = true;
     } else {
         if (!confirm("Nenhuma data selecionada. Tem certeza que deseja remover o prazo?")) return;
@@ -1132,7 +1101,8 @@ window.cancelEditCategory = function(targetId) {
 async function loadDailyTargets() {
     const userId = auth.currentUser ? auth.currentUser.uid : null;
     if (!userId) { document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>"; currentDailyTargets = []; return; }
-    const today = new Date(); const todayStr = formatDateToISO(today); const dailyDocId = `${userId}_${todayStr}`;
+    const todayStr = formatDateToISO(new Date()); 
+    const dailyDocId = `${userId}_${todayStr}`;
     const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
     const dailyTargetsDiv = document.getElementById("dailyTargets");
     dailyTargetsDiv.innerHTML = '<p>Carregando alvos do dia...</p>'; 
@@ -1199,18 +1169,14 @@ async function generateDailyTargets(userId, dateStr) {
             return { userId, date: dateStr, targets: [] };
         }
 
-        const todayUTC = createUTCDate(dateStr);
-        if (!todayUTC) {
-            console.error("[generateDailyTargets] Invalid dateStr:", dateStr);
-            return { userId, date: dateStr, targets: [] };
-        }
+        const today = new Date(dateStr + 'T00:00:00Z');
 
         let pool = [...availableTargets]; 
 
         const historyDays = 7;
         const completedInHistory = new Set(); 
         for (let i = 1; i <= historyDays; i++) {
-            const pastDate = new Date(todayUTC.getTime() - i * 86400000);
+            const pastDate = new Date(today.getTime() - i * 86400000);
             const pastDateStr = formatDateToISO(pastDate);
             const pastDocId = `${userId}_${pastDateStr}`;
             try {
@@ -1238,14 +1204,14 @@ async function generateDailyTargets(userId, dateStr) {
             console.log("[generateDailyTargets] Pool empty after completion filter, resetting pool to all available targets.");
             pool = [...availableTargets];
              pool.sort((a, b) => {
-                 const dateA = a.lastPrayedDate instanceof Date ? a.lastPrayedDate.getTime() : 0; 
-                 const dateB = b.lastPrayedDate instanceof Date ? b.lastPrayedDate.getTime() : 0;
+                 const dateA = a.lastPrayedDate ? a.lastPrayedDate.getTime() : 0; 
+                 const dateB = b.lastPrayedDate ? b.lastPrayedDate.getTime() : 0;
                  return dateA - dateB; 
              });
         } else if (pool.length > 0) {
              pool.sort((a, b) => {
-                 const dateA = a.lastPrayedDate instanceof Date ? a.lastPrayedDate.getTime() : 0; 
-                 const dateB = b.lastPrayedDate instanceof Date ? b.lastPrayedDate.getTime() : 0;
+                 const dateA = a.lastPrayedDate ? a.lastPrayedDate.getTime() : 0; 
+                 const dateB = b.lastPrayedDate ? b.lastPrayedDate.getTime() : 0;
                  return dateA - dateB; 
              });
          }
@@ -1328,7 +1294,7 @@ function createTargetElement(target, isCompleted) {
 
     dailyDiv.innerHTML = `
         <h3>${categoryTag} ${deadlineTag ? `Prazo: ${deadlineTag}` : ''} ${target.title || 'Título Indisponível'}</h3>
-        <p>${target.details || 'Detalhes Indisponíveis'}</p>
+        <p class="target-details">${target.details || 'Detalhes Indisponíveis'}</p>
         <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
         <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
         ${observationsHTML}`; 
@@ -1413,18 +1379,16 @@ async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updated
      const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); 
 
      const batch = writeBatch(db);
-     let needsPerseveranceUpdate = false;
-     let dataToSaveForPerseverance = {};
-     let weeklyDataNeedsUpdate = false;
-
+     
+     // --- Perseverance Update Logic ---
      let lastInteractionUTCStart = null;
-     if (perseveranceData.lastInteractionDate instanceof Date && !isNaN(perseveranceData.lastInteractionDate)) {
+     if (perseveranceData.lastInteractionDate) {
          const li = perseveranceData.lastInteractionDate;
-         lastInteractionUTCStart = new Date(Date.UTC(li.getUTCFullYear(), li.getUTCMonth(), li.getUTCDate()));
+         lastInteractionUTCStart = new Date(Date.UTC(li.getFullYear(), li.getMonth(), li.getDate()));
      }
+
      if (!lastInteractionUTCStart || todayUTCStart.getTime() > lastInteractionUTCStart.getTime()) {
-         needsPerseveranceUpdate = true;
-         console.log(`[updateClickCounts] First 'Orei!' interaction detected for ${todayUTCStr}. Updating perseverance.`);
+         console.log(`[updateClickCounts] First 'Orei!' interaction for ${todayUTCStr}. Updating perseverance.`);
          let isConsecutive = false;
          if (lastInteractionUTCStart) {
              const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000);
@@ -1435,41 +1399,39 @@ async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updated
          const newConsecutiveDays = isConsecutive ? (perseveranceData.consecutiveDays || 0) + 1 : 1;
          const newRecordDays = Math.max(perseveranceData.recordDays || 0, newConsecutiveDays);
 
-         perseveranceData.consecutiveDays = newConsecutiveDays;
-         perseveranceData.lastInteractionDate = todayUTCStart;
-         perseveranceData.recordDays = newRecordDays;
-
-         dataToSaveForPerseverance = {
+         perseveranceData = {
              consecutiveDays: newConsecutiveDays,
-             lastInteractionDate: Timestamp.fromDate(todayUTCStart), 
+             lastInteractionDate: todayUTCStart,
              recordDays: newRecordDays
          };
-         batch.set(perseveranceDocRef, { userId: userId, ...dataToSaveForPerseverance }, { merge: true });
+         
+         batch.set(perseveranceDocRef, { 
+             userId: userId, 
+             consecutiveDays: newConsecutiveDays,
+             lastInteractionDate: Timestamp.fromDate(todayUTCStart),
+             recordDays: newRecordDays
+         }, { merge: true });
          updatePerseveranceUI();
      } else {
          console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Bar unchanged.`);
      }
 
-     weeklyPrayerData.interactions = weeklyPrayerData.interactions || {};
-     if (weeklyPrayerData.weekId !== weekId) { 
-         console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
-         weeklyPrayerData.interactions = {};
-         weeklyPrayerData.weekId = weekId;
-         weeklyPrayerData.interactions[todayUTCStr] = true; 
-         weeklyDataNeedsUpdate = true;
-     } else if (weeklyPrayerData.interactions[todayUTCStr] !== true) { 
-         weeklyPrayerData.interactions[todayUTCStr] = true;
-         weeklyDataNeedsUpdate = true;
-         console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
-     }
-     if (weeklyDataNeedsUpdate) {
-         batch.set(weeklyDocRef, {
-             userId: userId,
-             weekId: weeklyPrayerData.weekId,
-             interactions: weeklyPrayerData.interactions
-            }, { merge: false }); 
-     }
-     updateWeeklyChart();
+    // --- Weekly Chart Update Logic ---
+    if (weeklyPrayerData.weekId !== weekId) { 
+        console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
+        weeklyPrayerData = {
+            weekId: weekId,
+            interactions: { [todayUTCStr]: true }
+        };
+        batch.set(weeklyDocRef, { userId, ...weeklyPrayerData });
+    } else if (!weeklyPrayerData.interactions[todayUTCStr]) {
+        weeklyPrayerData.interactions[todayUTCStr] = true;
+        // Firestore requires dot notation for nested field updates
+        batch.update(weeklyDocRef, { [`interactions.${todayUTCStr}`]: true });
+        console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
+    }
+    updateWeeklyChart();
+
 
      batch.set(clickCountsRef, {
          targetId: targetId,
@@ -1512,10 +1474,12 @@ async function loadPerseveranceData(userId) {
     try {
         const docSnap = await getDoc(perseveranceDocRef);
         if (docSnap.exists()) {
-            const data = docSnap.data();
-            perseveranceData.lastInteractionDate = data.lastInteractionDate instanceof Timestamp ? data.lastInteractionDate.toDate() : null;
-            perseveranceData.consecutiveDays = Number(data.consecutiveDays) || 0;
-            perseveranceData.recordDays = Number(data.recordDays) || 0;
+            const rawData = docSnap.data();
+            // Use rehydrateTargets which is now robust
+            const [hydratedPerseverance] = rehydrateTargets([rawData]);
+            perseveranceData.lastInteractionDate = hydratedPerseverance.lastInteractionDate;
+            perseveranceData.consecutiveDays = Number(hydratedPerseverance.consecutiveDays) || 0;
+            perseveranceData.recordDays = Number(hydratedPerseverance.recordDays) || 0;
             console.log("[loadPerseveranceData] Progress bar data loaded:", perseveranceData);
         } else {
             console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
@@ -1555,7 +1519,7 @@ async function loadWeeklyPrayerData(userId) {
             } else {
                 console.log(`[loadWeeklyPrayerData] Week changed from ${loadedData.weekId} to ${currentWeekId}. Resetting weekly data.`);
                 weeklyPrayerData = { weekId: currentWeekId, interactions: {} };
-                await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }, { merge: false }); 
+                await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }); 
                 console.log(`[loadWeeklyPrayerData] Reset weekly data saved for new week.`);
             }
         } else {
@@ -1611,43 +1575,37 @@ function resetPerseveranceUI() {
     console.log("[resetPerseveranceUI] Weekly chart data and UI reset.");
 }
 
-// MODIFICADO: A função agora também gerencia uma classe no contêiner 'div.day'
 function updateWeeklyChart() {
     const today = new Date();
     const todayDayOfWeek = today.getDay(); // 0 for Sunday, ..., 6 for Saturday
-    const todayUTCReference = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const todayUTCReference = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
     const firstDayOfWeek = new Date(todayUTCReference);
     firstDayOfWeek.setUTCDate(todayUTCReference.getUTCDate() - todayDayOfWeek);
-    firstDayOfWeek.setUTCHours(0, 0, 0, 0);
 
     const interactions = weeklyPrayerData.interactions || {};
     const currentWeekId = weeklyPrayerData.weekId || getWeekIdentifier(today);
-    console.log("[updateWeeklyChart] Updating for week:", currentWeekId, "Interactions:", interactions, "Today (local):", todayDayOfWeek);
+    console.log("[updateWeeklyChart] Updating for week:", currentWeekId, "Interactions:", interactions);
 
     for (let i = 0; i < 7; i++) { // i = 0 (Sun) to 6 (Sat)
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
-        const dayContainer = dayTick.parentElement; // MODIFICADO: Pega o contêiner 'div.day'
+        const dayContainer = dayTick.parentElement;
         const currentTickDateUTC = new Date(firstDayOfWeek);
         currentTickDateUTC.setUTCDate(firstDayOfWeek.getUTCDate() + i);
         const dateStringUTC = formatDateToISO(currentTickDateUTC);
 
-        // Limpa classes anteriores tanto do círculo quanto do contêiner
         dayTick.classList.remove('active', 'inactive', 'current-day');
-        if (dayContainer) dayContainer.classList.remove('current-day-container'); // MODIFICADO: Limpa a classe de destaque do contêiner
+        if (dayContainer) dayContainer.classList.remove('current-day-container');
 
-        // É o dia atual?
         if (currentTickDateUTC.getTime() === todayUTCReference.getTime()) {
             dayTick.classList.add('current-day');
-            if (dayContainer) dayContainer.classList.add('current-day-container'); // MODIFICADO: Adiciona a classe de destaque ao contêiner
-            
+            if (dayContainer) dayContainer.classList.add('current-day-container');
             if (interactions[dateStringUTC] === true) {
                 dayTick.classList.add('active');
             }
         }
-        // É um dia no passado?
         else if (currentTickDateUTC.getTime() < todayUTCReference.getTime()) {
             if (interactions[dateStringUTC] === true) {
                 dayTick.classList.add('active');
@@ -1655,7 +1613,6 @@ function updateWeeklyChart() {
                 dayTick.classList.add('inactive');
             }
         }
-        // É um dia no futuro? (nenhuma classe é adicionada)
     }
 }
 
@@ -1664,7 +1621,6 @@ function resetWeeklyChart() {
         const dayTick = document.getElementById(`day-${i}`);
         if (dayTick) {
             dayTick.classList.remove('active', 'inactive', 'current-day');
-            // MODIFICADO: Garante que o contêiner também seja limpo
             const dayContainer = dayTick.parentElement;
             if (dayContainer) {
                 dayContainer.classList.remove('current-day-container');
@@ -1678,7 +1634,7 @@ function resetWeeklyChart() {
 // --- Views and Filters ---
 
 function generateViewHTML(targetsToInclude = lastDisplayedTargets, pageTitle = "Alvos de Oração (Visão Atual)") {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>${pageTitle}</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>${pageTitle}</h1>`;
     if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
         viewHTML += "<p style='text-align:center;'>Nenhum alvo para exibir nesta visualização.</p>";
     } else {
@@ -1697,7 +1653,7 @@ function generateViewHTML(targetsToInclude = lastDisplayedTargets, pageTitle = "
 }
 
 function generateDailyViewHTML() {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos do Dia</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .completed-target{background-color:#f0f0f0 !important; border-left: 5px solid #9cbe4a;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos do Dia</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos do Dia</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .completed-target{background-color:#f0f0f0 !important; border-left: 5px solid #9cbe4a;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos do Dia</h1>`;
     const dailyTargetsDiv = document.getElementById('dailyTargets');
     let pendingCount = 0;
     let completedCount = 0;
@@ -1772,7 +1728,7 @@ function generateTargetViewHTML(target, isCompletedView = false) {
      return `
          <div class="target ${completedClass}" data-target-id="${target.id}">
              <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
-             <p>${target.details || 'Sem Detalhes'}</p>
+             <p class="target-details">${target.details || 'Sem Detalhes'}</p>
              <p><strong>Data Criação:</strong> ${formattedDate}</p>
              <p><strong>Tempo Decorrido:</strong> ${elapsed}</p>
              ${observationsHTML}
@@ -1783,9 +1739,10 @@ function generateTargetViewHTML(target, isCompletedView = false) {
 async function generateResolvedViewHTML(startDate, endDate) {
     const user = auth.currentUser; if (!user) { alert("Você precisa estar logado."); return; } const uid = user.uid;
 
-    const startUTC = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
-    const endNextDay = new Date(endDate); endNextDay.setUTCDate(endDate.getUTCDate() + 1); 
-    const endUTCStartOfNextDay = new Date(Date.UTC(endNextDay.getFullYear(), endNextDay.getMonth(), endNextDay.getDate())); 
+    const startUTC = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+    const endNextDay = new Date(endDate);
+    endNextDay.setUTCDate(endDate.getUTCDate() + 1);
+    const endUTCStartOfNextDay = new Date(endNextDay.getUTCFullYear(), endNextDay.getUTCMonth(), endNextDay.getUTCDate());
 
     const startTimestamp = Timestamp.fromDate(startUTC);
     const endTimestamp = Timestamp.fromDate(endUTCStartOfNextDay); 
@@ -1812,7 +1769,7 @@ async function generateResolvedViewHTML(startDate, endDate) {
         return;
     }
 
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} strong{color: #333;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; } </style></head><body><h1>Alvos Respondidos</h1>`;
+    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; } </style></head><body><h1>Alvos Respondidos</h1>`;
     viewHTML += `<h2>Período: ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}</h2><hr/>`;
 
      if (filteredResolvedTargets.length === 0) {
@@ -1838,7 +1795,7 @@ function generateTargetViewHTMLForResolved(target) {
      if (!target?.id) return '';
      const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
      let totalTime = 'N/A';
-     if (target.date instanceof Date && target.resolutionDate instanceof Date) {
+     if (target.date && target.resolutionDate) {
          let diffInSeconds = Math.floor((target.resolutionDate.getTime() - target.date.getTime()) / 1000); if (diffInSeconds < 0) diffInSeconds = 0;
          if (diffInSeconds < 60) totalTime = `${diffInSeconds} seg`;
          else { let diffInMinutes = Math.floor(diffInSeconds / 60); if (diffInMinutes < 60) totalTime = `${diffInMinutes} min`;
@@ -1859,7 +1816,7 @@ function generateTargetViewHTMLForResolved(target) {
      return `
          <div class="target resolved"> 
              <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
-             <p>${target.details || 'Sem Detalhes'}</p>
+             <p class="target-details">${target.details || 'Sem Detalhes'}</p>
              <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
              <p><strong>Data Respondido:</strong> ${formattedResolutionDate}</p>
              <p><strong>Tempo Total (Criação -> Resposta):</strong> ${totalTime}</p>
@@ -2116,8 +2073,8 @@ function generateCategoryFilteredView() {
     filteredTargets.sort((a, b) => {
         const catCompare = (a.category || '').localeCompare(b.category || '');
         if (catCompare !== 0) return catCompare;
-        const dateA = a.date instanceof Date ? a.date.getTime() : 0;
-        const dateB = b.date instanceof Date ? b.date.getTime() : 0;
+        const dateA = a.date ? a.date.getTime() : 0;
+        const dateB = b.date ? b.date.getTime() : 0;
         return dateB - dateA; 
     });
 
@@ -2131,12 +2088,9 @@ function generateCategoryFilteredView() {
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[DOMContentLoaded] DOM fully loaded. Setting up listeners.");
-    try {
-        const dateInput = document.getElementById('date');
-        if (dateInput) dateInput.value = formatDateToISO(new Date()); 
-    } catch (e) {
-        console.error("Error setting default date:", e);
-    }
+    
+    const dateInput = document.getElementById('date');
+    if (dateInput) dateInput.value = formatDateToISO(new Date()); 
 
     onAuthStateChanged(auth, (user) => loadData(user));
 
@@ -2190,7 +2144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 titleText = titleText.trim() || 'Sem Título';
             }
 
-            const detailsElement = div.querySelector('p:nth-of-type(1)'); 
+            const detailsElement = div.querySelector('p.target-details'); 
             const detailsText = detailsElement ? detailsElement.textContent.trim() : 'Sem Detalhes';
             count++;
             textToCopy += `${count}. ${titleText}\n   ${detailsText}\n\n`;
@@ -2246,8 +2200,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDateStr = document.getElementById("startDate").value;
         const endDateStr = document.getElementById("endDate").value;
         if (startDateStr && endDateStr) {
-            const start = new Date(startDateStr + 'T00:00:00');
-            const end = new Date(endDateStr + 'T00:00:00');
+            const start = new Date(startDateStr + 'T00:00:00Z');
+            const end = new Date(endDateStr + 'T00:00:00Z');
              if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                  alert("Datas inválidas selecionadas.");
                  return;
