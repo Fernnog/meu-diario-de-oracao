@@ -109,7 +109,7 @@ function formatDateForDisplay(dateInput) {
     if (!dateInput) { return 'Data Inválida'; }
     let dateToFormat;
     if (dateInput instanceof Timestamp) { dateToFormat = dateInput.toDate(); }
-    else if (dateInput instanceof Date && !isNaN(dateInput)) { dateToFormat = dateInput; }
+    else if (dateInput instanceof Date && !isNaN(dateInput)) { dateToFormat = dateToFormat; }
     else {
         if (typeof dateInput === 'string') {
             dateToFormat = new Date(dateInput.includes('T') || dateInput.includes('Z') ? dateInput : dateInput + 'T00:00:00Z');
@@ -781,7 +781,7 @@ window.deleteArchivedTarget = async function(targetId) {
 
          const targetIndex = archivedTargets.findIndex(t => t.id === targetId);
          if (targetIndex !== -1) archivedTargets.splice(targetIndex, 1);
-         resolvedTargets = archivedTargets.filter(target => t.resolved); 
+         resolvedTargets = archivedTargets.filter(target => target.resolved); 
          resolvedTargets.sort((a, b) => (b.resolutionDate instanceof Date ? b.resolutionDate.getTime() : 0) - (a.resolutionDate instanceof Date ? a.resolutionDate.getTime() : 0));
 
          renderArchivedTargets();
@@ -1611,14 +1611,12 @@ function resetPerseveranceUI() {
     console.log("[resetPerseveranceUI] Weekly chart data and UI reset.");
 }
 
-// MODIFIED: updateWeeklyChart to handle current day and past/future days logic
+// MODIFICADO: A função agora também gerencia uma classe no contêiner 'div.day'
 function updateWeeklyChart() {
     const today = new Date();
     const todayDayOfWeek = today.getDay(); // 0 for Sunday, ..., 6 for Saturday
-    // Create a UTC version of "today" at midnight for accurate date comparisons
     const todayUTCReference = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
-    // Calculate the start of the current week (Sunday) in UTC
     const firstDayOfWeek = new Date(todayUTCReference);
     firstDayOfWeek.setUTCDate(todayUTCReference.getUTCDate() - todayDayOfWeek);
     firstDayOfWeek.setUTCHours(0, 0, 0, 0);
@@ -1631,49 +1629,49 @@ function updateWeeklyChart() {
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
-        // Calculate the specific date for this tick in the current week (UTC)
+        const dayContainer = dayTick.parentElement; // MODIFICADO: Pega o contêiner 'div.day'
         const currentTickDateUTC = new Date(firstDayOfWeek);
         currentTickDateUTC.setUTCDate(firstDayOfWeek.getUTCDate() + i);
-        const dateStringUTC = formatDateToISO(currentTickDateUTC); // YYYY-MM-DD
+        const dateStringUTC = formatDateToISO(currentTickDateUTC);
 
-        // Clear previous states
+        // Limpa classes anteriores tanto do círculo quanto do contêiner
         dayTick.classList.remove('active', 'inactive', 'current-day');
-        // Clear any ::before content (tick or X)
-        // Note: CSS will re-apply based on new classes
-        // dayTick.innerHTML = ''; // Not needed if using ::before for content
+        if (dayContainer) dayContainer.classList.remove('current-day-container'); // MODIFICADO: Limpa a classe de destaque do contêiner
 
-        // Is this tick the current day?
+        // É o dia atual?
         if (currentTickDateUTC.getTime() === todayUTCReference.getTime()) {
             dayTick.classList.add('current-day');
+            if (dayContainer) dayContainer.classList.add('current-day-container'); // MODIFICADO: Adiciona a classe de destaque ao contêiner
+            
             if (interactions[dateStringUTC] === true) {
                 dayTick.classList.add('active');
             }
-            // If it's today and no interaction, it remains 'current-day' styled, no 'X'
         }
-        // Is this tick in the past?
+        // É um dia no passado?
         else if (currentTickDateUTC.getTime() < todayUTCReference.getTime()) {
             if (interactions[dateStringUTC] === true) {
                 dayTick.classList.add('active');
             } else {
-                dayTick.classList.add('inactive'); // Show 'X' for past, non-interacted days
+                dayTick.classList.add('inactive');
             }
         }
-        // Is this tick in the future?
-        else {
-            // Future days are left blank (default .day-tick style)
-        }
+        // É um dia no futuro? (nenhuma classe é adicionada)
     }
 }
 
-// Visually clears chart ticks and current day highlight
 function resetWeeklyChart() {
     for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
         if (dayTick) {
             dayTick.classList.remove('active', 'inactive', 'current-day');
+            // MODIFICADO: Garante que o contêiner também seja limpo
+            const dayContainer = dayTick.parentElement;
+            if (dayContainer) {
+                dayContainer.classList.remove('current-day-container');
+            }
         }
     }
-    console.log("[resetWeeklyChart] Weekly chart ticks visually cleared.");
+    console.log("[resetWeeklyChart] Weekly chart ticks and containers visually cleared.");
 }
 
 
@@ -1919,7 +1917,7 @@ function showPanel(panelIdToShow) {
 
 // --- Verses and Popups ---
 const verses = [ 
-    "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5", "“Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças; e a paz de Deus, que excede todo o entendimento, guardará os vossos corações e os vossos pensamentos em Cristo Jesus.” - Filipenses 4:6-7", "“Orai sem cessar.” - 1 Tessalonicenses 5:17", "“Confessai, pois, os vossos pecados uns aos outros, e orai uns pelos outros, para serdes curados. Muito pode, por sua eficácia, a súplica do justo.” - Tiago 5:16", "“E tudo quanto pedirdes em meu nome, eu o farei, para que o Pai seja glorificado no Filho.” - João 14:13", "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á. Pois todo o que pede, recebe; e quem busca, encontra; e a quem bate, abrir-se-lhe-á.” - Mateus 7:7-8", "“Se vós, pois, sendo maus, sabeis dar boas dádivas aos vossos filhos, quanto mais vosso Pai celestial dará o Espírito Santo àqueles que lho pedirem?” - Lucas 11:13", "“Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.” - Salmos 118:24", "“Antes de clamarem, eu responderei; ainda não estarão falando, e eu já terei ouvido.” - Isaías 65:24", "“Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e ocultas, que não sabes.” - Jeremias 33:3"
+    "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5", "“Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças; e a paz de Deus, que excede todo o entendimento, guardará os vossos corações e os vossos pensamentos em Cristo Jesus.” - Filipenses 4:6-7", "“Orai sem cessar.” - 1 Tessalonicenses 5:17", "“Confessai, pois, os vossos pecados uns aos outros, e orai uns aos outros, para serdes curados. Muito pode, por sua eficácia, a súplica do justo.” - Tiago 5:16", "“E tudo quanto pedirdes em meu nome, eu o farei, para que o Pai seja glorificado no Filho.” - João 14:13", "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á. Pois todo o que pede, recebe; e quem busca, encontra; e a quem bate, abrir-se-lhe-á.” - Mateus 7:7-8", "“Se vós, pois, sendo maus, sabeis dar boas dádivas aos vossos filhos, quanto mais vosso Pai celestial dará o Espírito Santo àqueles que lho pedirem?” - Lucas 11:13", "“Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.” - Salmos 118:24", "“Antes de clamarem, eu responderei; ainda não estarão falando, e eu já terei ouvido.” - Isaías 65:24", "“Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e ocultas, que não sabes.” - Jeremias 33:3"
 ];
 function displayRandomVerse() {
     const verseDisplay = document.getElementById('dailyVerses');
