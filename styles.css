@@ -403,13 +403,14 @@ input[type="date"] {
     padding-left: 10px;
     border-left: 2px solid #eee;
 }
-.observation-item {
+.observation-item, .target-details {
     margin-left: 0;
     font-size: 0.9em;
     color: #555;
     padding-left: 0;
     margin-bottom: 5px;
-    text-align: justify; /* MODIFICADO: Justifica o texto da observação */
+    /* MELHORIA: Justifica o texto da observação e dos detalhes */
+    text-align: justify;
 }
 .observation-item strong { /* Date part */
      color: #444;
