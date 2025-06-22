@@ -5,7 +5,7 @@ import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, q
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk",
+  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk", // ATENÇÃO: Substitua pela sua chave real se estiver usando este código.
   authDomain: "meu-diario-de-oracao.firebaseapp.com",
   projectId: "meu-diario-de-oracao",
   storageBucket: "meu-diario-de-oracao.firebasestorage.app",
@@ -37,8 +37,8 @@ let currentDailyTargets = []; // Holds IDs of targets currently in the daily lis
 // Data for the PROGRESS BAR (Consecutive Days)
 let perseveranceData = {
     consecutiveDays: 0,
-    lastInteractionDate: null, // Date of the *last day* an "Orei!" click updated the streak
-    recordDays: 0
+    lastInteractionDate: null, // Date of the *last day* an "Orei!" click updated the streak (armazenado como o início do dia UTC)
+    recordDays: 0 // NOVO: Campo para o recorde de dias consecutivos
 };
 
 // Data for the WEEKLY CHART (Daily Interactions)
@@ -264,7 +264,7 @@ async function loadData(user) {
         document.getElementById('perseveranceSection').style.display = 'block';
 
         try {
-            await loadPerseveranceData(uid);
+            await loadPerseveranceData(uid); // Carrega dados de perseverança primeiro
             await fetchPrayerTargets(uid);
             await fetchArchivedTargets(uid);
             resolvedTargets = archivedTargets.filter(target => target.resolved);
@@ -1380,40 +1380,50 @@ async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updated
 
      const batch = writeBatch(db);
      
-     // --- Perseverance Update Logic ---
+     // --- Perseverance Update Logic (MODIFICADO E CORRIGIDO) ---
      let lastInteractionUTCStart = null;
      if (perseveranceData.lastInteractionDate) {
-         const li = perseveranceData.lastInteractionDate;
-         lastInteractionUTCStart = new Date(Date.UTC(li.getFullYear(), li.getMonth(), li.getDate()));
+         const liDate = convertToDate(perseveranceData.lastInteractionDate); // Garante que é um objeto Date
+         if (liDate) {
+            lastInteractionUTCStart = new Date(Date.UTC(liDate.getUTCFullYear(), liDate.getUTCMonth(), liDate.getUTCDate()));
+         }
      }
 
      if (!lastInteractionUTCStart || todayUTCStart.getTime() > lastInteractionUTCStart.getTime()) {
-         console.log(`[updateClickCounts] First 'Orei!' interaction for ${todayUTCStr}. Updating perseverance.`);
-         let isConsecutive = false;
+         console.log(`[updateClickCounts] First 'Orei!' interaction for ${todayUTCStr} relevant to streak. Updating perseverance.`);
+         let newConsecutiveDays;
+         let isConsecutiveStreak = false;
+
          if (lastInteractionUTCStart) {
-             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000);
+             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000); // 24 * 60 * 60 * 1000 ms
              if (lastInteractionUTCStart.getTime() === expectedYesterdayUTCStart.getTime()) {
-                 isConsecutive = true;
+                 isConsecutiveStreak = true;
              }
          }
-         const newConsecutiveDays = isConsecutive ? (perseveranceData.consecutiveDays || 0) + 1 : 1;
+
+         if (isConsecutiveStreak) {
+             newConsecutiveDays = (perseveranceData.consecutiveDays || 0) + 1;
+         } else {
+             newConsecutiveDays = 1; // Reseta se não for consecutivo ou se for a primeira vez
+         }
+         
          const newRecordDays = Math.max(perseveranceData.recordDays || 0, newConsecutiveDays);
 
-         perseveranceData = {
-             consecutiveDays: newConsecutiveDays,
-             lastInteractionDate: todayUTCStart,
-             recordDays: newRecordDays
-         };
+         // Atualiza o objeto local
+         perseveranceData.consecutiveDays = newConsecutiveDays;
+         perseveranceData.lastInteractionDate = todayUTCStart; // Armazena o início do dia UTC
+         perseveranceData.recordDays = newRecordDays;
          
          batch.set(perseveranceDocRef, { 
              userId: userId, 
              consecutiveDays: newConsecutiveDays,
-             lastInteractionDate: Timestamp.fromDate(todayUTCStart),
+             lastInteractionDate: Timestamp.fromDate(todayUTCStart), // Salva o Timestamp do início do dia UTC
              recordDays: newRecordDays
          }, { merge: true });
-         updatePerseveranceUI();
+         
+         updatePerseveranceUI(); // Atualiza a UI imediatamente após a lógica local
      } else {
-         console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Bar unchanged.`);
+         console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Perseverance streak unchanged for this click.`);
      }
 
     // --- Weekly Chart Update Logic ---
@@ -1426,7 +1436,6 @@ async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updated
         batch.set(weeklyDocRef, { userId, ...weeklyPrayerData });
     } else if (!weeklyPrayerData.interactions[todayUTCStr]) {
         weeklyPrayerData.interactions[todayUTCStr] = true;
-        // Firestore requires dot notation for nested field updates
         batch.update(weeklyDocRef, { [`interactions.${todayUTCStr}`]: true });
         console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
     }
@@ -1475,11 +1484,13 @@ async function loadPerseveranceData(userId) {
         const docSnap = await getDoc(perseveranceDocRef);
         if (docSnap.exists()) {
             const rawData = docSnap.data();
-            // Use rehydrateTargets which is now robust
-            const [hydratedPerseverance] = rehydrateTargets([rawData]);
-            perseveranceData.lastInteractionDate = hydratedPerseverance.lastInteractionDate;
+            // Usamos a função rehydrateTargets para converter Timestamps,
+            // especialmente para lastInteractionDate.
+            const [hydratedPerseverance] = rehydrateTargets([{...rawData}]);
+            
+            perseveranceData.lastInteractionDate = hydratedPerseverance.lastInteractionDate ? convertToDate(hydratedPerseverance.lastInteractionDate) : null;
             perseveranceData.consecutiveDays = Number(hydratedPerseverance.consecutiveDays) || 0;
-            perseveranceData.recordDays = Number(hydratedPerseverance.recordDays) || 0;
+            perseveranceData.recordDays = Number(hydratedPerseverance.recordDays) || 0; // Carrega o recorde
             console.log("[loadPerseveranceData] Progress bar data loaded:", perseveranceData);
         } else {
             console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
@@ -1541,8 +1552,13 @@ async function loadWeeklyPrayerData(userId) {
 function updatePerseveranceUI() {
      const consecutiveDays = perseveranceData.consecutiveDays || 0;
      const recordDays = perseveranceData.recordDays || 0;
-     const targetDays = 30; 
-     const percentage = Math.min((consecutiveDays / targetDays) * 100, 100); 
+     
+     // O denominador da barra será o recorde. Se o recorde for 0, usamos 1 para evitar divisão por zero,
+     // mas a barra estará em 0% de qualquer forma.
+     const displayRecordForBar = Math.max(recordDays, 1); 
+     const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
+     // Se recordDays for 0, a porcentagem será 0. Se consecutiveDays > recordDays (o que não deve acontecer
+     // se a lógica de atualização do recorde estiver correta), limitamos a 100%.
 
      const progressBar = document.getElementById('perseveranceProgressBar');
      const percentageDisplay = document.getElementById('perseverancePercentage');
@@ -1550,8 +1566,9 @@ function updatePerseveranceUI() {
 
      if (progressBar && percentageDisplay && barContainer) {
          progressBar.style.width = `${percentage}%`;
-         percentageDisplay.textContent = `${consecutiveDays} / ${targetDays} dias`;
-         barContainer.title = `Progresso: ${Math.round(percentage)}% (${consecutiveDays} dias consecutivos)\nRecorde: ${recordDays} dias`;
+         // O texto exibirá: Dias Consecutivos Atuais / Recorde de Dias
+         percentageDisplay.textContent = `${consecutiveDays} / ${recordDays} dias`;
+         barContainer.title = `Progresso atual: ${consecutiveDays} de ${recordDays} dias consecutivos (Recorde: ${recordDays} dias).`;
      } else {
           console.warn("[updatePerseveranceUI] Could not find all progress bar elements.");
      }
@@ -1564,10 +1581,10 @@ function resetPerseveranceUI() {
     const barContainer = document.querySelector('.perseverance-bar-container');
     if (progressBar && percentageDisplay && barContainer) {
         progressBar.style.width = `0%`;
-        percentageDisplay.textContent = `0 / 30 dias`;
-        barContainer.title = ''; 
+        percentageDisplay.textContent = `0 / 0 dias`; // Exibe 0/0 ao resetar
+        barContainer.title = 'Nenhum progresso de perseverança ainda.'; 
     }
-    perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
+    perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; // Reseta o recorde local
     console.log("[resetPerseveranceUI] Progress bar data and UI reset.");
 
     weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
@@ -2200,8 +2217,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDateStr = document.getElementById("startDate").value;
         const endDateStr = document.getElementById("endDate").value;
         if (startDateStr && endDateStr) {
-            const start = new Date(startDateStr + 'T00:00:00Z');
-            const end = new Date(endDateStr + 'T00:00:00Z');
+            const start = new Date(startDateStr + 'T00:00:00Z'); // Usar Z para UTC
+            const end = new Date(endDateStr + 'T00:00:00Z');   // Usar Z para UTC
              if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                  alert("Datas inválidas selecionadas.");
                  return;
@@ -2242,6 +2259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 }); 
 
+// Expondo funções globalmente para onclicks no HTML
 window.markAsResolved = markAsResolved;
 window.archiveTarget = archiveTarget;
 window.deleteArchivedTarget = deleteArchivedTarget;
