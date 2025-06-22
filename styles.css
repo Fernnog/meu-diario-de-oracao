@@ -860,11 +860,11 @@ input[type="date"] {
      box-sizing: border-box;
 }
 
-/* ==== PERSEVERANCE PROGRESS BAR STYLES ==== */
+/* ==== PERSEVERANCE PROGRESS BAR STYLES (COM MELHORIAS VISUAIS CSS) ==== */
 .perseverance-header h2 {
     font-size: 1.4em;
     margin-bottom: 15px;
-    color: #444;
+    color: #444; /* Cor original */
 }
 
 .perseverance-bar-container {
@@ -876,42 +876,72 @@ input[type="date"] {
     gap: 10px;
 }
 
-.progress-bar {
-    background-color: #e9e0d2;
-    border-radius: 10px;
-    height: 20px;
+.progress-bar { /* Container da barra (parte "vazia") */
+    background-color: #e9e0d2; /* Cor de fundo original */
+    border-radius: 12px; /* Aumenta o arredondamento */
+    height: 22px; /* Um pouco mais alta */
     position: relative;
     display: flex;
     align-items: center;
     flex-grow: 1;
     width: 100%;
     overflow: hidden;
-    border: 1px solid #dcd3c5;
+    border: 1px solid #dcd3c5; /* Borda original */
     box-sizing: border-box;
+    /* SUGESTÃO 7: Sombra interna para profundidade */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.progress {
-    background-color: #9cbe4a; /* Cor do botão "Orei!" */
-    border-radius: 10px;
+.progress { /* Barra preenchida (ID: perseveranceProgressBar) */
+    /* SUGESTÃO 4: Gradiente na barra preenchida */
+    background: linear-gradient(135deg, #FFC107, #FF9800); /* Ex: Amarelo vibrante para Laranja */
+    /* Se quiser um efeito de "energia" mais sutil que não seja uma animação constante: */
+    /* background: linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent);
+    background-size: 40px 40px; */
+    border-radius: 10px; /* Mantém o arredondamento interno, ligeiramente menor que o pai */
     height: 100%;
-    width: 0%;
-    transition: width 0.4s ease;
+    width: 0%; /* Controlado pelo JS */
+    /* SUGESTÃO 4: Animação suave do preenchimento da largura */
+    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1); /* Transição mais elaborada */
+    /* SUGESTÃO 7: Sombra externa sutil para destacar a parte preenchida */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    position: relative; /* Para possíveis pseudo-elementos de brilho */
 }
 
-.progress-percentage-left {
-    padding: 0 10px;
-    color: #333;
-    font-size: 0.8em;
-    font-weight: bold;
+/* Opcional: Efeito de brilho sutil na barra de progresso (pseudo-elemento) */
+/*
+.progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%);
+    border-radius: 10px;
+    opacity: 0.7;
+}
+*/
+
+.progress-percentage-left { /* Texto (ID: perseverancePercentage) */
+    padding: 0 12px; /* Ajusta padding */
+    /* SUGESTÃO 6: Tipografia Enfatizada */
+    font-family: 'Playfair Display', serif; /* Mantém a fonte do tema */
+    font-size: 0.9em; /* Ajusta o tamanho da fonte */
+    font-weight: 700; /* Mais negrito */
+    color: #424242; /* Cor de texto mais escura para contraste com gradiente */
     white-space: nowrap;
     z-index: 1;
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    text-shadow: 0 0 2px #fffcf2;
+    /* SUGESTÃO 7: Sombra no texto para melhor legibilidade */
+    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6); /* Sombra clara para destacar */
     line-height: 1;
 }
+/* FIM DAS MODIFICAÇÕES DA BARRA DE PERSEVERANÇA */
+
 
 /* ==== WEEKLY PERSEVERANCE CHART STYLES ==== */
 .weekly-header h3 {
@@ -1066,6 +1096,9 @@ input[type="date"] {
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
     .perseverance-bar-container { flex-direction: column; gap: 8px; }
+    /* Ajuste para o texto da barra de progresso em telas menores */
+    .progress-percentage-left { font-size: 0.8em; }
+
 
     .days-container { justify-content: space-between; }
     .day-name { font-size: 0.75em; }
@@ -1080,7 +1113,7 @@ input[type="date"] {
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
      .modal-content { margin: 25% auto; }
      .progress-percentage-left {
-        font-size: 0.75em;
+        font-size: 0.75em; /* Reduzido ainda mais se necessário */
         padding: 0 8px;
     }
      .target .btn { font-size: 11px; padding: 4px 6px; }
