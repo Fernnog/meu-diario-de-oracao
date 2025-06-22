@@ -67,7 +67,7 @@ h1 {
     border-radius: 5px;
     font-size: 14px;
     font-family: 'Playfair Display', serif; /* Ensure font */
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s; /* Added box-shadow for potential effects */
 }
 
 .btn:hover {
@@ -224,6 +224,33 @@ input[type="date"] {
     background-size: 20px;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="%23555"><path d="M464 64H48C21.49 64 0 85.49 0 112v336c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49-48-48V112c0-26.51-21.49-48-48-48zM48 96h416c8.822 0 16 7.178 16 16v48H32v-48c0-8.822 7.178-16 16-16zM464 480H48c-8.822 0-16-7.178-16-16v-288h448v288c0 8.822-7.178 16-16 16zM128 192h64v64h-64zM288 192h64v64h-64zM128 288h64v64h-64zM288 288h64v64h-64z"/></svg>');
 }
+
+/* Checkbox specific styling */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center if a single item, or use for multiple */
+    margin: 10px auto;
+    width: 80%;
+    max-width: 400px;
+}
+
+.checkbox-container input[type="checkbox"] {
+    display: inline-block;
+    width: auto;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.checkbox-container label {
+    display: inline;
+    font-weight: normal;
+    text-align: left;
+    margin: 0;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
 
 /* ==== TARGET STYLES ==== */
 .target {
@@ -409,7 +436,6 @@ input[type="date"] {
     color: #555;
     padding-left: 0;
     margin-bottom: 5px;
-    /* MELHORIA: Justifica o texto da observação e dos detalhes */
     text-align: justify;
 }
 .observation-item strong { /* Date part */
@@ -451,9 +477,12 @@ input[type="date"] {
      margin-bottom: 3px;
      font-weight: bold;
      text-align: left;
-     margin-left: 0;
+     margin-left: 0; /* Reset for modal content */
 }
-.modal-content input[type="date"] {
+.modal-content input[type="date"],
+.modal-content input[type="text"], /* Added for manualTargetSearchInput */
+.modal-content select /* Added for potential future use */
+{
      width: 100%;
      margin-bottom: 15px;
      box-sizing: border-box;
@@ -500,20 +529,8 @@ input[type="date"] {
     max-width: 600px; /* Slightly larger for results */
 }
 
-#manualTargetModal label { /* Search label style */
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    text-align: left;
-}
-
-#manualTargetModal #manualTargetSearchInput { /* Search input style */
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
+#manualTargetModal #manualTargetSearchInput { /* Search input style (inherits from .modal-content input[type="text"]) */
+    /* No specific override needed unless different from general modal input */
 }
 
 .manual-search-results { /* Results container */
@@ -557,9 +574,9 @@ input[type="date"] {
     text-overflow: ellipsis; /* Add '...' if too long */
 }
 
-/* NOVO: Styles for Category Selection Modal */
+/* Styles for Category Selection Modal */
 #categorySelectionModal .modal-content {
-    max-width: 450px; /* Adjust as needed */
+    max-width: 450px;
 }
 
 #categorySelectionModal p { /* Style for the instruction text */
@@ -568,27 +585,26 @@ input[type="date"] {
 }
 
 .category-checkboxes-container {
-    max-height: 250px; /* Limit height */
-    overflow-y: auto;   /* Add scrollbar if needed */
+    max-height: 250px;
+    overflow-y: auto;
     border: 1px solid #eee;
     padding: 10px;
     margin-bottom: 15px;
     background-color: #fdfdfd;
-    text-align: left; /* Align items left */
+    text-align: left;
 }
 
 .category-checkbox-item {
-    display: block; /* Each item on a new line */
+    display: block;
     margin-bottom: 8px;
 }
 
 .category-checkbox-item input[type="checkbox"] {
     margin-right: 8px;
     vertical-align: middle;
-    /* Override general input styles if needed */
-    display: inline-block;
+    display: inline-block; /* Override general input styles */
     width: auto;
-    margin: 0 8px 0 0;
+    margin: 0 8px 0 0; /* Override general input styles */
 }
 
 .category-checkbox-item label {
@@ -596,9 +612,8 @@ input[type="date"] {
     font-weight: normal;
     cursor: pointer;
     vertical-align: middle;
-    /* Override general label styles if needed */
-    margin: 0;
-    text-align: left;
+    margin: 0; /* Override general label styles */
+    text-align: left; /* Override general label styles */
 }
 
 
@@ -659,7 +674,7 @@ input[type="date"] {
 
 /* ==== COMPLETION POPUP STYLES ==== */
 .popup {
-    display: none;
+    display: none; /* Hidden by default, JS controls visibility */
     position: fixed;
     left: 50%;
     top: 50%;
@@ -672,9 +687,11 @@ input[type="date"] {
     padding: 25px;
     width: 90%;
     max-width: 350px;
+    align-items: center; /* For flex display if children need centering */
+    justify-content: center; /* For flex display */
 }
 .popup-content {
-    /* Padding moved to .popup */
+    /* Padding now in .popup */
 }
 .popup h3 {
     margin-top: 0;
@@ -751,7 +768,7 @@ input[type="date"] {
      margin-bottom: 15px;
      flex-wrap: wrap;
 }
-.filter-container {
+.filter-container { /* Re-using .checkbox-container for structure */
     display: flex;
     align-items: center;
 }
@@ -797,7 +814,7 @@ input[type="date"] {
 }
 .auth-section input[type="email"],
 .auth-section input[type="password"] {
-    margin: 8px 0;
+    margin: 8px 0; /* Adjusted from 8px auto */
     width: 100%;
     max-width: none;
     box-sizing: border-box;
@@ -817,7 +834,7 @@ input[type="date"] {
     cursor: pointer;
     transition: background-color 0.3s;
     font-size: 1em;
-    font-weight: normal;
+    font-weight: normal; /* Ensuring it doesn't inherit bold if body has it */
 }
 .auth-btn:hover { background-color: #f2b366; }
 
@@ -864,7 +881,7 @@ input[type="date"] {
 .perseverance-header h2 {
     font-size: 1.4em;
     margin-bottom: 15px;
-    color: #444; /* Cor original */
+    color: #444;
 }
 
 .perseverance-bar-container {
@@ -872,73 +889,107 @@ input[type="date"] {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    margin-top: 10px;
+    margin-top: 10px; /* Reduzido para dar espaço aos marcadores acima */
     gap: 10px;
+    position: relative; /* Necessário para posicionar os marcadores */
+    padding-top: 25px; /* Espaço para os marcadores acima da barra */
 }
 
 .progress-bar { /* Container da barra (parte "vazia") */
-    background-color: #e9e0d2; /* Cor de fundo original */
-    border-radius: 12px; /* Aumenta o arredondamento */
-    height: 22px; /* Um pouco mais alta */
+    background-color: #e9e0d2;
+    border-radius: 12px;
+    height: 22px;
     position: relative;
     display: flex;
     align-items: center;
     flex-grow: 1;
     width: 100%;
     overflow: hidden;
-    border: 1px solid #dcd3c5; /* Borda original */
+    border: 1px solid #dcd3c5;
     box-sizing: border-box;
-    /* SUGESTÃO 7: Sombra interna para profundidade */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .progress { /* Barra preenchida (ID: perseveranceProgressBar) */
-    /* SUGESTÃO 4: Gradiente na barra preenchida */
-    background: linear-gradient(135deg, #FFC107, #FF9800); /* Ex: Amarelo vibrante para Laranja */
-    /* Se quiser um efeito de "energia" mais sutil que não seja uma animação constante: */
-    /* background: linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 75%, transparent 75%, transparent);
-    background-size: 40px 40px; */
-    border-radius: 10px; /* Mantém o arredondamento interno, ligeiramente menor que o pai */
+    background: linear-gradient(135deg, #FFC107, #FF9800);
+    border-radius: 10px;
     height: 100%;
     width: 0%; /* Controlado pelo JS */
-    /* SUGESTÃO 4: Animação suave do preenchimento da largura */
-    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1); /* Transição mais elaborada */
-    /* SUGESTÃO 7: Sombra externa sutil para destacar a parte preenchida */
+    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    position: relative; /* Para possíveis pseudo-elementos de brilho */
+    position: relative;
 }
-
-/* Opcional: Efeito de brilho sutil na barra de progresso (pseudo-elemento) */
-/*
-.progress::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%);
-    border-radius: 10px;
-    opacity: 0.7;
-}
-*/
 
 .progress-percentage-left { /* Texto (ID: perseverancePercentage) */
-    padding: 0 12px; /* Ajusta padding */
-    /* SUGESTÃO 6: Tipografia Enfatizada */
-    font-family: 'Playfair Display', serif; /* Mantém a fonte do tema */
-    font-size: 0.9em; /* Ajusta o tamanho da fonte */
-    font-weight: 700; /* Mais negrito */
-    color: #424242; /* Cor de texto mais escura para contraste com gradiente */
+    padding: 0 12px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #424242;
     white-space: nowrap;
     z-index: 1;
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    /* SUGESTÃO 7: Sombra no texto para melhor legibilidade */
-    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6); /* Sombra clara para destacar */
+    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6);
     line-height: 1;
+}
+
+/* Estilo para a coroa do recorde */
+.record-crown {
+    display: none; /* Inicialmente oculto */
+    color: #ffbf00; /* Dourado */
+    margin-left: 4px;
+    font-size: 1.1em; /* Um pouco maior */
+    vertical-align: middle; /* Alinhar com o texto */
+    filter: drop-shadow(0 0 1px rgba(0,0,0,0.5)); /* Sombra sutil */
+}
+.record-crown.visible {
+    display: inline-block;
+}
+
+
+/* Animação de pulsação dourada para novo recorde */
+@keyframes pulseGoldNewRecord {
+    0%, 100% {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 5px 2px rgba(255, 215, 0, 0.7), inset 0 0 4px rgba(255, 223, 102, 0.5);
+    }
+    50% {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 15px 7px rgba(255, 215, 0, 1), inset 0 0 8px rgba(255, 223, 102, 0.8);
+    }
+}
+
+.progress.new-record-animation {
+    animation: pulseGoldNewRecord 1s ease-in-out 2; /* 2 iterações para um pulso mais notável */
+}
+
+
+/* Estilos para os Marcadores de Etapa (Milestones) */
+.milestone-markers-container {
+    position: absolute;
+    top: 0; /* Alinha no topo do .perseverance-bar-container */
+    left: 0;
+    width: 100%;
+    height: 20px; /* Altura para os marcadores, acima da barra */
+    pointer-events: none; /* Para não interferir com tooltips da barra */
+    z-index: 5; /* Para ficar acima da barra, mas abaixo do texto central se necessário */
+}
+
+.milestone-marker {
+    position: absolute;
+    bottom: 0; /* Posiciona na base do container (acima da barra) */
+    font-size: 18px; /* Tamanho do emoji/símbolo */
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.8); /* Inicia um pouco abaixo e menor */
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    color: #6a5acd; /* Lilás/Roxo para os marcadores */
+    text-shadow: 0 0 3px rgba(255,255,255,0.7);
+}
+
+.milestone-marker.visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1); /* Posição final */
 }
 /* FIM DAS MODIFICAÇÕES DA BARRA DE PERSEVERANÇA */
 
@@ -1018,8 +1069,8 @@ input[type="date"] {
     font-size: 1.1em;
 }
 
-/* O destaque visual (borda) é agora aplicado ao elemento .day.current-day-container */
 .day-tick.current-day {
+    /* O destaque visual (borda) é agora aplicado ao elemento .day.current-day-container */
 }
 .day-tick.current-day:not(.active):not(.inactive) {
     background-color: #e0e0e0; /* Mantém o fundo cinza se não ativo/inativo */
@@ -1079,9 +1130,18 @@ input[type="date"] {
     input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, select, .search-input {
         width: 95%;
         padding: 10px;
+        max-width: none; /* Allow full width on smaller screens */
+    }
+    .modal-content input[type="date"], /* Ensure modal inputs are also responsive */
+    .modal-content input[type="text"],
+    .modal-content select {
+        width: 100%; /* Full width within modal content padding */
         max-width: none;
     }
-    label { margin-left: 2.5%; margin-right: 2.5%; }
+
+    label { margin-left: 2.5%; margin-right: 2.5%; } /* Reconsider if this affects modals negatively */
+    .modal-content label { margin-left: 0; margin-right: 0; } /* Ensure modal labels are not affected by global label margins */
+
 
     .target { padding: 10px 5px; }
     .target-actions { gap: 3px; }
@@ -1095,9 +1155,9 @@ input[type="date"] {
 
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
-    .perseverance-bar-container { flex-direction: column; gap: 8px; }
-    /* Ajuste para o texto da barra de progresso em telas menores */
+    .perseverance-bar-container { flex-direction: column; gap: 8px; padding-top: 20px; margin-top: 5px; }
     .progress-percentage-left { font-size: 0.8em; }
+    .milestone-marker { font-size: 16px; }
 
 
     .days-container { justify-content: space-between; }
@@ -1111,13 +1171,14 @@ input[type="date"] {
      .main-menu .btn { font-size: 12px; padding: 7px 12px; }
      .auth-section { max-width: 95%; }
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
-     .modal-content { margin: 25% auto; }
+     .modal-content { margin: 25% auto; } /* Further adjust modal margin for very small screens */
      .progress-percentage-left {
-        font-size: 0.75em; /* Reduzido ainda mais se necessário */
+        font-size: 0.75em;
         padding: 0 8px;
     }
+    .milestone-marker { font-size: 14px; }
      .target .btn { font-size: 11px; padding: 4px 6px; }
-     .deadline-tag, .category-tag, .resolved-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px; gap: 3px;}
+     .deadline-tag, .category-tag, .resolved-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px;}
      .target h3 { gap: 3px; }
 
      .category-checkboxes-container { max-height: 200px;}
