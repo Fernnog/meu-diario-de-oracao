@@ -1490,24 +1490,23 @@ async function loadPerseveranceData(userId) {
         const docSnap = await getDoc(perseveranceDocRef);
         if (docSnap.exists()) {
             const rawData = docSnap.data();
-            // Simplesmente pegue os valores, a reidratação não é necessária para estes campos numéricos e timestamp simples
             perseveranceData.lastInteractionDate = rawData.lastInteractionDate ? convertToDate(rawData.lastInteractionDate) : null;
             perseveranceData.consecutiveDays = Number(rawData.consecutiveDays) || 0;
             perseveranceData.recordDays = Number(rawData.recordDays) || 0;
-            previousRecordDays = perseveranceData.recordDays; // Inicializa previousRecordDays com o valor carregado
+            previousRecordDays = perseveranceData.recordDays; 
             console.log("[loadPerseveranceData] Progress bar data loaded:", perseveranceData);
         } else {
             console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
             perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
-            previousRecordDays = 0; // Inicializa se não houver dados
+            previousRecordDays = 0; 
         }
-        updatePerseveranceUI(); // Chama sem argumento, pois não é um "novo recorde" ao carregar
+        updatePerseveranceUI(); 
         await loadWeeklyPrayerData(userId); 
 
     } catch (error) {
         console.error("[loadPerseveranceData] Error loading progress bar data:", error);
          perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; 
-         previousRecordDays = 0; // Reseta em caso de erro
+         previousRecordDays = 0; 
          updatePerseveranceUI(); 
          try { await loadWeeklyPrayerData(userId); }
          catch (weeklyError) {
@@ -1559,7 +1558,6 @@ function updatePerseveranceUI(isNewRecord = false) {
      const consecutiveDays = perseveranceData.consecutiveDays || 0;
      const recordDays = perseveranceData.recordDays || 0;
      
-     const displayRecordForBar = Math.max(recordDays, 1); 
      const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
 
      const progressBarFill = document.getElementById('perseveranceProgressBar');
@@ -2173,9 +2171,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     onAuthStateChanged(auth, (user) => loadData(user));
 
-    document.getElementById('searchMain')?.addEventListener('input', handleSearchMain);
-    document.getElementById('searchArchived')?.addEventListener('input', handleSearchArchived);
-    document.getElementById('searchResolved')?.addEventListener('input', handleSearchResolved);
+    document.getElementById('searchMainInput')?.addEventListener('input', handleSearchMain);
+    document.getElementById('searchArchivedInput')?.addEventListener('input', handleSearchArchived);
+    document.getElementById('searchResolvedInput')?.addEventListener('input', handleSearchResolved);
     document.getElementById('showDeadlineOnly')?.addEventListener('change', handleDeadlineFilterChange);
     document.getElementById('showExpiredOnlyMain')?.addEventListener('change', handleExpiredOnlyMainChange);
 
