@@ -102,30 +102,27 @@
     </div>
 
     <div class="perseverance-section" id="perseveranceSection" style="display: none;">
-        <div class="perseverance-header">
-            <h2>Perseverança na Intercessão</h2>
-        </div>
-        <div class="milestone-icons-area" id="milestoneIconsArea">
-            <span id="recordCrown" class="record-crown">👑</span>
-            <span class="milestone-icon" data-milestone="seed">🌱</span>
-            <span class="milestone-icon" data-milestone="flame">🔥</span>
-            <span class="milestone-icon" data-milestone="star">⭐</span>
-        </div>
-        <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui">
-            <div class="progress-bar" id="progressBarElement">
-                <span class="progress-percentage-left" id="perseverancePercentage">
-                    <span id="currentDaysText">0</span> / <span id="recordDaysText">0</span> dias
-                </span>
-                <div class="progress" id="perseveranceProgressBar" style="width: 0%;">
-                    <div class="progress-shine-overlay"></div>
-                </div>
-            </div>
-        </div>
-        <div class="milestone-legend">
-            <span>👑 Recorde</span> | <span>🌱 7 dias</span> | <span>🔥 15 dias</span> | <span>⭐ 30 dias</span>
-        </div>
+    <div class="perseverance-header">
+        <h2>Perseverança na Intercessão</h2>
     </div>
-
+    <div class="milestone-icons-area" id="milestoneIconsArea">
+        <!-- Ícones que serão controlados pelo JS. Eles são adicionados aqui para que o JS possa encontrá-los. -->
+        <span id="recordCrown" class="record-crown">👑</span>
+        <span class="milestone-icon" data-milestone="sun">☀️</span>
+        <span class="milestone-icon" data-milestone="diamond">💎</span>
+        <span class="milestone-icon" data-milestone="tree">🌳</span>
+        <!-- O container para as estrelas será gerado dinamicamente -->
+        <span id="starContainer"></span>
+        <span class="milestone-icon" data-milestone="flame">🔥</span>
+        <span class="milestone-icon" data-milestone="seed">🌱</span>
+    </div>
+    <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui">
+        <!-- ... (o código da barra de progresso permanece o mesmo) ... -->
+    </div>
+    <div class="milestone-legend">
+        <span>👑 Recorde</span> | <span>⭐ 30d</span> | <span>🌳 100d</span> | <span>💎 365d</span> | <span>☀️ 1000d</span>
+    </div>
+</div>
 
     <div class="form-section" id="appContent" style="display: none;">
         <h2>Cadastrar Novo Alvo de Oração</h2>
