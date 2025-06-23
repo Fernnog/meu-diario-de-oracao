@@ -889,22 +889,37 @@ input[type="date"] {
     margin-bottom: 15px; /* Space between icons and bar */
 }
 
-.milestone-icon {
+.milestone-icon, .record-crown { /* Common styles for all icons in this area */
     font-size: 2.8em; /* Significantly larger icons */
-    margin: 0 12px;
-    opacity: 0.35; /* Base opacity for non-achieved icons */
-    display: inline-block; /* Helps with transform */
+    margin: 0 10px; /* Adjusted margin */
+    display: inline-block;
+    vertical-align: middle;
     transition: opacity 0.4s ease, transform 0.4s ease, color 0.4s ease;
-    filter: grayscale(50%); /* Slightly desaturate non-achieved icons */
 }
 
+.milestone-icon {
+    opacity: 0.35;
+    filter: grayscale(50%);
+}
 .milestone-icon.achieved {
     opacity: 1;
-    transform: scale(1.15); /* Slightly larger when achieved */
-    color: #e29420; /* Vibrant orange from palette */
-    text-shadow: 0 0 5px rgba(255, 165, 0, 0.5); /* Subtle orange glow */
+    transform: scale(1.15);
+    color: #e29420; 
+    text-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
     filter: grayscale(0%);
 }
+
+.record-crown {
+    display: none; /* Initially oculto, JS controls with .visible */
+    color: #ffbf00; /* Dourado */
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.6)); /* Sombra mais pronunciada */
+}
+.record-crown.visible { /* Applied by JS when recordDays > 0 */
+    display: inline-block;
+    opacity: 1;
+    transform: scale(1.1); /* Slight emphasis for record crown */
+}
+
 
 .perseverance-bar-container {
     display: flex;
@@ -913,13 +928,12 @@ input[type="date"] {
     width: 100%;
     gap: 10px;
     position: relative;
-    /* padding-top: 25px; REMOVED - icons are now separate */
 }
 
-.progress-bar { /* Container da barra (parte "vazia") */
+.progress-bar { 
     background-color: #e9e0d2;
     border-radius: 12px;
-    height: 24px; /* Slightly taller bar */
+    height: 24px; 
     position: relative;
     display: flex;
     align-items: center;
@@ -931,22 +945,21 @@ input[type="date"] {
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.progress { /* Barra preenchida (ID: perseveranceProgressBar) */
-    background: linear-gradient(135deg, #FFC107, #FF9800); /* Original gradient, still good */
-    border-radius: 10px; /* Match outer radius for full bar */
+.progress { 
+    background: linear-gradient(135deg, #FFC107, #FF9800); 
+    border-radius: 10px; 
     height: 100%;
-    width: 0%; /* Controlado pelo JS */
+    width: 0%; 
     transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     position: relative;
-    overflow: hidden; /* Important for shine overlay */
+    overflow: hidden; 
 }
 
-/* Efeito de brilho animado */
 .progress-shine-overlay {
     position: absolute;
     top: 0;
-    left: 0; /* Starts hidden to the left */
+    left: 0; 
     width: 100%;
     height: 100%;
     background: linear-gradient(
@@ -958,17 +971,17 @@ input[type="date"] {
         transparent 100%
     );
     animation: shineEffect 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
-    animation-delay: 0.5s; /* Start after initial load a bit */
-    opacity: 0; /* Initially hidden, can be made visible for filled part */
-    border-radius: inherit; /* Inherit border-radius from .progress */
+    animation-delay: 0.5s; 
+    opacity: 0; 
+    border-radius: inherit; 
 }
 
-.progress[style*="width: 0%"] .progress-shine-overlay, /* Hide if width is 0 */
-.progress[style="width:0%;"] .progress-shine-overlay { /* Another check for width 0 */
+.progress[style*="width: 0%"] .progress-shine-overlay, 
+.progress[style="width:0%;"] .progress-shine-overlay { 
     display: none;
 }
 .progress:not([style*="width: 0%"]):not([style="width:0%;"]) .progress-shine-overlay {
-    opacity: 1; /* Show only when bar has some width */
+    opacity: 1; 
 }
 
 
@@ -976,23 +989,23 @@ input[type="date"] {
     0% {
         transform: translateX(-100%) skewX(-20deg);
     }
-    30% { /* Speed up the shine then hold a bit */
+    30% { 
         transform: translateX(100%) skewX(-20deg);
     }
     100% {
-        transform: translateX(100%) skewX(-20deg); /* Stays off-screen to reset */
+        transform: translateX(100%) skewX(-20deg); 
     }
 }
 
 
-.progress-percentage-left { /* Texto (ID: perseverancePercentage) */
+.progress-percentage-left { 
     padding: 0 12px;
     font-family: 'Playfair Display', serif;
     font-size: 0.9em;
     font-weight: 700;
-    color: #424242; /* Dark grey for good contrast on gradient */
+    color: #424242; 
     white-space: nowrap;
-    z-index: 1; /* Above the shine overlay */
+    z-index: 1; 
     position: absolute;
     left: 50%;
     top: 50%;
@@ -1001,21 +1014,7 @@ input[type="date"] {
     line-height: 1;
 }
 
-/* Estilo para a coroa do recorde */
-.record-crown {
-    display: none; /* Inicialmente oculto */
-    color: #ffbf00; /* Dourado */
-    margin-left: 4px;
-    font-size: 1.1em; /* Um pouco maior */
-    vertical-align: middle; /* Alinhar com o texto */
-    filter: drop-shadow(0 0 1px rgba(0,0,0,0.5)); /* Sombra sutil */
-}
-.record-crown.visible {
-    display: inline-block;
-}
-
-
-/* Animação de pulsação dourada para novo recorde */
+/* Animação de pulsação dourada para novo recorde (na barra) */
 @keyframes pulseGoldNewRecord {
     0%, 100% {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 5px 2px rgba(255, 215, 0, 0.7), inset 0 0 4px rgba(255, 223, 102, 0.5);
@@ -1026,26 +1025,18 @@ input[type="date"] {
 }
 
 .progress.new-record-animation {
-    animation: pulseGoldNewRecord 1s ease-in-out 2; /* 2 iterações para um pulso mais notável */
-}
-
-
-/* REMOVING OLD MILESTONE STYLES AS THEY ARE REPLACED */
-.milestone-markers-container,
-.milestone-marker,
-.milestone-marker.visible {
-    display: none !important; /* Hide old markers if still in HTML for some reason */
+    animation: pulseGoldNewRecord 1s ease-in-out 2; 
 }
 
 .milestone-legend {
     text-align: center;
     font-size: 0.85em;
-    color: #756555; /* Brownish grey for legend */
-    margin-top: 10px;
+    color: #756555; 
+    margin-top: 12px; /* Aumentar um pouco a margem */
     font-style: italic;
 }
 .milestone-legend span {
-    margin: 0 5px;
+    margin: 0 7px; /* Aumentar um pouco o espaçamento */
 }
 
 /* FIM DAS MODIFICAÇÕES DA BARRA DE PERSEVERANÇA */
@@ -1070,16 +1061,15 @@ input[type="date"] {
     flex-direction: column;
     align-items: center;
     padding: 5px;
-    transition: all 0.3s ease; /* Adiciona transição suave para a borda */
+    transition: all 0.3s ease; 
 }
 
-/* Estilo para destacar o contêiner do dia atual com uma borda */
 .day.current-day-container {
-    border: 2px solid #9cbe4a; /* Verde do botão "Orei!" */
-    border-radius: 8px;        /* Cantos arredondados */
-    background-color: rgba(156, 190, 74, 0.08); /* Fundo sutil para o destaque */
-    padding: 3px 5px;          /* Espaçamento interno para a borda não colar */
-    margin: -5px 0;            /* Ajuste vertical para não deslocar outros elementos */
+    border: 2px solid #9cbe4a; 
+    border-radius: 8px;        
+    background-color: rgba(156, 190, 74, 0.08); 
+    padding: 3px 5px;          
+    margin: -5px 0;            
 }
 
 .day-name {
@@ -1127,21 +1117,19 @@ input[type="date"] {
 }
 
 .day-tick.current-day {
-    /* O destaque visual (borda) é agora aplicado ao elemento .day.current-day-container */
 }
 .day-tick.current-day:not(.active):not(.inactive) {
-    background-color: #e0e0e0; /* Mantém o fundo cinza se não ativo/inativo */
-    border-color: #ccc;        /* Mantém a borda cinza padrão */
-    color: transparent;        /* Esconde o texto/ícone padrão */
+    background-color: #e0e0e0; 
+    border-color: #ccc;        
+    color: transparent;        
 }
 .day-tick.current-day:not(.active):not(.inactive)::before {
-    content: ''; /* Garante que não haja '✓' ou '×' se for o dia atual e não interagido */
+    content: ''; 
 }
 
 
 /* ==== COMPLETED DAILY TARGETS STYLES ==== */
 .completed-daily-targets-section {
-    /* Styles applied dynamically when there are completed items */
 }
 .completed-daily-targets-section h3 {
     text-align: center;
@@ -1150,20 +1138,20 @@ input[type="date"] {
     margin-bottom: 10px;
 }
 
-.completed-target { /* Style applied to target divs when completed today */
-    background-color: #f0f0f0 !important; /* Override alternating background */
+.completed-target { 
+    background-color: #f0f0f0 !important; 
     color: #777;
-    border-left: 3px solid #9cbe4a; /* Green left border */
+    border-left: 3px solid #9cbe4a; 
     margin-bottom: 8px;
     padding-left: 10px;
     border-radius: 3px;
-    opacity: 0.8; /* Slightly faded */
+    opacity: 0.8; 
 }
 .completed-target h3, .completed-target p {
-    color: #777 !important; /* Ensure text is also faded */
+    color: #777 !important; 
 }
 
-.completed-target .pray-button { /* Hide pray button on completed */
+.completed-target .pray-button { 
     display: none;
 }
 
@@ -1187,24 +1175,24 @@ input[type="date"] {
     input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, select, .search-input {
         width: 95%;
         padding: 10px;
-        max-width: none; /* Allow full width on smaller screens */
+        max-width: none; 
     }
-    .modal-content input[type="date"], /* Ensure modal inputs are also responsive */
+    .modal-content input[type="date"], 
     .modal-content input[type="text"],
     .modal-content select {
-        width: 100%; /* Full width within modal content padding */
+        width: 100%; 
         max-width: none;
     }
 
-    label { margin-left: 2.5%; margin-right: 2.5%; } /* Reconsider if this affects modals negatively */
-    .modal-content label { margin-left: 0; margin-right: 0; } /* Ensure modal labels are not affected by global label margins */
+    label { margin-left: 2.5%; margin-right: 2.5%; } 
+    .modal-content label { margin-left: 0; margin-right: 0; } 
 
 
     .target { padding: 10px 5px; }
     .target-actions { gap: 3px; }
     .target .btn { font-size: 12px; padding: 5px 8px; }
 
-    .daily-buttons-container { flex-direction: column; gap: 5px; } /* Stack daily buttons */
+    .daily-buttons-container { flex-direction: column; gap: 5px; } 
     .daily-buttons-container .btn { width: 80%; margin: 3px auto; }
 
     .pagination { flex-direction: column; gap: 5px; }
@@ -1213,7 +1201,7 @@ input[type="date"] {
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
     /* Perseverance bar responsiveness */
-    .milestone-icon { font-size: 2.2em; margin: 0 8px; }
+    .milestone-icon, .record-crown { font-size: 2.2em; margin: 0 8px; }
     .progress-bar { height: 22px; }
     .progress-percentage-left { font-size: 0.8em; }
     .milestone-legend { font-size: 0.8em; }
@@ -1230,13 +1218,15 @@ input[type="date"] {
      .main-menu .btn { font-size: 12px; padding: 7px 12px; }
      .auth-section { max-width: 95%; }
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
-     .modal-content { margin: 25% auto; } /* Further adjust modal margin for very small screens */
+     .modal-content { margin: 25% auto; } 
      
      /* Perseverance bar responsiveness for very small screens */
-     .milestone-icon { font-size: 1.8em; margin: 0 5px; }
+     .milestone-icon, .record-crown { font-size: 1.8em; margin: 0 5px; }
      .progress-bar { height: 20px; }
      .progress-percentage-left { font-size: 0.75em; padding: 0 8px; }
      .milestone-legend { font-size: 0.75em; }
+     .milestone-legend span { margin: 0 4px; }
+
 
      .target .btn { font-size: 11px; padding: 4px 6px; }
      .deadline-tag, .category-tag, .resolved-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px;}
