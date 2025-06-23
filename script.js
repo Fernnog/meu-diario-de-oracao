@@ -1593,39 +1593,28 @@ function updatePerseveranceUI(isNewRecord = false) {
           console.warn("[updatePerseveranceUI] Could not find all progress bar elements.");
      }
 
-     updateMilestoneMarkers(consecutiveDays, recordDays);
+     updateMilestoneMarkers(consecutiveDays);
 
      console.log("[updatePerseveranceUI] Progress bar UI updated.");
  }
 
-function updateMilestoneMarkers(currentDays, recordValue) {
-    const seedMarker = document.getElementById('milestoneSeed');
-    const flameMarker = document.getElementById('milestoneFlame');
-    const starMarker = document.getElementById('milestoneStar');
-
-    if (!seedMarker || !flameMarker || !starMarker) {
-        console.warn("Milestone markers not found.");
-        return;
-    }
-
-    const milestoneReferenceMax = MILESTONE_DAYS.star; 
-
-    const milestones = [
-        { el: seedMarker, day: MILESTONE_DAYS.seed },
-        { el: flameMarker, day: MILESTONE_DAYS.flame },
-        { el: starMarker, day: MILESTONE_DAYS.star }
+function updateMilestoneMarkers(currentDays) {
+    const icons = [
+        { el: document.querySelector('.milestone-icon[data-milestone="seed"]'), day: MILESTONE_DAYS.seed },
+        { el: document.querySelector('.milestone-icon[data-milestone="flame"]'), day: MILESTONE_DAYS.flame },
+        { el: document.querySelector('.milestone-icon[data-milestone="star"]'), day: MILESTONE_DAYS.star }
     ];
 
-    milestones.forEach(ms => {
-        let positionPercent = (ms.day / milestoneReferenceMax) * 100;
-        positionPercent = Math.min(positionPercent, 98); 
-        
-        ms.el.style.left = `${positionPercent}%`;
-
-        if (currentDays >= ms.day) {
-            ms.el.classList.add('visible');
+    icons.forEach(iconData => {
+        if (!iconData.el) {
+            // It's possible the element isn't found if HTML structure changes or ID is wrong.
+            // console.warn(`Milestone icon for milestone type "${iconData.el?.dataset?.milestone || 'unknown'}" (target day: ${iconData.day}) not found.`);
+            return;
+        }
+        if (currentDays >= iconData.day) {
+            iconData.el.classList.add('achieved');
         } else {
-            ms.el.classList.remove('visible');
+            iconData.el.classList.remove('achieved');
         }
     });
 }
@@ -1647,7 +1636,7 @@ function resetPerseveranceUI() {
     }
     perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; 
     previousRecordDays = 0; 
-    updateMilestoneMarkers(0, 0); 
+    updateMilestoneMarkers(0); 
     console.log("[resetPerseveranceUI] Progress bar data and UI reset.");
 
     weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
