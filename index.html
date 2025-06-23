@@ -104,21 +104,28 @@
     <div class="perseverance-section" id="perseveranceSection" style="display: none;">
         <div class="perseverance-header">
             <h2>Perseverança na Intercessão</h2>
-            <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui">
-                <div class="progress-bar" id="progressBarElement">
-                    <span class="progress-percentage-left" id="perseverancePercentage">
-                        <span id="currentDaysText">0</span> / <span id="recordDaysText">0</span> dias <span id="recordCrown" class="record-crown">👑</span>
-                    </span>
-                    <div class="progress" id="perseveranceProgressBar" style="width: 0%;"></div>
-                </div>
-                <div class="milestone-markers-container" id="milestoneMarkersContainer">
-                    <span class="milestone-marker" id="milestoneSeed">🌱</span>
-                    <span class="milestone-marker" id="milestoneFlame">🔥</span>
-                    <span class="milestone-marker" id="milestoneStar">⭐</span>
+        </div>
+        <div class="milestone-icons-area" id="milestoneIconsArea">
+            <span class="milestone-icon" data-milestone="seed">🌱</span>
+            <span class="milestone-icon" data-milestone="flame">🔥</span>
+            <span class="milestone-icon" data-milestone="star">⭐</span>
+        </div>
+        <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui">
+            <div class="progress-bar" id="progressBarElement">
+                <span class="progress-percentage-left" id="perseverancePercentage">
+                    <span id="currentDaysText">0</span> / <span id="recordDaysText">0</span> dias
+                    <span id="recordCrown" class="record-crown">👑</span>
+                </span>
+                <div class="progress" id="perseveranceProgressBar" style="width: 0%;">
+                    <div class="progress-shine-overlay"></div>
                 </div>
             </div>
         </div>
+        <div class="milestone-legend">
+            <span>🌱 7 dias</span> | <span>🔥 15 dias</span> | <span>⭐ 30 dias</span>
+        </div>
     </div>
+
 
     <div class="form-section" id="appContent" style="display: none;">
         <h2>Cadastrar Novo Alvo de Oração</h2>
