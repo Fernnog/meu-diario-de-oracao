@@ -174,9 +174,9 @@ hr.title-separator, hr.search-separator, hr.filter-separator {
 .perseverance-section, .weekly-perseverance-chart {
     margin: 20px auto;
     padding: 15px;
-    border: 1px solid #e0d8cc; /* Slightly darker border to complement new background */
+    border: 1px solid #e6ccb2; /* Lighter brown border */
     border-radius: 8px; /* Slightly more rounded */
-    background-color: #fffcf2; /* Light cream/beige background */
+    background-color: #fff0db; /* Light peach/orange tint - MAIS VIVA */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
     text-align: center;
     width: 95%;
@@ -880,8 +880,30 @@ input[type="date"] {
 /* ==== PERSEVERANCE PROGRESS BAR STYLES (COM MELHORIAS VISUAIS CSS) ==== */
 .perseverance-header h2 {
     font-size: 1.4em;
-    margin-bottom: 15px;
-    color: #444;
+    margin-bottom: 10px; /* Reduced bottom margin */
+    color: #4a3b30; /* Darker brown for header text */
+}
+
+.milestone-icons-area {
+    text-align: center;
+    margin-bottom: 15px; /* Space between icons and bar */
+}
+
+.milestone-icon {
+    font-size: 2.8em; /* Significantly larger icons */
+    margin: 0 12px;
+    opacity: 0.35; /* Base opacity for non-achieved icons */
+    display: inline-block; /* Helps with transform */
+    transition: opacity 0.4s ease, transform 0.4s ease, color 0.4s ease;
+    filter: grayscale(50%); /* Slightly desaturate non-achieved icons */
+}
+
+.milestone-icon.achieved {
+    opacity: 1;
+    transform: scale(1.15); /* Slightly larger when achieved */
+    color: #e29420; /* Vibrant orange from palette */
+    text-shadow: 0 0 5px rgba(255, 165, 0, 0.5); /* Subtle orange glow */
+    filter: grayscale(0%);
 }
 
 .perseverance-bar-container {
@@ -889,16 +911,15 @@ input[type="date"] {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    margin-top: 10px; /* Reduzido para dar espaço aos marcadores acima */
     gap: 10px;
-    position: relative; /* Necessário para posicionar os marcadores */
-    padding-top: 25px; /* Espaço para os marcadores acima da barra */
+    position: relative;
+    /* padding-top: 25px; REMOVED - icons are now separate */
 }
 
 .progress-bar { /* Container da barra (parte "vazia") */
     background-color: #e9e0d2;
     border-radius: 12px;
-    height: 22px;
+    height: 24px; /* Slightly taller bar */
     position: relative;
     display: flex;
     align-items: center;
@@ -911,28 +932,72 @@ input[type="date"] {
 }
 
 .progress { /* Barra preenchida (ID: perseveranceProgressBar) */
-    background: linear-gradient(135deg, #FFC107, #FF9800);
-    border-radius: 10px;
+    background: linear-gradient(135deg, #FFC107, #FF9800); /* Original gradient, still good */
+    border-radius: 10px; /* Match outer radius for full bar */
     height: 100%;
     width: 0%; /* Controlado pelo JS */
     transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     position: relative;
+    overflow: hidden; /* Important for shine overlay */
 }
+
+/* Efeito de brilho animado */
+.progress-shine-overlay {
+    position: absolute;
+    top: 0;
+    left: 0; /* Starts hidden to the left */
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 30%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0.4) 70%,
+        transparent 100%
+    );
+    animation: shineEffect 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+    animation-delay: 0.5s; /* Start after initial load a bit */
+    opacity: 0; /* Initially hidden, can be made visible for filled part */
+    border-radius: inherit; /* Inherit border-radius from .progress */
+}
+
+.progress[style*="width: 0%"] .progress-shine-overlay, /* Hide if width is 0 */
+.progress[style="width:0%;"] .progress-shine-overlay { /* Another check for width 0 */
+    display: none;
+}
+.progress:not([style*="width: 0%"]):not([style="width:0%;"]) .progress-shine-overlay {
+    opacity: 1; /* Show only when bar has some width */
+}
+
+
+@keyframes shineEffect {
+    0% {
+        transform: translateX(-100%) skewX(-20deg);
+    }
+    30% { /* Speed up the shine then hold a bit */
+        transform: translateX(100%) skewX(-20deg);
+    }
+    100% {
+        transform: translateX(100%) skewX(-20deg); /* Stays off-screen to reset */
+    }
+}
+
 
 .progress-percentage-left { /* Texto (ID: perseverancePercentage) */
     padding: 0 12px;
     font-family: 'Playfair Display', serif;
     font-size: 0.9em;
     font-weight: 700;
-    color: #424242;
+    color: #424242; /* Dark grey for good contrast on gradient */
     white-space: nowrap;
-    z-index: 1;
+    z-index: 1; /* Above the shine overlay */
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6);
+    text-shadow: 0 0 3px rgba(255, 255, 240, 0.9), 0 0 5px rgba(255, 255, 240, 0.7);
     line-height: 1;
 }
 
@@ -965,32 +1030,24 @@ input[type="date"] {
 }
 
 
-/* Estilos para os Marcadores de Etapa (Milestones) */
-.milestone-markers-container {
-    position: absolute;
-    top: 0; /* Alinha no topo do .perseverance-bar-container */
-    left: 0;
-    width: 100%;
-    height: 20px; /* Altura para os marcadores, acima da barra */
-    pointer-events: none; /* Para não interferir com tooltips da barra */
-    z-index: 5; /* Para ficar acima da barra, mas abaixo do texto central se necessário */
-}
-
-.milestone-marker {
-    position: absolute;
-    bottom: 0; /* Posiciona na base do container (acima da barra) */
-    font-size: 18px; /* Tamanho do emoji/símbolo */
-    opacity: 0;
-    transform: translate(-50%, 10px) scale(0.8); /* Inicia um pouco abaixo e menor */
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-    color: #6a5acd; /* Lilás/Roxo para os marcadores */
-    text-shadow: 0 0 3px rgba(255,255,255,0.7);
-}
-
+/* REMOVING OLD MILESTONE STYLES AS THEY ARE REPLACED */
+.milestone-markers-container,
+.milestone-marker,
 .milestone-marker.visible {
-    opacity: 1;
-    transform: translate(-50%, 0) scale(1); /* Posição final */
+    display: none !important; /* Hide old markers if still in HTML for some reason */
 }
+
+.milestone-legend {
+    text-align: center;
+    font-size: 0.85em;
+    color: #756555; /* Brownish grey for legend */
+    margin-top: 10px;
+    font-style: italic;
+}
+.milestone-legend span {
+    margin: 0 5px;
+}
+
 /* FIM DAS MODIFICAÇÕES DA BARRA DE PERSEVERANÇA */
 
 
@@ -1155,9 +1212,11 @@ input[type="date"] {
 
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
-    .perseverance-bar-container { flex-direction: column; gap: 8px; padding-top: 20px; margin-top: 5px; }
+    /* Perseverance bar responsiveness */
+    .milestone-icon { font-size: 2.2em; margin: 0 8px; }
+    .progress-bar { height: 22px; }
     .progress-percentage-left { font-size: 0.8em; }
-    .milestone-marker { font-size: 16px; }
+    .milestone-legend { font-size: 0.8em; }
 
 
     .days-container { justify-content: space-between; }
@@ -1172,11 +1231,13 @@ input[type="date"] {
      .auth-section { max-width: 95%; }
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
      .modal-content { margin: 25% auto; } /* Further adjust modal margin for very small screens */
-     .progress-percentage-left {
-        font-size: 0.75em;
-        padding: 0 8px;
-    }
-    .milestone-marker { font-size: 14px; }
+     
+     /* Perseverance bar responsiveness for very small screens */
+     .milestone-icon { font-size: 1.8em; margin: 0 5px; }
+     .progress-bar { height: 20px; }
+     .progress-percentage-left { font-size: 0.75em; padding: 0 8px; }
+     .milestone-legend { font-size: 0.75em; }
+
      .target .btn { font-size: 11px; padding: 4px 6px; }
      .deadline-tag, .category-tag, .resolved-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px;}
      .target h3 { gap: 3px; }
