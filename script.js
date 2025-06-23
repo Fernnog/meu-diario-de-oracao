@@ -1599,24 +1599,87 @@ function updatePerseveranceUI(isNewRecord = false) {
  }
 
 function updateMilestoneMarkers(currentDays) {
-    const icons = [
-        { el: document.querySelector('.milestone-icon[data-milestone="seed"]'), day: MILESTONE_DAYS.seed },
-        { el: document.querySelector('.milestone-icon[data-milestone="flame"]'), day: MILESTONE_DAYS.flame },
-        { el: document.querySelector('.milestone-icon[data-milestone="star"]'), day: MILESTONE_DAYS.star }
-    ];
+    const iconArea = document.getElementById('milestoneIconsArea');
+    if (!iconArea) return;
 
-    icons.forEach(iconData => {
-        if (!iconData.el) {
-            // It's possible the element isn't found if HTML structure changes or ID is wrong.
-            // console.warn(`Milestone icon for milestone type "${iconData.el?.dataset?.milestone || 'unknown'}" (target day: ${iconData.day}) not found.`);
-            return;
-        }
-        if (currentDays >= iconData.day) {
-            iconData.el.classList.add('achieved');
-        } else {
-            iconData.el.classList.remove('achieved');
+    // --- Seletores para todos os ícones de marco ---
+    const crownEl = document.getElementById('recordCrown');
+    const sunEl = iconArea.querySelector('[data-milestone="sun"]');
+    const diamondEl = iconArea.querySelector('[data-milestone="diamond"]');
+    const treeEl = iconArea.querySelector('[data-milestone="tree"]');
+    const starContainer = document.getElementById('starContainer');
+    const flameEl = iconArea.querySelector('[data-milestone="flame"]');
+    const seedEl = iconArea.querySelector('[data-milestone="seed"]');
+
+    // Array de todos os ícones de ciclo/marco para facilitar o reset
+    const allMilestoneIcons = [sunEl, diamondEl, treeEl, flameEl, seedEl];
+
+    // --- 1. Resetar o estado de todos os ícones ---
+    allMilestoneIcons.forEach(icon => {
+        if (icon) {
+            icon.style.display = 'none';
+            icon.classList.remove('achieved');
         }
     });
+    if (starContainer) starContainer.innerHTML = '';
+    
+    // --- 2. Lógica da Coroa (Recorde) ---
+    // A coroa é independente dos outros marcos, baseia-se em `perseveranceData.recordDays`
+    if (crownEl) {
+        if (perseveranceData.recordDays > 0 && currentDays === perseveranceData.recordDays) {
+            crownEl.style.display = 'inline-block';
+            crownEl.classList.add('visible');
+        } else {
+            crownEl.style.display = 'none';
+            crownEl.classList.remove('visible');
+        }
+    }
+    
+    if (currentDays === 0) return; // Se não há dias, não exibe mais nada
+
+    // --- 3. Lógica Hierárquica dos Marcos Principais ---
+    let remainingDaysInCycle = 0;
+
+    if (currentDays >= 1000) {
+        sunEl.style.display = 'inline-block';
+        sunEl.classList.add('achieved');
+        // Nenhum outro marco menor é exibido
+    } else if (currentDays >= 365) {
+        diamondEl.style.display = 'inline-block';
+        diamondEl.classList.add('achieved');
+        
+        const daysAfterDiamond = currentDays - 365;
+        const numStars = Math.floor(daysAfterDiamond / 30);
+        remainingDaysInCycle = daysAfterDiamond % 30;
+        if (starContainer && numStars > 0) {
+            starContainer.innerHTML = '⭐'.repeat(numStars);
+        }
+    } else if (currentDays >= 100) {
+        treeEl.style.display = 'inline-block';
+        treeEl.classList.add('achieved');
+        
+        const daysAfterTree = currentDays - 100;
+        const numStars = Math.floor(daysAfterTree / 30);
+        remainingDaysInCycle = daysAfterTree % 30;
+        if (starContainer && numStars > 0) {
+            starContainer.innerHTML = '⭐'.repeat(numStars);
+        }
+    } else { // Menos de 100 dias
+        const numStars = Math.floor(currentDays / 30);
+        remainingDaysInCycle = currentDays % 30;
+        if (starContainer && numStars > 0) {
+            starContainer.innerHTML = '⭐'.repeat(numStars);
+        }
+    }
+
+    // --- 4. Lógica para Ícones de Ciclo (Semente e Chama) ---
+    if (remainingDaysInCycle >= 15) {
+        flameEl.style.display = 'inline-block';
+        flameEl.classList.add('achieved');
+    } else if (remainingDaysInCycle >= 7) {
+        seedEl.style.display = 'inline-block';
+        seedEl.classList.add('achieved');
+    }
 }
 
 
