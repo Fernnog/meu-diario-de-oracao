@@ -1611,7 +1611,6 @@ function updateMilestoneMarkers(currentDays) {
     const flameEl = iconArea.querySelector('[data-milestone="flame"]');
     const seedEl = iconArea.querySelector('[data-milestone="seed"]');
 
-    // Array de todos os ícones de ciclo/marco para facilitar o reset
     const allMilestoneIcons = [sunEl, diamondEl, treeEl, flameEl, seedEl];
 
     // --- 1. Resetar o estado de todos os ícones ---
@@ -1623,14 +1622,18 @@ function updateMilestoneMarkers(currentDays) {
     });
     if (starContainer) starContainer.innerHTML = '';
     
-    // --- 2. Lógica da Coroa (Recorde) ---
-    // A coroa é independente dos outros marcos, baseia-se em `perseveranceData.recordDays`
+    // --- 2. Lógica da Coroa (Recorde) - CORRIGIDA ---
+    // A coroa agora aparece sempre que houver um recorde maior que 0.
     if (crownEl) {
-        if (perseveranceData.recordDays > 0 && currentDays === perseveranceData.recordDays) {
+        if (perseveranceData.recordDays > 0) {
             crownEl.style.display = 'inline-block';
-            crownEl.classList.add('visible');
         } else {
             crownEl.style.display = 'none';
+        }
+        // A classe 'visible' pode ser usada para um efeito especial de "novo recorde"
+        if (currentDays > 0 && currentDays === perseveranceData.recordDays) {
+            crownEl.classList.add('visible');
+        } else {
             crownEl.classList.remove('visible');
         }
     }
@@ -1643,11 +1646,9 @@ function updateMilestoneMarkers(currentDays) {
     if (currentDays >= 1000) {
         sunEl.style.display = 'inline-block';
         sunEl.classList.add('achieved');
-        // Nenhum outro marco menor é exibido
     } else if (currentDays >= 365) {
         diamondEl.style.display = 'inline-block';
         diamondEl.classList.add('achieved');
-        
         const daysAfterDiamond = currentDays - 365;
         const numStars = Math.floor(daysAfterDiamond / 30);
         remainingDaysInCycle = daysAfterDiamond % 30;
@@ -1657,7 +1658,6 @@ function updateMilestoneMarkers(currentDays) {
     } else if (currentDays >= 100) {
         treeEl.style.display = 'inline-block';
         treeEl.classList.add('achieved');
-        
         const daysAfterTree = currentDays - 100;
         const numStars = Math.floor(daysAfterTree / 30);
         remainingDaysInCycle = daysAfterTree % 30;
@@ -1681,7 +1681,6 @@ function updateMilestoneMarkers(currentDays) {
         seedEl.classList.add('achieved');
     }
 }
-
 
 function resetPerseveranceUI() {
     const progressBarFill = document.getElementById('perseveranceProgressBar');
