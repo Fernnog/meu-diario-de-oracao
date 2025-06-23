@@ -887,7 +887,7 @@ input[type="date"] {
 .perseverance-bar-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-between; /* Para separar a coroa, se ela for movida para fora */
     width: 100%;
     margin-top: 10px; /* Reduzido para dar espaço aos marcadores acima */
     gap: 10px;
@@ -940,7 +940,7 @@ input[type="date"] {
 .record-crown {
     display: none; /* Inicialmente oculto */
     color: #ffbf00; /* Dourado */
-    margin-left: 4px;
+    margin-left: 4px; /* Mantém próximo ao texto do recorde, se o texto estiver visível */
     font-size: 1.1em; /* Um pouco maior */
     vertical-align: middle; /* Alinhar com o texto */
     filter: drop-shadow(0 0 1px rgba(0,0,0,0.5)); /* Sombra sutil */
@@ -979,12 +979,12 @@ input[type="date"] {
 .milestone-marker {
     position: absolute;
     bottom: 0; /* Posiciona na base do container (acima da barra) */
-    font-size: 18px; /* Tamanho do emoji/símbolo */
+    font-size: 18px; /* Tamanho do emoji/símbolo - AUMENTADO */
     opacity: 0;
-    transform: translate(-50%, 10px) scale(0.8); /* Inicia um pouco abaixo e menor */
+    transform: translate(-50%, 10px) scale(0.8); /* Inicia um pouco abaixo e menor, centralizado horizontalmente */
     transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-    color: #6a5acd; /* Lilás/Roxo para os marcadores */
-    text-shadow: 0 0 3px rgba(255,255,255,0.7);
+    color: #6a5acd; /* Lilás/Roxo para os marcadores, para contraste e apelo */
+    text-shadow: 0 0 3px rgba(255,255,255,0.7); /* Pequena sombra clara para destacar */
 }
 
 .milestone-marker.visible {
