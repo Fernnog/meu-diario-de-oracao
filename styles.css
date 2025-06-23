@@ -896,44 +896,44 @@ input[type="date"] {
 }
 
 .progress-bar { /* Container da barra (parte "vazia") */
-    background-color: #e9e0d2;
-    border-radius: 12px;
-    height: 22px;
+    background-color: #e9e0d2; /* Tom de pergaminho/papel antigo claro */
+    border-radius: 12px; /* Mais arredondado */
+    height: 22px; /* Altura da barra */
     position: relative;
     display: flex;
     align-items: center;
     flex-grow: 1;
-    width: 100%;
-    overflow: hidden;
-    border: 1px solid #dcd3c5;
-    box-sizing: border-box;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%; /* Ocupa o espaço disponível */
+    overflow: hidden; /* Garante que o preenchimento não ultrapasse as bordas arredondadas */
+    border: 1px solid #dcd3c5; /* Borda sutil */
+    box-sizing: border-box; /* Garante que padding/border não aumentem o tamanho total */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra interna para profundidade */
 }
 
 .progress { /* Barra preenchida (ID: perseveranceProgressBar) */
-    background: linear-gradient(135deg, #FFC107, #FF9800);
-    border-radius: 10px;
+    background: linear-gradient(135deg, #FFC107, #FF9800); /* Gradiente dourado/laranja */
+    border-radius: 10px; /* Arredondamento interno, um pouco menor que o container */
     height: 100%;
     width: 0%; /* Controlado pelo JS */
-    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    position: relative;
+    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1); /* Transição suave */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Sombra externa sutil */
+    position: relative; /* Para z-index se necessário e para animações */
 }
 
 .progress-percentage-left { /* Texto (ID: perseverancePercentage) */
-    padding: 0 12px;
+    padding: 0 12px; /* Espaçamento interno */
     font-family: 'Playfair Display', serif;
     font-size: 0.9em;
-    font-weight: 700;
-    color: #424242;
+    font-weight: 700; /* Negrito */
+    color: #424242; /* Cinza escuro para bom contraste */
     white-space: nowrap;
-    z-index: 1;
-    position: absolute;
+    z-index: 1; /* Para ficar sobre a barra preenchida */
+    position: absolute; /* Posicionamento absoluto dentro do .progress-bar */
     left: 50%;
     top: 50%;
-    transform: translate(-50%, -50%);
-    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6);
-    line-height: 1;
+    transform: translate(-50%, -50%); /* Centraliza o texto */
+    text-shadow: 0 0 3px rgba(255, 255, 240, 0.8), 0 0 5px rgba(255, 255, 240, 0.6); /* Sombra clara para "brilho" */
+    line-height: 1; /* Garante alinhamento vertical */
 }
 
 /* Estilo para a coroa do recorde */
@@ -1155,6 +1155,7 @@ input[type="date"] {
 
     .modal-content { width: 95%; margin: 20% auto; padding: 15px;}
 
+    /* Perseverance Bar Responsive Adjustments */
     .perseverance-bar-container { flex-direction: column; gap: 8px; padding-top: 20px; margin-top: 5px; }
     .progress-percentage-left { font-size: 0.8em; }
     .milestone-marker { font-size: 16px; }
@@ -1172,11 +1173,14 @@ input[type="date"] {
      .auth-section { max-width: 95%; }
      .auth-btn { font-size: 0.9em; padding: 8px 12px; }
      .modal-content { margin: 25% auto; } /* Further adjust modal margin for very small screens */
+    
+     /* Perseverance Bar Responsive Adjustments for very small screens */
      .progress-percentage-left {
         font-size: 0.75em;
         padding: 0 8px;
     }
     .milestone-marker { font-size: 14px; }
+
      .target .btn { font-size: 11px; padding: 4px 6px; }
      .deadline-tag, .category-tag, .resolved-tag { font-size: 0.75em; padding: 2px 5px; margin-right: 4px;}
      .target h3 { gap: 3px; }
