@@ -1490,25 +1490,24 @@ async function loadPerseveranceData(userId) {
         const docSnap = await getDoc(perseveranceDocRef);
         if (docSnap.exists()) {
             const rawData = docSnap.data();
-            const [hydratedPerseverance] = rehydrateTargets([{...rawData}]);
-            
-            perseveranceData.lastInteractionDate = hydratedPerseverance.lastInteractionDate ? convertToDate(hydratedPerseverance.lastInteractionDate) : null;
-            perseveranceData.consecutiveDays = Number(hydratedPerseverance.consecutiveDays) || 0;
-            perseveranceData.recordDays = Number(hydratedPerseverance.recordDays) || 0;
-            previousRecordDays = perseveranceData.recordDays; 
+            // Simplesmente pegue os valores, a reidratação não é necessária para estes campos numéricos e timestamp simples
+            perseveranceData.lastInteractionDate = rawData.lastInteractionDate ? convertToDate(rawData.lastInteractionDate) : null;
+            perseveranceData.consecutiveDays = Number(rawData.consecutiveDays) || 0;
+            perseveranceData.recordDays = Number(rawData.recordDays) || 0;
+            previousRecordDays = perseveranceData.recordDays; // Inicializa previousRecordDays com o valor carregado
             console.log("[loadPerseveranceData] Progress bar data loaded:", perseveranceData);
         } else {
             console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
             perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
-            previousRecordDays = 0; 
+            previousRecordDays = 0; // Inicializa se não houver dados
         }
-        updatePerseveranceUI(); 
+        updatePerseveranceUI(); // Chama sem argumento, pois não é um "novo recorde" ao carregar
         await loadWeeklyPrayerData(userId); 
 
     } catch (error) {
         console.error("[loadPerseveranceData] Error loading progress bar data:", error);
          perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; 
-         previousRecordDays = 0; 
+         previousRecordDays = 0; // Reseta em caso de erro
          updatePerseveranceUI(); 
          try { await loadWeeklyPrayerData(userId); }
          catch (weeklyError) {
