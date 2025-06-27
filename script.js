@@ -1,2390 +1,2232 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
-import { getAuth, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc, addDoc, increment, Timestamp, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+// --- START OF MODIFIED FILE script.js ---
 
-// Firebase configuration
+
+// Import Firebase modular SDKs
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+
+// --- Constantes e Dados ---
+
+
+// Configuração do Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk", // ATENÇÃO: Substitua pela sua chave real se estiver usando este código.
-  authDomain: "meu-diario-de-oracao.firebaseapp.com",
-  projectId: "meu-diario-de-oracao",
-  storageBucket: "meu-diario-de-oracao.firebasestorage.app",
-  messagingSenderId: "718315400702",
-  appId: "1:718315400702:web:eaabc0bfbf6b88e6a5e4af",
-  measurementId: "G-G0838BBW07"
+  apiKey: "AIzaSyCv1G4CoK4EwZ6iMZ2CLCUdSg4YLFTuVKI", // Sua API Key
+  authDomain: "plano-leitura-biblia-8f763.firebaseapp.com",
+  projectId: "plano-leitura-biblia-8f763",
+  storageBucket: "plano-leitura-biblia-8f763.firebasestorage.app",
+  messagingSenderId: "4101180633",
+  appId: "1:4101180633:web:32d7846cf9a031962342c8",
+  measurementId: "G-KT5PPGF7W1"
 };
 
+
+
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Global variables
-let prayerTargets = [];
-let archivedTargets = [];
-let resolvedTargets = [];
-let lastDisplayedTargets = [];
-let currentPage = 1;
-let currentArchivedPage = 1;
-let currentResolvedPage = 1;
-const targetsPerPage = 10;
-let currentSearchTermMain = '';
-let currentSearchTermArchived = '';
-let currentSearchTermResolved = '';
-let showDeadlineOnly = false;
-let currentDailyTargets = []; // Holds IDs of targets currently in the daily list
 
-// Data for the PROGRESS BAR (Consecutive Days)
-let perseveranceData = {
-    consecutiveDays: 0,
-    lastInteractionDate: null, // Date of the *last day* an "Orei!" click updated the streak (armazenado como o início do dia UTC)
-    recordDays: 0 
+// Dados da Bíblia
+const bibleBooksChapters = {
+    "Gênesis": 50, "Êxodo": 40, "Levítico": 27, "Números": 36, "Deuteronômio": 34,
+    "Josué": 24, "Juízes": 21, "Rute": 4, "1 Samuel": 31, "2 Samuel": 24,
+    "1 Reis": 22, "2 Reis": 25, "1 Crônicas": 29, "2 Crônicas": 36, "Esdras": 10,
+    "Neemias": 13, "Ester": 10, "Jó": 42, "Salmos": 150, "Provérbios": 31,
+    "Eclesiastes": 12, "Cantares": 8, "Isaías": 66, "Jeremias": 52, "Lamentações": 5,
+    "Ezequiel": 48, "Daniel": 12, "Oséias": 14, "Joel": 3, "Amós": 9, "Obadias": 1,
+    "Jonas": 4, "Miquéias": 7, "Naum": 3, "Habacuque": 3, "Sofonias": 3, "Ageu": 2,
+    "Zacarias": 14, "Malaquias": 4, "Mateus": 28, "Marcos": 16, "Lucas": 24, "João": 21,
+    "Atos": 28, "Romanos": 16, "1 Coríntios": 16, "2 Coríntios": 13, "Gálatas": 6,
+    "Efésios": 6, "Filipenses": 4, "Colossenses": 4, "1 Tessalonicenses": 5,
+    "2 Tessalonicenses": 3, "1 Timóteo": 6, "2 Timóteo": 4, "Tito": 3, "Filemom": 1,
+    "Hebreus": 13, "Tiago": 5, "1 Pedro": 5, "2 Pedro": 3, "1 João": 5, "2 João": 1,
+    "3 João": 1, "Judas": 1, "Apocalipse": 22
 };
-let previousRecordDays = 0; // To track the record before an update
-const MILESTONE_DAYS = {
-    seed: 7,
-    flame: 15,
-    star: 30
-};
+const canonicalBookOrder = Object.keys(bibleBooksChapters);
+const bookNameMap = new Map();
+canonicalBookOrder.forEach(book => {
+    const lower = book.toLowerCase();
+    const lowerNoSpace = lower.replace(/\s+/g, '');
+    bookNameMap.set(lower, book);
+    if (lower !== lowerNoSpace) bookNameMap.set(lowerNoSpace, book);
+});
 
-
-// Data for the WEEKLY CHART (Daily Interactions)
-let weeklyPrayerData = {
-    weekId: null,
-    interactions: {}
-};
-
-const predefinedCategories = [
-    "Família", "Pessoal", "Igreja", "Trabalho", "Sonho",
-    "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"
+// ATUALIZADO: Configuração do Plano Favorito Anual com Remanejamento e Nova Periodicidade
+const FAVORITE_ANNUAL_PLAN_CONFIG = [
+    {
+        name: "A Jornada dos Patriarcas",
+        books: ["Gênesis", "Êxodo", "Levítico", "Números", "Deuteronômio", "Josué", "Juízes", "Rute", "1 Samuel", "2 Samuel", "1 Reis", "2 Reis", "1 Crônicas", "2 Crônicas", "Esdras", "Neemias", "Ester"],
+        allowedDays: [1, 4, 6], // Seg, Qui, Sáb
+        chaptersPerReadingDay: 3
+    },
+    {
+        name: "A Sinfonia Celestial", // Agora inclui Profetas Menores
+        books: [
+            // Livros originais da Sinfonia Celestial
+            "Jó", "Salmos", "Provérbios", "Eclesiastes", "Cantares",
+            // Profetas Menores adicionados
+            "Oséias", "Joel", "Amós", "Obadias", "Jonas", "Miquéias",
+            "Naum", "Habacuque", "Sofonias", "Ageu", "Zacarias", "Malaquias"
+        ],
+        allowedDays: [3, 0], // Qua, Dom
+        chaptersPerReadingDay: 3
+    },
+    {
+        name: "A Promessa Revelada", // Agora SEM Profetas Menores, mas com NT e Profetas Maiores
+        // A lista de 'books' aqui será usada para gerar a lista intercalada depois.
+        // Podemos listar os "blocos" que o compõem para clareza,
+        // mas a função de geração de capítulos precisará tratá-los.
+        bookBlocks: { // Usaremos uma estrutura 'bookBlocks' para facilitar a intercalação
+            profetasMaiores: ["Isaías", "Jeremias", "Lamentações", "Ezequiel", "Daniel"],
+            novoTestamento: [
+                "Mateus", "Marcos", "Lucas", "João", "Atos", "Romanos",
+                "1 Coríntios", "2 Coríntios", "Gálatas", "Efésios", "Filipenses",
+                "Colossenses", "1 Tessalonicenses", "2 Tessalonicenses",
+                "1 Timóteo", "2 Timóteo", "Tito", "Filemom", "Hebreus", "Tiago",
+                "1 Pedro", "2 Pedro", "1 João", "2 João", "3 João", "Judas", "Apocalipse"
+            ]
+        },
+        // 'books' não será usado diretamente para este plano na config,
+        // pois a chaptersList será gerada de forma customizada.
+        // Mas podemos calcular o total de capítulos para referência, se necessário.
+        allowedDays: [2, 5, 0], // Ter, Sex, Dom
+        chaptersPerReadingDay: 3,
+        intercalate: true // Um novo sinalizador para a lógica de criação
+    }
 ];
 
-// ==== UTILITY FUNCTIONS ====
+// --- Estado da Aplicação ---
+let currentUser = null;
+let userInfo = null;
+let activePlanId = null;
+let currentReadingPlan = null; // Incluirá dailyChapterReadStatus: { "Capítulo X Y": true }
+let userPlansList = [];
+let userGlobalWeeklyInteractions = { weekId: null, interactions: {} };
+let userStreakData = { lastInteractionDate: null, current: 0, longest: 0 };
 
-function getWeekIdentifier(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
 
-function convertToDate(value) {
-    if (!value) {
-        return null;
-    }
-    if (value instanceof Timestamp) {
-        return value.toDate();
-    }
-    if (value instanceof Date) {
-        return !isNaN(value.getTime()) ? value : null;
-    }
-    if (typeof value === 'string') {
-        const parsedDate = new Date(value);
-        return !isNaN(parsedDate.getTime()) ? parsedDate : null;
-    }
-    return null;
-}
+// --- Elementos da UI (Cache) ---
+const authSection = document.getElementById('auth-section');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginEmailInput = document.getElementById('login-email');
+const loginPasswordInput = document.getElementById('login-password');
+const signupEmailInput = document.getElementById('signup-email');
+const signupPasswordInput = document.getElementById('signup-password');
+const loginButton = document.getElementById('login-button');
+const signupButton = document.getElementById('signup-button');
+const logoutButton = document.getElementById('logout-button');
+const showSignupLink = document.getElementById('show-signup');
+const showLoginLink = document.getElementById('show-login');
+const userEmailSpan = document.getElementById('user-email');
+const authErrorDiv = document.getElementById('auth-error');
+const signupErrorDiv = document.getElementById('signup-error');
+const authLoadingDiv = document.getElementById('auth-loading');
+const planSelectorContainer = document.getElementById('plan-selector-container');
+const planSelect = document.getElementById('plan-select');
+const managePlansButton = document.getElementById('manage-plans-button');
+const planCreationSection = document.getElementById('plan-creation');
+const planNameInput = document.getElementById('plan-name');
+const googleDriveLinkInput = document.getElementById('google-drive-link');
+const startBookSelect = document.getElementById("start-book-select");
+const startChapterInput = document.getElementById("start-chapter-input");
+const endBookSelect = document.getElementById("end-book-select");
+const endChapterInput = document.getElementById("end-chapter-input");
+const booksSelect = document.getElementById("books-select");
+const chaptersInput = document.getElementById("chapters-input");
+const bookSuggestionsDatalist = document.getElementById("book-suggestions");
+const daysInput = document.getElementById("days-input");
+const createPlanButton = document.getElementById('create-plan');
+const cancelCreationButton = document.getElementById('cancel-creation-button');
+const planErrorDiv = document.getElementById('plan-error');
+const planLoadingCreateDiv = document.getElementById('plan-loading-create');
+const creationMethodRadios = document.querySelectorAll('input[name="creation-method"]');
+const intervalOptionsDiv = document.getElementById('interval-options');
+const selectionOptionsDiv = document.getElementById('selection-options');
+const durationMethodRadios = document.querySelectorAll('input[name="duration-method"]');
+const daysOptionDiv = document.getElementById('days-option');
+const endDateOptionDiv = document.getElementById('end-date-option');
+const startDateInput = document.getElementById('start-date-input');
+const endDateInput = document.getElementById('end-date-input');
+const chaptersPerDayOptionDiv = document.getElementById('chapters-per-day-option');
+const chaptersPerDayInput = document.getElementById('chapters-per-day-input');
+const periodicityCheckboxes = document.querySelectorAll('input[name="reading-day"]');
+const periodicityWarningDiv = document.getElementById('periodicity-warning');
+const readingPlanSection = document.getElementById('reading-plan');
+const readingPlanTitle = document.getElementById('reading-plan-title');
+const activePlanDriveLink = document.getElementById('active-plan-drive-link');
+const overdueReadingsSection = document.getElementById('overdue-readings');
+const overdueReadingsListDiv = document.getElementById('overdue-readings-list');
+const overdueReadingsLoadingDiv = document.getElementById('overdue-readings-loading');
+const upcomingReadingsSection = document.getElementById('upcoming-readings');
+const upcomingReadingsListDiv = document.getElementById('upcoming-readings-list');
+const upcomingReadingsLoadingDiv = document.getElementById('upcoming-readings-loading');
+const planViewErrorDiv = document.getElementById('plan-view-error');
+const progressBarContainer = document.querySelector('.progress-container');
+const progressBarFill = document.getElementById('progress-bar-fill');
+const progressText = document.getElementById('progress-text');
+const dailyReadingHeaderDiv = document.getElementById('daily-reading-header');
+const dailyReadingChaptersListDiv = document.getElementById('daily-reading-chapters-list');
+const completeDayButton = document.getElementById('complete-day-button');
+const deleteCurrentPlanButton = document.getElementById('delete-current-plan-button');
+const planLoadingViewDiv = document.getElementById('plan-loading-view');
+const globalWeeklyTrackerSection = document.getElementById('global-weekly-tracker-section');
+const globalDayIndicatorElements = document.querySelectorAll('#global-weekly-tracker-section .day-indicator');
+const recalculatePlanButton = document.getElementById('recalculate-plan');
+const showStatsButton = document.getElementById('show-stats-button');
+const showHistoryButton = document.getElementById('show-history-button');
+const recalculateModal = document.getElementById('recalculate-modal');
+const confirmRecalculateButton = document.getElementById('confirm-recalculate');
+const newPaceInput = document.getElementById('new-pace-input');
+const recalculateErrorDiv = document.getElementById('recalculate-error');
+const recalculateLoadingDiv = document.getElementById('recalculate-loading');
+const managePlansModal = document.getElementById('manage-plans-modal');
+const managePlansLoadingDiv = document.getElementById('manage-plans-loading');
+const managePlansErrorDiv = document.getElementById('manage-plans-error');
+const planListDiv = document.getElementById('plan-list');
+const createNewPlanButton = document.getElementById('create-new-plan-button');
+const createFavoritePlanButton = document.getElementById('create-favorite-plan-button'); // NOVO
+const statsModal = document.getElementById('stats-modal');
+const statsLoadingDiv = document.getElementById('stats-loading');
+const statsErrorDiv = document.getElementById('stats-error');
+const statsContentDiv = document.getElementById('stats-content');
+const statsActivePlanName = document.getElementById('stats-active-plan-name');
+const statsActivePlanProgress = document.getElementById('stats-active-plan-progress');
+const statsTotalChapters = document.getElementById('stats-total-chapters');
+const statsPlansCompleted = document.getElementById('stats-plans-completed');
+const statsAvgPace = document.getElementById('stats-avg-pace');
+const historyModal = document.getElementById('history-modal');
+const historyLoadingDiv = document.getElementById('history-loading');
+const historyErrorDiv = document.getElementById('history-error');
+const historyListDiv = document.getElementById('history-list');
+const perseveranceSection = document.getElementById('perseverance-section');
 
-function formatDateToISO(date) {
-    const validDate = convertToDate(date);
-    if (!validDate) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-    
-    const year = validDate.getUTCFullYear();
-    const month = String(validDate.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(validDate.getUTCDate()).padStart(2, '0');
+// --- Funções Auxiliares (Datas, Semana, Geração, Distribuição, Cálculo de Data) ---
+
+
+// MODIFICADO: Função crucial para obter a data LOCAL do usuário no formato YYYY-MM-DD.
+// Esta função substitui a necessidade de getCurrentUTCDateString() na maior parte da lógica de interação.
+function getCurrentLocalDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
 
-function formatDateForDisplay(date) {
-    const validDate = convertToDate(date);
-    if (!validDate) {
-        return 'Data Inválida';
+function getUTCWeekId(date = new Date()) {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
+}
+
+
+function getUTCWeekStartDate(date = new Date()) {
+    // MODIFICADO: Usa a data local para encontrar o início da semana UTC, mais consistente com a percepção do usuário.
+    const localDate = new Date(date);
+    const dayOfWeek = localDate.getUTCDay(); // O dia da semana UTC (0=Dom) ainda é a referência correta para o início da semana (Domingo).
+    const diff = localDate.getUTCDate() - dayOfWeek;
+    return new Date(Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), diff));
+}
+
+
+function dateDiffInDays(dateStr1, dateStr2) {
+    // MODIFICADO: Interpreta as strings de data como locais, convertendo para UTC apenas para o cálculo da diferença.
+    // Isso evita problemas de "off-by-one" devido a fusos horários.
+    const date1 = new Date(dateStr1);
+    const date2 = new Date(dateStr2);
+    // Zera a hora para comparar apenas os dias de calendário
+    date1.setHours(0, 0, 0, 0);
+    date2.setHours(0, 0, 0, 0);
+
+    if (isNaN(date1.getTime()) || isNaN(date2.getTime())) return Infinity;
+    const _MS_PER_DAY = 1000 * 60 * 60 * 24;
+    // Usa getTime() que é inerentemente UTC, então a diferença é correta.
+    return Math.round((date2.getTime() - date1.getTime()) / _MS_PER_DAY);
+}
+
+
+function addUTCDays(date, days) {
+    const result = new Date(date);
+    result.setUTCDate(result.getUTCDate() + days);
+    return result;
+}
+
+
+function formatUTCDateStringToBrasilian(dateString) {
+    if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return '--/--/----';
     }
-    const day = String(validDate.getUTCDate()).padStart(2, '0');
-    const month = String(validDate.getUTCMonth() + 1).padStart(2, '0');
-    const year = validDate.getUTCFullYear();
-    return `${day}/${month}/${year}`;
+    try {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        console.error("Error formatting date:", dateString, e);
+        return '--/--/----';
+    }
 }
 
-function timeElapsed(date) {
-    const validDate = convertToDate(date);
-    if (!validDate) { return 'Tempo desconhecido'; }
 
-    const now = new Date();
-    let diffInSeconds = Math.floor((now.getTime() - validDate.getTime()) / 1000);
-    if (diffInSeconds < 0) diffInSeconds = 0;
-
-    if (diffInSeconds < 60) return `${diffInSeconds} seg`;
-    let diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes} min`;
-    let diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours} hr`;
-    let diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 30) return `${diffInDays} dias`;
-    let diffInMonths = Math.floor(diffInDays / 30.44);
-    if (diffInMonths < 12) return `${diffInMonths} meses`;
-    let diffInYears = Math.floor(diffInDays / 365.25);
-    return `${diffInYears} anos`;
-}
-
-function isDateExpired(date) {
-    const validDate = convertToDate(date);
-    if (!validDate) return false;
-    const now = new Date();
-    const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    return validDate.getTime() < todayUTCStart.getTime();
-}
-
-function generateUniqueId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
-}
-
-function rehydrateTargets(targets) {
-    return targets.map(target => {
-        const rehydrated = { ...target };
-        const dateFields = ['date', 'deadlineDate', 'lastPrayedDate', 'resolutionDate', 'archivedDate', 'lastInteractionDate'];
-        dateFields.forEach(field => {
-            rehydrated[field] = convertToDate(rehydrated[field]);
-        });
-        if (Array.isArray(rehydrated.observations)) {
-            rehydrated.observations = rehydrated.observations
-                .map(obs => ({
-                    ...obs,
-                    date: convertToDate(obs.date)
-                }))
-                .filter(obs => obs.date) 
-                .sort((a, b) => b.date.getTime() - a.date.getTime());
-        } else {
-            rehydrated.observations = [];
+function calculateDateForDay(baseDateStr, targetReadingDayCount, allowedDaysOfWeek) {
+    if (!baseDateStr || isNaN(targetReadingDayCount) || targetReadingDayCount < 1 || !Array.isArray(allowedDaysOfWeek)) {
+        console.error("Invalid input for calculateDateForDay", { baseDateStr, targetReadingDayCount, allowedDaysOfWeek });
+        return null;
+    }
+    const baseDate = new Date(baseDateStr + 'T00:00:00Z');
+    if (isNaN(baseDate.getTime())) {
+        console.error("Invalid base date provided to calculateDateForDay:", baseDateStr);
+        return null;
+    }
+    const validAllowedDays = allowedDaysOfWeek.length > 0 ? allowedDaysOfWeek : [0, 1, 2, 3, 4, 5, 6];
+    let currentDate = new Date(baseDate);
+    let daysElapsed = 0;
+    let readingDaysFound = 0;
+    while (readingDaysFound < targetReadingDayCount) {
+        if (validAllowedDays.includes(currentDate.getUTCDay())) {
+            readingDaysFound++;
         }
-        return rehydrated;
+        if (readingDaysFound === targetReadingDayCount) {
+            return currentDate.toISOString().split('T')[0];
+        }
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        daysElapsed++;
+        if (daysElapsed > 365 * 10) { // Safety break after 10 years of calculation
+            console.error("Potential infinite loop in calculateDateForDay. Aborting.", { baseDateStr, targetReadingDayCount, allowedDaysOfWeek });
+            return null;
+        }
+    }
+    // Should be unreachable if targetReadingDayCount >= 1
+    return null;
+}
+
+
+function getEffectiveDateForDay(planData, targetDayNumber) {
+    if (!planData || !planData.startDate || !planData.allowedDays || isNaN(targetDayNumber) || targetDayNumber < 1) {
+        console.error("Invalid input for getEffectiveDateForDay", { planData: planData ? planData.id : 'no plan', targetDayNumber });
+        return null;
+    }
+    if (planData.recalculationBaseDate && planData.recalculationBaseDay &&
+        /^\d{4}-\d{2}-\d{2}$/.test(planData.recalculationBaseDate) &&
+        targetDayNumber >= planData.recalculationBaseDay)
+    {
+        const readingDaysSinceBase = targetDayNumber - planData.recalculationBaseDay;
+        const targetDayFromBase = readingDaysSinceBase + 1;
+        return calculateDateForDay(planData.recalculationBaseDate, targetDayFromBase, planData.allowedDays);
+    } else {
+        return calculateDateForDay(planData.startDate, targetDayNumber, planData.allowedDays);
+    }
+}
+
+
+function populateBookSelectors() {
+    if (!startBookSelect || !endBookSelect || !booksSelect) { console.error("Erro: Elementos select de livros não encontrados."); return; }
+    const defaultOption = '<option value="">-- Selecione --</option>';
+    startBookSelect.innerHTML = defaultOption;
+    endBookSelect.innerHTML = defaultOption;
+    booksSelect.innerHTML = '';
+    canonicalBookOrder.forEach(book => {
+        const optionHTML = `<option value="${book}">${book}</option>`;
+        startBookSelect.insertAdjacentHTML('beforeend', optionHTML);
+        endBookSelect.insertAdjacentHTML('beforeend', optionHTML);
+        booksSelect.insertAdjacentHTML('beforeend', optionHTML);
     });
 }
-// ==== END UTILITY FUNCTIONS ====
 
 
-// ==== AUTHENTICATION ====
-function updateAuthUI(user) {
-    const authStatus = document.getElementById('authStatus');
-    const btnLogout = document.getElementById('btnLogout');
-    const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
-    const authStatusContainer = document.querySelector('.auth-status-container');
-
-    if (user) {
-        authStatusContainer.style.display = 'flex';
-        btnLogout.style.display = 'inline-block';
-        emailPasswordAuthForm.style.display = 'none';
-        let providerType = 'desconhecido';
-        if (user.providerData[0]?.providerId === 'password') providerType = 'E-mail/Senha';
-        else if (user.providerData[0]?.providerId === 'google.com') providerType = 'Google';
-        authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
-    } else {
-        authStatusContainer.style.display = 'none'; 
-        btnLogout.style.display = 'none';
-        emailPasswordAuthForm.style.display = 'block'; 
-        document.getElementById('passwordResetMessage').style.display = 'none';
-    }
-}
-
-async function signUpWithEmailPassword() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    passwordResetMessageDiv.style.display = "none";
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert("Cadastro realizado com sucesso! Você já está logado.");
-    } catch (error) {
-        console.error("Erro ao cadastrar com e-mail/senha:", error);
-        alert("Erro ao cadastrar: " + error.message);
-    }
-}
-
-async function signInWithEmailPassword() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    passwordResetMessageDiv.style.display = "none";
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-        console.error("Erro ao entrar com e-mail/senha:", error);
-        alert("Erro ao entrar: " + error.message);
-    }
-}
-
-async function resetPassword() {
-    const email = document.getElementById('email').value;
-    if (!email) {
-        alert("Por favor, insira seu e-mail para redefinir a senha.");
-        return;
-    }
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    try {
-        await sendPasswordResetEmail(auth, email);
-        passwordResetMessageDiv.textContent = "Um e-mail de redefinição de senha foi enviado para " + email + ". Verifique sua caixa de entrada e spam.";
-        passwordResetMessageDiv.style.color = "green";
-        passwordResetMessageDiv.style.display = "block";
-    } catch (error) {
-        console.error("Erro ao enviar e-mail de redefinição:", error);
-        passwordResetMessageDiv.textContent = "Erro ao redefinir senha: " + error.message;
-        passwordResetMessageDiv.style.color = "red";
-        passwordResetMessageDiv.style.display = "block";
-    }
-}
-// ==== END AUTHENTICATION ====
-
-
-// ==== MAIN DATA AND LOGIC ====
-
-// --- Data Loading ---
-async function loadData(user) {
-    updateAuthUI(user);
-    const uid = user ? user.uid : null;
-
-    if (uid) {
-        console.log(`[loadData] User ${uid} authenticated. Loading data...`);
-        document.getElementById('appContent').style.display = 'none';
-        document.getElementById('dailySection').style.display = 'block';
-        document.getElementById('sectionSeparator').style.display = 'block';
-        document.getElementById('mainPanel').style.display = 'none';
-        document.getElementById('archivedPanel').style.display = 'none';
-        document.getElementById('resolvedPanel').style.display = 'none';
-        document.getElementById('weeklyPerseveranceChart').style.display = 'block';
-        document.getElementById('perseveranceSection').style.display = 'block';
-
-        try {
-            await loadPerseveranceData(uid); 
-            await fetchPrayerTargets(uid);
-            await fetchArchivedTargets(uid);
-            resolvedTargets = archivedTargets.filter(target => target.resolved);
-            checkExpiredDeadlines();
-            renderTargets();
-            renderArchivedTargets();
-            renderResolvedTargets();
-            await loadDailyTargets();
-            showPanel('dailySection');
-
-        } catch (error) {
-             console.error("[loadData] Error during data loading process:", error);
-             alert("Ocorreu um erro ao carregar seus dados. Por favor, recarregue a página ou tente fazer login novamente.");
-             resetPerseveranceUI();
-             prayerTargets = []; archivedTargets = []; resolvedTargets = []; currentDailyTargets = [];
-             renderTargets(); renderArchivedTargets(); renderResolvedTargets();
-             document.getElementById("dailyTargets").innerHTML = "<p>Erro ao carregar dados. Faça login novamente.</p>";
-         }
-    } else {
-        console.log("[loadData] No user authenticated. Clearing data and UI.");
-        document.getElementById('appContent').style.display = 'none';
-        document.getElementById('dailySection').style.display = 'none';
-        document.getElementById('sectionSeparator').style.display = 'none';
-        document.getElementById('mainPanel').style.display = 'none';
-        document.getElementById('archivedPanel').style.display = 'none';
-        document.getElementById('resolvedPanel').style.display = 'none';
-        document.getElementById('weeklyPerseveranceChart').style.display = 'none';
-        document.getElementById('perseveranceSection').style.display = 'none';
-        prayerTargets = []; archivedTargets = []; resolvedTargets = []; currentDailyTargets = [];
-        renderTargets(); renderArchivedTargets(); renderResolvedTargets();
-        document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>";
-        document.getElementById('dailyVerses').textContent = '';
-        resetPerseveranceUI(); 
-    }
-}
-
-async function fetchPrayerTargets(uid) {
-    prayerTargets = [];
-    const targetsRef = collection(db, "users", uid, "prayerTargets");
-    const targetsSnapshot = await getDocs(query(targetsRef, orderBy("date", "desc")));
-    console.log(`[fetchPrayerTargets] Found ${targetsSnapshot.size} active targets for user ${uid}`);
-    const rawTargets = targetsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    prayerTargets = rehydrateTargets(rawTargets);
-    console.log("[fetchPrayerTargets] Rehydrated active prayerTargets count:", prayerTargets.length);
-}
-
-async function fetchArchivedTargets(uid) {
-    archivedTargets = [];
-    const archivedRef = collection(db, "users", uid, "archivedTargets");
-    const archivedSnapshot = await getDocs(query(archivedRef, orderBy("date", "desc"))); 
-    console.log(`[fetchArchivedTargets] Found ${archivedSnapshot.size} archived targets for user ${uid}`);
-    const rawArchived = archivedSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    archivedTargets = rehydrateTargets(rawArchived);
-    archivedTargets.sort((a, b) => {
-        const dateA = a.archivedDate instanceof Date ? a.archivedDate.getTime() : 0;
-        const dateB = b.archivedDate instanceof Date ? b.archivedDate.getTime() : 0;
-        return dateB - dateA;
-    });
-    console.log("[fetchArchivedTargets] Rehydrated and sorted archivedTargets count:", archivedTargets.length);
-}
-
-// --- Rendering ---
-function renderTargets() {
-    const targetListDiv = document.getElementById('targetList');
-    targetListDiv.innerHTML = '';
-    let filteredAndPagedTargets = [...prayerTargets];
-
-    if (currentSearchTermMain) filteredAndPagedTargets = filterTargets(filteredAndPagedTargets, currentSearchTermMain);
-    if (showDeadlineOnly) filteredAndPagedTargets = filteredAndPagedTargets.filter(target => target.hasDeadline && target.deadlineDate);
-    const showExpiredOnlyMainCheckbox = document.getElementById('showExpiredOnlyMain');
-    if (showExpiredOnlyMainCheckbox?.checked) filteredAndPagedTargets = filteredAndPagedTargets.filter(target => target.hasDeadline && target.deadlineDate && isDateExpired(target.deadlineDate));
-
-     if (showDeadlineOnly || showExpiredOnlyMainCheckbox?.checked) {
-        filteredAndPagedTargets.sort((a, b) => {
-            const dateA = a.deadlineDate ? a.deadlineDate.getTime() : Infinity;
-            const dateB = b.deadlineDate ? b.deadlineDate.getTime() : Infinity;
-            if (dateA !== dateB) return dateA - dateB; 
-             const creationDateA = a.date ? a.date.getTime() : 0;
-             const creationDateB = b.date ? b.date.getTime() : 0;
-             return creationDateB - creationDateA; 
-        });
-    } else {
-        filteredAndPagedTargets.sort((a, b) => {
-             const creationDateA = a.date ? a.date.getTime() : 0;
-             const creationDateB = b.date ? b.date.getTime() : 0;
-             return creationDateB - creationDateA;
-         });
-    }
-
-    const startIndex = (currentPage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredAndPagedTargets.slice(startIndex, endIndex);
-    lastDisplayedTargets = targetsToDisplay; 
-
-    if (targetsToDisplay.length === 0) {
-        if (filteredAndPagedTargets.length > 0 && currentPage > 1) {
-            currentPage = 1; renderTargets(); return;
-        } else targetListDiv.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
-    } else {
-        targetsToDisplay.forEach((target) => {
-             if (!target || !target.id) { console.warn("[renderTargets] Skipping invalid target:", target); return; }
-            const targetDiv = document.createElement("div");
-            targetDiv.classList.add("target");
-            targetDiv.dataset.targetId = target.id;
-            const formattedDate = formatDateForDisplay(target.date);
-            const elapsed = timeElapsed(target.date);
-
-            let categoryTag = '';
-            if (target.category) {
-                categoryTag = `<span class="category-tag">${target.category}</span>`;
-            }
-
-            let deadlineTag = '';
-            if (target.hasDeadline && target.deadlineDate) {
-                const formattedDeadline = formatDateForDisplay(target.deadlineDate);
-                deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formattedDeadline}</span>`;
-            }
-            const observations = Array.isArray(target.observations) ? target.observations : [];
-            targetDiv.innerHTML = `
-                <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
-                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-                <p><strong>Data Criação:</strong> ${formattedDate}</p>
-                <p><strong>Tempo Decorrido:</strong> ${elapsed}</p>
-                ${renderObservations(observations, false, target.id)}
-                <div class="target-actions">
-                    <button class="resolved btn" onclick="markAsResolved('${target.id}')">Respondido</button>
-                    <button class="archive btn" onclick="archiveTarget('${target.id}')">Arquivar</button>
-                    <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
-                    ${target.hasDeadline ? `<button class="edit-deadline btn" onclick="editDeadline('${target.id}')">Editar Prazo</button>` : ''}
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
-                </div>
-                <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
-                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-                `;
-            targetListDiv.appendChild(targetDiv);
-            renderObservationForm(target.id); 
-        });
-    }
-    renderPagination('mainPanel', currentPage, filteredAndPagedTargets);
-}
-
-function renderArchivedTargets() {
-    const archivedListDiv = document.getElementById('archivedList');
-    archivedListDiv.innerHTML = '';
-    let filteredAndPagedArchived = [...archivedTargets]; 
-
-    if (currentSearchTermArchived) filteredAndPagedArchived = filterTargets(filteredAndPagedArchived, currentSearchTermArchived);
-
-    const startIndex = (currentArchivedPage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredAndPagedArchived.slice(startIndex, endIndex);
-
-    if (targetsToDisplay.length === 0) {
-        if (filteredAndPagedArchived.length > 0 && currentArchivedPage > 1) {
-             currentArchivedPage = 1; renderArchivedTargets(); return;
-        } else archivedListDiv.innerHTML = '<p>Nenhum alvo arquivado encontrado.</p>';
-    } else {
-        targetsToDisplay.forEach((target) => {
-             if (!target || !target.id) return;
-            const archivedDiv = document.createElement("div");
-            archivedDiv.classList.add("target", "archived");
-            if (target.resolved) archivedDiv.classList.add("resolved"); 
-            archivedDiv.dataset.targetId = target.id;
-
-            const formattedCreationDate = formatDateForDisplay(target.date);
-            const formattedArchivedDate = target.archivedDate ? formatDateForDisplay(target.archivedDate) : 'N/A';
-            const elapsedCreation = timeElapsed(target.date);
-
-            let categoryTag = '';
-            if (target.category) {
-                categoryTag = `<span class="category-tag">${target.category}</span>`;
-            }
-
-            let resolvedTag = '';
-            if (target.resolved && target.resolutionDate) {
-                resolvedTag = `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>`;
-            } else if (target.resolved) {
-                 resolvedTag = `<span class="resolved-tag">Respondido</span>`;
-            }
-
-            const observations = Array.isArray(target.observations) ? target.observations : [];
-            archivedDiv.innerHTML = `
-                <h3>${categoryTag} ${resolvedTag} ${target.title || 'Sem Título'}</h3>
-                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-                <p><strong>Data Criação:</strong> ${formattedCreationDate}</p>
-                <p><strong>Data Arquivamento:</strong> ${formattedArchivedDate}</p>
-                <p><strong>Tempo Decorrido (Criação):</strong> ${elapsedCreation}</p>
-                ${renderObservations(observations, false, target.id)}
-                <div class="target-actions">
-                    <button class="delete btn" onclick="deleteArchivedTarget('${target.id}')">Excluir Permanentemente</button>
-                    <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
-                </div>
-                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-                 `;
-            archivedListDiv.appendChild(archivedDiv);
-            renderObservationForm(target.id);
-        });
-    }
-    renderPagination('archivedPanel', currentArchivedPage, filteredAndPagedArchived);
-}
-
-function renderResolvedTargets() {
-    const resolvedListDiv = document.getElementById('resolvedList');
-    resolvedListDiv.innerHTML = '';
-    let filteredAndPagedResolved = [...resolvedTargets];
-
-    if (currentSearchTermResolved) filteredAndPagedResolved = filterTargets(filteredAndPagedResolved, currentSearchTermResolved);
-
-    filteredAndPagedResolved.sort((a, b) => {
-        const dateA = a.resolutionDate ? a.resolutionDate.getTime() : 0;
-        const dateB = b.resolutionDate ? b.resolutionDate.getTime() : 0;
-        return dateB - dateA; 
-    });
-
-
-    const startIndex = (currentResolvedPage - 1) * targetsPerPage;
-    const endIndex = startIndex + targetsPerPage;
-    const targetsToDisplay = filteredAndPagedResolved.slice(startIndex, endIndex);
-
-    if (targetsToDisplay.length === 0) {
-         if (filteredAndPagedResolved.length > 0 && currentResolvedPage > 1) {
-             currentResolvedPage = 1; renderResolvedTargets(); return;
-         } else resolvedListDiv.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
-    } else {
-        targetsToDisplay.forEach((target) => {
-            if (!target || !target.id) return;
-            const resolvedDiv = document.createElement("div");
-            resolvedDiv.classList.add("target", "resolved"); 
-            resolvedDiv.dataset.targetId = target.id;
-
-            const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
-            let totalTime = 'N/A';
-            if (target.date && target.resolutionDate) {
-                 let diffInSeconds = Math.floor((target.resolutionDate.getTime() - target.date.getTime()) / 1000);
-                 if (diffInSeconds < 0) diffInSeconds = 0;
-                 if (diffInSeconds < 60) totalTime = `${diffInSeconds} seg`;
-                 else { let diffInMinutes = Math.floor(diffInSeconds / 60);
-                     if (diffInMinutes < 60) totalTime = `${diffInMinutes} min`;
-                     else { let diffInHours = Math.floor(diffInMinutes / 60);
-                         if (diffInHours < 24) totalTime = `${diffInHours} hr`;
-                         else { let diffInDays = Math.floor(diffInHours / 24);
-                             if (diffInDays < 30) totalTime = `${diffInDays} dias`;
-                             else { let diffInMonths = Math.floor(diffInDays / 30.44);
-                                 if (diffInMonths < 12) totalTime = `${diffInMonths} meses`;
-                                 else { let diffInYears = Math.floor(diffInDays / 365.25); totalTime = `${diffInYears} anos`; }}}}}
-            }
-
-            let categoryTag = '';
-            if (target.category) {
-                categoryTag = `<span class="category-tag">${target.category}</span>`;
-            }
-
-            const observations = Array.isArray(target.observations) ? target.observations : [];
-            resolvedDiv.innerHTML = `
-                <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
-                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-                <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
-                <p><strong>Data Respondido:</strong> ${formattedResolutionDate}</p>
-                <p><strong>Tempo Total (Criação -> Resposta):</strong> ${totalTime}</p>
-                ${renderObservations(observations, false, target.id)}
-                 <div class="target-actions">
-                    <button class="add-observation btn" onclick="toggleAddObservation('${target.id}')">Observação</button>
-                    <button class="edit-category btn" onclick="editCategory('${target.id}')">Editar Categoria</button>
-                </div>
-                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-                 `;
-            resolvedListDiv.appendChild(resolvedDiv);
-            renderObservationForm(target.id);
-        });
-    }
-    renderPagination('resolvedPanel', currentResolvedPage, filteredAndPagedResolved);
-}
-
-
-function renderPagination(panelId, currentPageVariable, targetsArray) {
-    const paginationDiv = document.getElementById(`pagination-${panelId}`);
-    if (!paginationDiv) return;
-    paginationDiv.innerHTML = '';
-    const totalItems = targetsArray.length;
-    const totalPages = Math.ceil(totalItems / targetsPerPage);
-
-    if (totalPages <= 1) { paginationDiv.style.display = 'none'; return; }
-    else paginationDiv.style.display = 'flex';
-
-    const prevLink = document.createElement('a');
-    prevLink.href = '#';
-    prevLink.innerHTML = '« Anterior';
-    prevLink.classList.add('page-link');
-    if (currentPageVariable <= 1) { prevLink.classList.add('disabled'); }
-    else { prevLink.addEventListener('click', (event) => { event.preventDefault(); handlePageChange(panelId, currentPageVariable - 1); }); }
-    paginationDiv.appendChild(prevLink);
-
-    const pageIndicator = document.createElement('span');
-    pageIndicator.textContent = `Página ${currentPageVariable} de ${totalPages}`;
-    paginationDiv.appendChild(pageIndicator);
-
-    const nextLink = document.createElement('a');
-    nextLink.href = '#';
-    nextLink.innerHTML = 'Próxima »';
-    nextLink.classList.add('page-link');
-    if (currentPageVariable >= totalPages) { nextLink.classList.add('disabled'); }
-    else { nextLink.addEventListener('click', (event) => { event.preventDefault(); handlePageChange(panelId, currentPageVariable + 1); }); }
-    paginationDiv.appendChild(nextLink);
-}
-
-
-function handlePageChange(panelId, newPage) {
-    if (panelId === 'mainPanel') currentPage = newPage;
-    else if (panelId === 'archivedPanel') currentArchivedPage = newPage;
-    else if (panelId === 'resolvedPanel') currentResolvedPage = newPage;
-
-    if (panelId === 'mainPanel') renderTargets();
-    else if (panelId === 'archivedPanel') renderArchivedTargets();
-    else if (panelId === 'resolvedPanel') renderResolvedTargets();
-
-    const panelElement = document.getElementById(panelId);
-    if (panelElement) panelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// --- Add/Edit/Archive ---
-document.getElementById("prayerForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) { alert("Você precisa estar logado."); return; }
-    const uid = user.uid;
-    const title = document.getElementById("title").value.trim();
-    const details = document.getElementById("details").value.trim();
-    const dateInput = document.getElementById("date").value;
-    const hasDeadline = document.getElementById("hasDeadline").checked;
-    const deadlineDateInput = document.getElementById("deadlineDate").value;
-    const category = document.getElementById("categorySelect").value;
-
-    if (!title || !dateInput) { alert("Título e Data Criação são obrigatórios."); return; }
-
-    const dateLocal = new Date(dateInput + 'T00:00:00');
-    if (isNaN(dateLocal.getTime())) { alert("Data de criação inválida."); return; }
-
-    let deadlineDateLocal = null;
-    if (hasDeadline) {
-        if (!deadlineDateInput) { alert("Selecione o Prazo de Validade."); return; }
-        deadlineDateLocal = new Date(deadlineDateInput + 'T00:00:00');
-        if (isNaN(deadlineDateLocal.getTime())) { alert("Data do Prazo de Validade inválida."); return; }
-        if (deadlineDateLocal.getTime() < dateLocal.getTime()) { alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return; }
-    }
-
-    const target = {
-        title: title,
-        details: details,
-        date: Timestamp.fromDate(dateLocal),
-        hasDeadline: hasDeadline,
-        deadlineDate: deadlineDateLocal ? Timestamp.fromDate(deadlineDateLocal) : null,
-        category: category || null,
-        archived: false,
-        resolved: false,
-        resolutionDate: null,
-        observations: [],
-        userId: uid,
-        lastPrayedDate: null 
-    };
-
-    try {
-        const docRef = await addDoc(collection(db, "users", uid, "prayerTargets"), target);
-        const newLocalTarget = rehydrateTargets([{ ...target, id: docRef.id }])[0];
-        prayerTargets.unshift(newLocalTarget); 
-        prayerTargets.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
-
-        document.getElementById("prayerForm").reset();
-        document.getElementById('deadlineContainer').style.display = 'none';
-        document.getElementById('categorySelect').value = ''; 
-        document.getElementById('date').value = formatDateToISO(new Date()); 
-        showPanel('mainPanel'); currentPage = 1; renderTargets(); 
-        alert('Alvo de oração adicionado com sucesso!');
-    } catch (error) { console.error("Error adding prayer target: ", error); alert("Erro ao adicionar alvo: " + error.message); }
-});
-
-window.markAsResolved = async function(targetId) {
-    const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-    const userId = user.uid;
-    const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-    if (targetIndex === -1) { alert("Erro: Alvo não encontrado na lista ativa."); return; }
-    const targetData = prayerTargets[targetIndex];
-    if (!confirm(`Marcar o alvo "${targetData.title || targetId}" como respondido? Ele será movido para Arquivados.`)) return;
-    const resolutionDate = Timestamp.fromDate(new Date()); 
-    const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
-    const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
-    try {
-        const archivedData = {
-            ...targetData, 
-            date: targetData.date ? Timestamp.fromDate(targetData.date) : null,
-            deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
-            lastPrayedDate: targetData.lastPrayedDate ? Timestamp.fromDate(targetData.lastPrayedDate) : null,
-            observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
-                ...obs,
-                date: obs.date ? Timestamp.fromDate(obs.date) : null
-            })) : [],
-            resolved: true,
-            archived: true,
-            resolutionDate: resolutionDate,
-            archivedDate: resolutionDate 
-         };
-        delete archivedData.id; 
-        
-        const batch = writeBatch(db);
-        batch.delete(activeTargetRef); 
-        batch.set(archivedTargetRef, archivedData); 
-        await batch.commit();
-
-        prayerTargets.splice(targetIndex, 1); 
-        const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0]; 
-        archivedTargets.unshift(newArchivedLocal); 
-
-        archivedTargets.sort((a, b) => (b.archivedDate ? b.archivedDate.getTime() : 0) - (a.archivedDate ? a.archivedDate.getTime() : 0));
-        resolvedTargets = archivedTargets.filter(t => t.resolved);
-        resolvedTargets.sort((a, b) => (b.resolutionDate ? b.resolutionDate.getTime() : 0) - (a.resolutionDate ? a.resolutionDate.getTime() : 0));
-
-        renderTargets();
-        renderArchivedTargets();
-        renderResolvedTargets();
-        alert('Alvo marcado como respondido e movido para Arquivados.');
-    } catch (error) { console.error("Error marking target as resolved: ", error); alert("Erro ao marcar como respondido: " + error.message); }
-};
-
-window.archiveTarget = async function(targetId) {
-    const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-    const userId = user.uid;
-    const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-    if (targetIndex === -1) { alert("Erro: Alvo não encontrado na lista ativa."); return; }
-    const targetData = prayerTargets[targetIndex];
-    if (!confirm(`Arquivar o alvo "${targetData.title || targetId}"? Ele será movido para Arquivados.`)) return;
-    const archiveTimestamp = Timestamp.fromDate(new Date()); 
-    const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
-    const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
-    try {
-         const archivedData = {
-            ...targetData,
-             date: targetData.date ? Timestamp.fromDate(targetData.date) : null,
-             deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
-             lastPrayedDate: targetData.lastPrayedDate ? Timestamp.fromDate(targetData.lastPrayedDate) : null,
-             observations: Array.isArray(targetData.observations) ? targetData.observations.map(obs => ({
-                 ...obs,
-                 date: obs.date ? Timestamp.fromDate(obs.date) : null
-                })) : [],
-             resolved: false, 
-             archived: true,
-             archivedDate: archiveTimestamp, 
-         };
-        delete archivedData.id;
-        
-        const batch = writeBatch(db);
-        batch.delete(activeTargetRef);
-        batch.set(archivedTargetRef, archivedData);
-        await batch.commit();
-
-        prayerTargets.splice(targetIndex, 1);
-        const newArchivedLocal = rehydrateTargets([{ ...archivedData, id: targetId }])[0];
-        archivedTargets.unshift(newArchivedLocal);
-        archivedTargets.sort((a, b) => (b.archivedDate ? b.archivedDate.getTime() : 0) - (a.archivedDate ? a.archivedDate.getTime() : 0));
-        resolvedTargets = archivedTargets.filter(t => t.resolved); 
-
-        renderTargets();
-        renderArchivedTargets();
-        renderResolvedTargets(); 
-        alert('Alvo arquivado com sucesso!');
-    } catch (error) { console.error("Error archiving target: ", error); alert("Erro ao arquivar alvo: " + error.message); }
-};
-
-window.deleteArchivedTarget = async function(targetId) {
-     const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-     const userId = user.uid;
-     const targetTitle = archivedTargets.find(t => t.id === targetId)?.title || targetId;
-     if (!confirm(`Tem certeza que deseja excluir PERMANENTEMENTE o alvo arquivado "${targetTitle}"? Esta ação não pode ser desfeita.`)) return;
-     const archivedTargetRef = doc(db, "users", userId, "archivedTargets", targetId);
-     const clickCountsRef = doc(db, "prayerClickCounts", targetId); 
-     try {
-         const batch = writeBatch(db);
-         batch.delete(archivedTargetRef); 
-         batch.delete(clickCountsRef); 
-         await batch.commit();
-
-         const targetIndex = archivedTargets.findIndex(t => t.id === targetId);
-         if (targetIndex !== -1) archivedTargets.splice(targetIndex, 1);
-         resolvedTargets = archivedTargets.filter(target => target.resolved); 
-         resolvedTargets.sort((a, b) => (b.resolutionDate ? b.resolutionDate.getTime() : 0) - (a.resolutionDate ? a.resolutionDate.getTime() : 0));
-
-         renderArchivedTargets();
-         renderResolvedTargets();
-         alert('Alvo excluído permanentemente!');
-     } catch (error) { console.error("Error deleting archived target: ", error); alert("Erro ao excluir alvo arquivado: " + error.message); }
-};
-
-
-// --- Observations ---
-window.toggleAddObservation = function(targetId) {
-    const formDiv = document.getElementById(`observationForm-${targetId}`);
-    if (!formDiv) return;
-    const isVisible = formDiv.style.display === 'block';
-
-    const deadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
-    const categoryForm = document.getElementById(`editCategoryForm-${targetId}`);
-    if(deadlineForm) deadlineForm.style.display = 'none';
-    if(categoryForm) categoryForm.style.display = 'none';
-
-    formDiv.style.display = isVisible ? 'none' : 'block';
-    if (!isVisible) {
-        formDiv.querySelector('textarea')?.focus();
-        const dateInput = formDiv.querySelector(`#observationDate-${targetId}`);
-        if (dateInput && !dateInput.value) dateInput.value = formatDateToISO(new Date());
-    }
-};
-
-function renderObservationForm(targetId) {
-    const formDiv = document.getElementById(`observationForm-${targetId}`);
-    if (!formDiv) return;
-    formDiv.innerHTML = `
-        <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%; margin-bottom: 5px;"></textarea>
-        <input type="date" id="observationDate-${targetId}" style="width: 95%; margin-bottom: 5px;">
-        <button class="btn" onclick="saveObservation('${targetId}')" style="background-color: #7cb17c;">Salvar Observação</button>
-    `;
-    document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
-}
-
-window.saveObservation = async function(targetId) {
-    const observationText = document.getElementById(`observationText-${targetId}`)?.value.trim();
-    const observationDateInput = document.getElementById(`observationDate-${targetId}`)?.value;
-    if (!observationText || !observationDateInput) { alert('Texto e Data da observação são obrigatórios.'); return; }
-    
-    const observationDateLocal = new Date(observationDateInput + 'T00:00:00');
-    if (isNaN(observationDateLocal.getTime())) { alert('Data da observação inválida.'); return; }
-
-    const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-    const userId = user.uid;
-    let targetRef, targetList, targetIndex = -1, isArchived = false, isResolved = false;
-
-    targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-    if (targetIndex !== -1) {
-        targetRef = doc(db, "users", userId, "prayerTargets", targetId);
-        targetList = prayerTargets;
-    } else {
-        targetIndex = archivedTargets.findIndex(t => t.id === targetId);
-        if (targetIndex !== -1) {
-            targetRef = doc(db, "users", userId, "archivedTargets", targetId);
-            targetList = archivedTargets;
-            isArchived = true;
-            isResolved = archivedTargets[targetIndex].resolved; 
-        } else {
-            alert("Erro: Alvo não encontrado.");
-            return;
+function generateChaptersInRange(startBook, startChap, endBook, endChap) {
+    const chapters = [];
+    const startIndex = canonicalBookOrder.indexOf(startBook);
+    const endIndex = canonicalBookOrder.indexOf(endBook);
+    if (startIndex === -1 || endIndex === -1) { showErrorMessage(planErrorDiv, "Erro: Livro inicial ou final inválido."); return null; }
+    if (startIndex > endIndex) { showErrorMessage(planErrorDiv, "Erro: O livro inicial deve vir antes do livro final."); return null; }
+    if (isNaN(startChap) || startChap < 1 || startChap > bibleBooksChapters[startBook]) { showErrorMessage(planErrorDiv, `Erro: Capítulo inicial inválido para ${startBook} (máx ${bibleBooksChapters[startBook]}).`); return null; }
+    if (isNaN(endChap) || endChap < 1 || endChap > bibleBooksChapters[endBook]) { showErrorMessage(planErrorDiv, `Erro: Capítulo final inválido para ${endBook} (máx ${bibleBooksChapters[endBook]}).`); return null; }
+    if (startIndex === endIndex && startChap > endChap) { showErrorMessage(planErrorDiv, "Erro: Capítulo inicial maior que o final no mesmo livro."); return null; }
+    for (let i = startIndex; i <= endIndex; i++) {
+        const currentBook = canonicalBookOrder[i];
+        const totalChapters = bibleBooksChapters[currentBook];
+        const chapStart = (i === startIndex) ? startChap : 1;
+        const chapEnd = (i === endIndex) ? endChap : totalChapters;
+        for (let j = chapStart; j <= chapEnd; j++) {
+            chapters.push(`${currentBook} ${j}`);
         }
     }
-
-    const newObservation = {
-        text: observationText,
-        date: Timestamp.fromDate(observationDateLocal), 
-        id: generateUniqueId(), 
-        targetId: targetId 
-    };
-
-    try {
-        const targetDocSnap = await getDoc(targetRef);
-        if (!targetDocSnap.exists()) throw new Error("Target document does not exist in Firestore.");
-
-        const currentData = targetDocSnap.data();
-        const currentObservations = currentData.observations || []; 
-        currentObservations.push(newObservation); 
-
-        currentObservations.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0));
-
-        await updateDoc(targetRef, { observations: currentObservations });
-
-        const currentTargetLocal = targetList[targetIndex];
-        if (!Array.isArray(currentTargetLocal.observations)) currentTargetLocal.observations = [];
-        currentTargetLocal.observations.push({ ...newObservation, date: newObservation.date.toDate() });
-        currentTargetLocal.observations.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
-
-        if (isArchived) {
-            renderArchivedTargets(); 
-            if (isResolved) {
-                renderResolvedTargets(); 
-            }
-        } else {
-            renderTargets(); 
-            if (document.getElementById('dailyTargets').querySelector(`.target[data-target-id="${targetId}"]`)) {
-                 await loadDailyTargets();
-             }
-        }
-
-        toggleAddObservation(targetId); 
-        document.getElementById(`observationText-${targetId}`).value = ''; 
-
-    } catch (error) { console.error("Error saving observation:", error); alert("Erro ao salvar observação: " + error.message); }
-};
-
-function renderObservations(observations, isExpanded = false, targetId = null) {
-    if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
-    
-    observations.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
-    
-    const visibleObservations = observations; 
-
-    let observationsHTML = `<div class="observations">`;
-    visibleObservations.forEach(observation => {
-        if (!observation || !observation.date) return; 
-        const formattedDate = formatDateForDisplay(observation.date);
-        const text = observation.text || '(Observação vazia)';
-        observationsHTML += `<p class="observation-item"><strong>${formattedDate}:</strong> ${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`;
-    });
-    
-    observationsHTML += `</div>`;
-    return observationsHTML;
+    return chapters;
 }
 
-// --- Deadlines ---
-document.getElementById('hasDeadline').addEventListener('change', function() {
-    document.getElementById('deadlineContainer').style.display = this.checked ? 'block' : 'none';
-    if (!this.checked) document.getElementById('deadlineDate').value = '';
-});
 
-function handleDeadlineFilterChange() { showDeadlineOnly = document.getElementById('showDeadlineOnly').checked; currentPage = 1; renderTargets(); }
-function handleExpiredOnlyMainChange() { currentPage = 1; renderTargets(); }
-
-function checkExpiredDeadlines() {
-    const now = new Date();
-    const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const expiredCount = prayerTargets.filter(target => target.hasDeadline && target.deadlineDate && target.deadlineDate.getTime() < todayUTCStart.getTime()).length;
-    console.log(`[checkExpiredDeadlines] Found ${expiredCount} expired deadlines among active targets.`);
-}
-
-window.editDeadline = function(targetId) {
-    const target = prayerTargets.find(t => t.id === targetId); if (!target) { alert("Erro: Alvo não encontrado ou não é ativo."); return; }
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`); if (!targetDiv) return;
-    const editFormContainer = document.getElementById(`editDeadlineForm-${targetId}`); if (!editFormContainer) return;
-    const isVisible = editFormContainer.style.display === 'block';
-
-    const obsForm = document.getElementById(`observationForm-${targetId}`);
-    const categoryForm = document.getElementById(`editCategoryForm-${targetId}`);
-    if(obsForm) obsForm.style.display = 'none';
-    if(categoryForm) categoryForm.style.display = 'none';
-
-    if (isVisible) { editFormContainer.style.display = 'none'; return; }
-
-    let currentDeadlineISO = '';
-    if (target.deadlineDate) {
-        currentDeadlineISO = formatDateToISO(target.deadlineDate);
-    }
-
-    editFormContainer.innerHTML = `
-        <div style="background-color: #f0f0f0; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc;">
-            <label for="editDeadlineInput-${targetId}" style="margin-right: 5px; display: block; margin-bottom: 5px;">Novo Prazo (deixe em branco para remover):</label>
-            <input type="date" id="editDeadlineInput-${targetId}" value="${currentDeadlineISO}" style="margin-right: 5px; width: calc(100% - 22px);">
-            <div style="margin-top: 10px; text-align: right;">
-                 <button class="btn save-deadline-btn" onclick="saveEditedDeadline('${targetId}')">Salvar Prazo</button>
-                 <button class="btn cancel-deadline-btn" onclick="cancelEditDeadline('${targetId}')">Cancelar</button>
-            </div>
-        </div>`;
-    editFormContainer.style.display = 'block';
-    document.getElementById(`editDeadlineInput-${targetId}`)?.focus();
-};
-
-window.saveEditedDeadline = async function(targetId) {
-    const newDeadlineDateInput = document.getElementById(`editDeadlineInput-${targetId}`); if (!newDeadlineDateInput) return;
-    const newDeadlineValue = newDeadlineDateInput.value;
-    let newDeadlineTimestamp = null; let newHasDeadline = false;
-
-    if (newDeadlineValue) {
-        const newDeadlineLocal = new Date(newDeadlineValue + 'T00:00:00');
-        if (isNaN(newDeadlineLocal.getTime())) { alert("Data do prazo inválida."); return; }
-        const target = prayerTargets.find(t => t.id === targetId);
-         if (target && target.date && newDeadlineLocal.getTime() < target.date.getTime()) {
-            alert("O Prazo de Validade não pode ser anterior à Data de Criação."); return;
-         }
-        newDeadlineTimestamp = Timestamp.fromDate(newDeadlineLocal);
-        newHasDeadline = true;
-    } else {
-        if (!confirm("Nenhuma data selecionada. Tem certeza que deseja remover o prazo?")) return;
-    }
-
-    await updateDeadlineInFirestoreAndLocal(targetId, newDeadlineTimestamp, newHasDeadline);
-    cancelEditDeadline(targetId); 
-};
-
-async function updateDeadlineInFirestoreAndLocal(targetId, newDeadlineTimestamp, newHasDeadline) {
-     const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-     const userId = user.uid;
-     const targetRef = doc(db, "users", userId, "prayerTargets", targetId); 
-     try {
-         await updateDoc(targetRef, {
-             deadlineDate: newDeadlineTimestamp, 
-             hasDeadline: newHasDeadline
-         });
-
-         const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
-         if (targetIndex !== -1) {
-             prayerTargets[targetIndex].deadlineDate = newDeadlineTimestamp ? newDeadlineTimestamp.toDate() : null;
-             prayerTargets[targetIndex].hasDeadline = newHasDeadline;
-         }
-
-         renderTargets(); 
-         alert('Prazo atualizado com sucesso!');
-     } catch (error) {
-        console.error(`Error updating deadline for ${targetId}:`, error);
-        alert("Erro ao atualizar prazo: " + error.message);
-     }
-}
-
-window.cancelEditDeadline = function(targetId) {
-     const editFormContainer = document.getElementById(`editDeadlineForm-${targetId}`);
-     if (editFormContainer) {
-         editFormContainer.style.display = 'none';
-         editFormContainer.innerHTML = ''; 
-     }
-};
-
-
-// --- Category Editing ---
-window.editCategory = function(targetId) {
-    let target = prayerTargets.find(t => t.id === targetId) || archivedTargets.find(t => t.id === targetId);
-    if (!target) { alert("Erro: Alvo não encontrado."); return; }
-
-    const targetDiv = document.querySelector(`.target[data-target-id="${targetId}"]`);
-    if (!targetDiv) return;
-    const editFormContainer = document.getElementById(`editCategoryForm-${targetId}`);
-    if (!editFormContainer) { console.error(`Edit form container not found for ${targetId}`); return; }
-
-    const isVisible = editFormContainer.style.display === 'block';
-
-    const obsForm = document.getElementById(`observationForm-${targetId}`);
-    const deadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
-    if(obsForm) obsForm.style.display = 'none';
-    if(deadlineForm) deadlineForm.style.display = 'none';
-
-    if (isVisible) {
-        editFormContainer.style.display = 'none'; 
-        return;
-    }
-
-    let optionsHTML = '<option value="">-- Remover Categoria --</option>'; 
-    predefinedCategories.forEach(cat => {
-        const selected = target.category === cat ? 'selected' : '';
-        optionsHTML += `<option value="${cat}" ${selected}>${cat}</option>`;
-    });
-
-    editFormContainer.innerHTML = `
-        <div style="background-color: #f0f0f0; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc;">
-            <label for="editCategorySelect-${targetId}" style="margin-right: 5px; display: block; margin-bottom: 5px;">Nova Categoria:</label>
-            <select id="editCategorySelect-${targetId}" style="width: calc(100% - 22px); margin-bottom: 10px;">
-                ${optionsHTML}
-            </select>
-            <div style="margin-top: 10px; text-align: right;">
-                 <button class="btn save-category-btn" onclick="saveEditedCategory('${targetId}')">Salvar Categoria</button>
-                 <button class="btn cancel-category-btn" onclick="cancelEditCategory('${targetId}')">Cancelar</button>
-            </div>
-        </div>`;
-    editFormContainer.style.display = 'block';
-    document.getElementById(`editCategorySelect-${targetId}`)?.focus();
-};
-
-window.saveEditedCategory = async function(targetId) {
-    const newCategorySelect = document.getElementById(`editCategorySelect-${targetId}`);
-    if (!newCategorySelect) return;
-    const newCategoryValue = newCategorySelect.value; 
-
-    const user = auth.currentUser;
-    if (!user) { alert("Erro: Usuário não autenticado."); return; }
-    const userId = user.uid;
-
-    let targetRef;
-    let targetList;
-    let targetIndex = -1;
-    let isArchived = false;
-    let isResolved = false;
-
-    targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-    if (targetIndex !== -1) {
-        targetRef = doc(db, "users", userId, "prayerTargets", targetId);
-        targetList = prayerTargets;
-    } else {
-        targetIndex = archivedTargets.findIndex(t => t.id === targetId);
-        if (targetIndex !== -1) {
-            targetRef = doc(db, "users", userId, "archivedTargets", targetId);
-            targetList = archivedTargets;
-            isArchived = true;
-            isResolved = archivedTargets[targetIndex].resolved; 
-        } else {
-            alert("Erro: Alvo não encontrado para atualização.");
-            return;
-        }
-    }
-
-    try {
-        await updateDoc(targetRef, {
-            category: newCategoryValue || null 
-        });
-
-        targetList[targetIndex].category = newCategoryValue || null;
-
-        if (isArchived) {
-            renderArchivedTargets();
-            if (isResolved) {
-                renderResolvedTargets(); 
-            }
-        } else {
-            renderTargets(); 
-             if (document.getElementById('dailyTargets').querySelector(`.target[data-target-id="${targetId}"]`)) {
-                 console.log("Target was in daily list, refreshing daily targets.");
-                 await loadDailyTargets();
-             }
-        }
-
-        alert('Categoria atualizada com sucesso!');
-        cancelEditCategory(targetId); 
-
-    } catch (error) {
-        console.error(`Error updating category for ${targetId}:`, error);
-        alert("Erro ao atualizar categoria: " + error.message);
-    }
-};
-
-window.cancelEditCategory = function(targetId) {
-    const editFormContainer = document.getElementById(`editCategoryForm-${targetId}`);
-    if (editFormContainer) {
-        editFormContainer.style.display = 'none';
-        editFormContainer.innerHTML = ''; 
-    }
-};
-// --- End Category Editing ---
-
-
-// --- Daily Targets ---
-async function loadDailyTargets() {
-    const userId = auth.currentUser ? auth.currentUser.uid : null;
-    if (!userId) { document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>"; currentDailyTargets = []; return; }
-    const todayStr = formatDateToISO(new Date()); 
-    const dailyDocId = `${userId}_${todayStr}`;
-    const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
-    const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = '<p>Carregando alvos do dia...</p>'; 
-    currentDailyTargets = []; 
-
-    try {
-        let dailyTargetsData; const dailySnapshot = await getDoc(dailyRef);
-        if (!dailySnapshot.exists() || !dailySnapshot.data()?.targets) { 
-            console.log(`[loadDailyTargets] Daily document for ${dailyDocId} not found or invalid, generating.`);
-            dailyTargetsData = await generateDailyTargets(userId, todayStr);
-            await setDoc(dailyRef, dailyTargetsData); 
-            console.log(`[loadDailyTargets] Daily document ${dailyDocId} created.`);
-        } else {
-            dailyTargetsData = dailySnapshot.data();
-            console.log(`[loadDailyTargets] Daily document ${dailyDocId} loaded.`);
-        }
-
-        if (!dailyTargetsData || !Array.isArray(dailyTargetsData.targets)) {
-            console.error("[loadDailyTargets] Invalid daily data structure after load/generate:", dailyTargetsData);
-            dailyTargetsDiv.innerHTML = "<p>Erro ao carregar alvos diários (dados inválidos).</p>";
-            displayRandomVerse();
-            currentDailyTargets = []; 
-            return;
-        }
-
-        currentDailyTargets = dailyTargetsData.targets.map(t => t?.targetId).filter(id => id);
-        console.log(`[loadDailyTargets] Current daily target IDs:`, currentDailyTargets);
-
-        const pendingTargetIds = dailyTargetsData.targets.filter(t => t && t.targetId && !t.completed).map(t => t.targetId);
-        const completedTargetIds = dailyTargetsData.targets.filter(t => t && t.targetId && t.completed).map(t => t.targetId);
-        console.log(`[loadDailyTargets] Pending IDs: ${pendingTargetIds.length}, Completed IDs: ${completedTargetIds.length}`);
-
-        const allTargetIds = [...pendingTargetIds, ...completedTargetIds];
-        if (allTargetIds.length === 0) {
-            dailyTargetsDiv.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
-            displayRandomVerse();
-            return; 
-        }
-
-        const targetsToDisplayDetails = prayerTargets.filter(pt => pt && pt.id && allTargetIds.includes(pt.id));
-
-        const pendingTargetsDetails = targetsToDisplayDetails.filter(t => pendingTargetIds.includes(t.id));
-        const completedTargetsDetails = targetsToDisplayDetails.filter(t => completedTargetIds.includes(t.id));
-
-        console.log(`[loadDailyTargets] Pending Details: ${pendingTargetsDetails.length}, Completed Details: ${completedTargetsDetails.length}`);
-
-        renderDailyTargets(pendingTargetsDetails, completedTargetsDetails);
-        displayRandomVerse();
-
-    } catch (error) {
-        console.error("[loadDailyTargets] Error:", error);
-        dailyTargetsDiv.innerHTML = "<p>Erro ao carregar alvos diários. Tente recarregar a página.</p>";
-        displayRandomVerse(); 
-        currentDailyTargets = []; 
-    }
-}
-
-async function generateDailyTargets(userId, dateStr) {
-    console.log(`[generateDailyTargets] Generating for ${userId} on ${dateStr}`);
-    try {
-        const availableTargets = prayerTargets.filter(t => t && t.id && !t.archived && !t.resolved);
-        if (availableTargets.length === 0) {
-            console.log("[generateDailyTargets] No active targets available.");
-            return { userId, date: dateStr, targets: [] };
-        }
-
-        const today = new Date(dateStr + 'T00:00:00Z');
-
-        let pool = [...availableTargets]; 
-
-        const historyDays = 7;
-        const completedInHistory = new Set(); 
-        for (let i = 1; i <= historyDays; i++) {
-            const pastDate = new Date(today.getTime() - i * 86400000);
-            const pastDateStr = formatDateToISO(pastDate);
-            const pastDocId = `${userId}_${pastDateStr}`;
+function parseChaptersInput(inputString) {
+    const chapters = new Set();
+    const parts = inputString.split(',').map(p => p.trim()).filter(p => p);
+    const bookPartRegex = `(?:\\d+\\s*)?[a-zA-ZÀ-úçõãíáéóú]+(?:\\s+[a-zA-ZÀ-úçõãíáéóú]+)*`;
+    const chapterRegex = new RegExp(`^\\s*(${bookPartRegex})\\s*(\\d+)?(?:\\s*-\\s*(\\d+))?\\s*$`, 'i');
+    parts.forEach(part => {
+        const match = part.match(chapterRegex);
+        if (match) {
+            const inputBookNameRaw = match[1].trim();
+            const inputBookNameLower = inputBookNameRaw.toLowerCase();
+            const inputBookNameLowerNoSpace = inputBookNameLower.replace(/\s+/g, '');
+            const bookName = bookNameMap.get(inputBookNameLower) || bookNameMap.get(inputBookNameLowerNoSpace);
+            if (!bookName) { console.warn(`Nome de livro não reconhecido: "${inputBookNameRaw}"`); return; }
+            const startChapter = match[2] ? parseInt(match[2], 10) : null;
+            const endChapter = match[3] ? parseInt(match[3], 10) : null;
+            const maxChapters = bibleBooksChapters[bookName];
             try {
-                const pastSnap = await getDoc(doc(db, "dailyPrayerTargets", pastDocId));
-                if (pastSnap.exists()) {
-                    const pastData = pastSnap.data();
-                    if (pastData?.targets && Array.isArray(pastData.targets)) {
-                        pastData.targets.forEach(t => {
-                            if (t && t.targetId && t.completed === true) {
-                                completedInHistory.add(t.targetId);
-                            }
-                        });
-                    }
+                if (startChapter === null && endChapter === null) {
+                    if (maxChapters) { for (let i = 1; i <= maxChapters; i++) chapters.add(`${bookName} ${i}`); }
+                    else { console.warn(`Livro ${bookName} não encontrado nos dados da Bíblia.`); }
+                } else if (startChapter !== null && endChapter === null) {
+                    if (startChapter >= 1 && startChapter <= maxChapters) { chapters.add(`${bookName} ${startChapter}`); }
+                    else { console.warn(`Capítulo inválido (${startChapter}) para ${bookName} (máx ${maxChapters}) na entrada: "${part}"`); }
+                } else if (startChapter !== null && endChapter !== null) {
+                    if (startChapter >= 1 && endChapter >= startChapter && endChapter <= maxChapters) { for (let i = startChapter; i <= endChapter; i++) chapters.add(`${bookName} ${i}`); }
+                    else { console.warn(`Intervalo de capítulos inválido (${startChapter}-${endChapter}) para ${bookName} (máx ${maxChapters}) na entrada: "${part}"`); }
                 }
-            } catch (err) {
-                console.warn(`[generateDailyTargets] Error fetching history for ${pastDateStr}:`, err);
-            }
-        }
-        console.log(`[generateDailyTargets] Targets COMPLETED in the last ${historyDays} days:`, completedInHistory.size);
+            } catch (e) { console.error(`Erro processando parte "${part}": ${e}`); }
+        } else { console.warn(`Não foi possível analisar a parte da entrada: "${part}"`); }
+    });
+    const uniqueChaptersArray = Array.from(chapters);
+    uniqueChaptersArray.sort((a, b) => {
+        const matchA = a.match(/^(.*)\s+(\d+)$/); const matchB = b.match(/^(.*)\s+(\d+)$/);
+        if (!matchA || !matchB) return 0;
+        const bookA = matchA[1]; const chapA = parseInt(matchA[2], 10);
+        const bookB = matchB[1]; const chapB = parseInt(matchB[2], 10);
+        const indexA = canonicalBookOrder.indexOf(bookA); const indexB = canonicalBookOrder.indexOf(bookB);
+        if (indexA === -1 || indexB === -1) return 0;
+        if (indexA !== indexB) return indexA - indexB; return chapA - chapB;
+    });
+    return uniqueChaptersArray;
+}
 
-        pool = pool.filter(target => !completedInHistory.has(target.id));
-        console.log(`[generateDailyTargets] Pool size after filtering recent completions: ${pool.length}`);
 
-        if (pool.length === 0 && availableTargets.length > 0) {
-            console.log("[generateDailyTargets] Pool empty after completion filter, resetting pool to all available targets.");
-            pool = [...availableTargets];
-             pool.sort((a, b) => {
-                 const dateA = a.lastPrayedDate ? a.lastPrayedDate.getTime() : 0; 
-                 const dateB = b.lastPrayedDate ? b.lastPrayedDate.getTime() : 0;
-                 return dateA - dateB; 
-             });
-        } else if (pool.length > 0) {
-             pool.sort((a, b) => {
-                 const dateA = a.lastPrayedDate ? a.lastPrayedDate.getTime() : 0; 
-                 const dateB = b.lastPrayedDate ? b.lastPrayedDate.getTime() : 0;
-                 return dateA - dateB; 
-             });
-         }
+function distributeChaptersOverReadingDays(chaptersToRead, totalReadingDays) {
+    const planMap = {};
+    const totalChapters = chaptersToRead?.length || 0;
+    if (totalChapters === 0 || isNaN(totalReadingDays) || totalReadingDays <= 0) {
+        console.warn("Input inválido ou 0 capítulos/dias para distributeChaptersOverReadingDays.");
+        for (let i = 1; i <= Math.max(1, totalReadingDays); i++) { planMap[i.toString()] = []; }
+        return planMap;
+    }
+    const baseChaptersPerReadingDay = Math.floor(totalChapters / totalReadingDays);
+    let extraChapters = totalChapters % totalReadingDays;
+    let chapterIndex = 0;
+    for (let dayNumber = 1; dayNumber <= totalReadingDays; dayNumber++) {
+        const chaptersForThisDayCount = baseChaptersPerReadingDay + (extraChapters > 0 ? 1 : 0);
+        const endSliceIndex = Math.min(chapterIndex + chaptersForThisDayCount, totalChapters);
+        const chaptersForThisDay = chaptersToRead.slice(chapterIndex, endSliceIndex);
+        planMap[dayNumber.toString()] = chaptersForThisDay;
+        chapterIndex = endSliceIndex;
+        if (extraChapters > 0) { extraChapters--; }
+    }
+    if (chapterIndex < totalChapters) {
+        console.warn("Nem todos os capítulos foram distribuídos. Adicionando restantes ao último dia.");
+        const remaining = chaptersToRead.slice(chapterIndex);
+        if (planMap[totalReadingDays.toString()]) { planMap[totalReadingDays.toString()].push(...remaining); }
+        else { planMap["1"] = remaining; } // Should not happen if totalReadingDays >=1
+    }
+    return planMap;
+}
 
-        const maxDailyTargets = 10;
-        const selectedTargets = pool.slice(0, Math.min(maxDailyTargets, pool.length));
 
-        const targetsForFirestore = selectedTargets.map(target => ({ targetId: target.id, completed: false }));
-
-        console.log(`[generateDailyTargets] Generated ${targetsForFirestore.length} targets for ${dateStr}.`);
-        return { userId: userId, date: dateStr, targets: targetsForFirestore };
-
-    } catch (error) {
-        console.error("[generateDailyTargets] Unexpected Error:", error);
-        return { userId: userId, date: dateStr, targets: [] }; 
+function updateBookSuggestions() {
+    if (!chaptersInput || !bookSuggestionsDatalist) return;
+    const currentText = chaptersInput.value;
+    const lastCommaIndex = currentText.lastIndexOf(',');
+    const relevantText = (lastCommaIndex >= 0 ? currentText.substring(lastCommaIndex + 1) : currentText).trim().toLowerCase();
+    bookSuggestionsDatalist.innerHTML = '';
+    if (relevantText && !/^\d+\s*(-?\s*\d*)?$/.test(relevantText)) {
+        const matchingBooks = canonicalBookOrder.filter(book => {
+            const bookLower = book.toLowerCase();
+            const bookLowerNoSpace = bookLower.replace(/\s+/g, '');
+            return bookLower.startsWith(relevantText) || bookLowerNoSpace.startsWith(relevantText.replace(/\s+/g, ''));
+        });
+        const limit = 7;
+        matchingBooks.slice(0, limit).forEach(book => {
+            const option = document.createElement('option');
+            const prefix = lastCommaIndex >= 0 ? currentText.substring(0, lastCommaIndex + 1) + ' ' : '';
+            option.value = prefix + book + ' ';
+            option.label = book;
+            bookSuggestionsDatalist.appendChild(option);
+        });
     }
 }
 
-function renderDailyTargets(pendingTargets, completedTargets) {
-    const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = ''; 
+// NOVO: Função para gerar lista de capítulos a partir de uma lista de livros
+function generateChaptersForBookList(bookList) {
+    const chapters = [];
+    if (!Array.isArray(bookList)) return chapters;
 
-    if (pendingTargets.length === 0 && completedTargets.length === 0) {
-        dailyTargetsDiv.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
+    bookList.forEach(bookName => {
+        if (bibleBooksChapters.hasOwnProperty(bookName)) {
+            const totalChaptersInBook = bibleBooksChapters[bookName];
+            for (let i = 1; i <= totalChaptersInBook; i++) {
+                chapters.push(`${bookName} ${i}`);
+            }
+        } else {
+            console.warn(`Livro "${bookName}" não encontrado em bibleBooksChapters ao gerar lista de capítulos.`);
+        }
+    });
+
+    // Ordenar canonicamente (importante se a bookList não estiver ordenada)
+    chapters.sort((a, b) => {
+        const matchA = a.match(/^(.*)\s+(\d+)$/);
+        const matchB = b.match(/^(.*)\s+(\d+)$/);
+        if (!matchA || !matchB) return 0;
+        const bookA = matchA[1]; const chapA = parseInt(matchA[2], 10);
+        const bookB = matchB[1]; const chapB = parseInt(matchB[2], 10);
+        const indexA = canonicalBookOrder.indexOf(bookA);
+        const indexB = canonicalBookOrder.indexOf(bookB);
+        if (indexA === -1 || indexB === -1) return 0;
+        if (indexA !== indexB) return indexA - indexB;
+        return chapA - chapB;
+    });
+    return chapters;
+}
+
+// Coloque esta função perto de generateChaptersForBookList
+
+function generateIntercalatedChaptersForPlanC(bookBlocks, chaptersPerBlockAT = 15) {
+    console.log("Iniciando geração intercalada para Plano C:", bookBlocks);
+    const chaptersList = [];
+    const ntBooks = [...bookBlocks.novoTestamento]; // Copia para poder usar shift()
+    const atProfetasMaioresBooks = [...bookBlocks.profetasMaiores]; // Copia
+
+    let todosCapitulosNT = [];
+    ntBooks.forEach(bookName => {
+        if (bibleBooksChapters.hasOwnProperty(bookName)) {
+            for (let i = 1; i <= bibleBooksChapters[bookName]; i++) {
+                todosCapitulosNT.push(`${bookName} ${i}`);
+            }
+        }
+    });
+
+    let todosCapitulosAT = [];
+    atProfetasMaioresBooks.forEach(bookName => {
+        if (bibleBooksChapters.hasOwnProperty(bookName)) {
+            for (let i = 1; i <= bibleBooksChapters[bookName]; i++) {
+                todosCapitulosAT.push(`${bookName} ${i}`);
+            }
+        }
+    });
+
+    // Garantir que Mateus venha primeiro, se ele estiver na lista do NT
+    // A lista ntBooks já está na ordem canônica, então Mateus é o primeiro.
+    // Vamos processar o Novo Testamento livro a livro.
+    // E o Antigo Testamento em blocos.
+
+    let ntChapterIndex = 0;
+    let atChapterIndex = 0;
+    let currentNTBookIndex = 0;
+
+    // Começa com o primeiro livro do NT (Mateus) completo
+    if (ntBooks.length > 0) {
+        const primeiroLivroNT = ntBooks[currentNTBookIndex];
+        console.log("Adicionando primeiro livro do NT:", primeiroLivroNT);
+        if (bibleBooksChapters.hasOwnProperty(primeiroLivroNT)) {
+            for (let i = 1; i <= bibleBooksChapters[primeiroLivroNT]; i++) {
+                chaptersList.push(`${primeiroLivroNT} ${i}`);
+                ntChapterIndex++;
+            }
+        }
+        currentNTBookIndex++; // Avança para o próximo livro do NT
+    }
+
+
+    while (currentNTBookIndex < ntBooks.length || atChapterIndex < todosCapitulosAT.length) {
+        let adicionouAlgoNestaRodada = false;
+
+        // Adiciona um bloco de capítulos do AT (Profetas Maiores)
+        if (atChapterIndex < todosCapitulosAT.length) {
+            const fimBlocoAT = Math.min(atChapterIndex + chaptersPerBlockAT, todosCapitulosAT.length);
+            console.log(`Adicionando bloco AT: de ${atChapterIndex} até ${fimBlocoAT-1}`);
+            for (let i = atChapterIndex; i < fimBlocoAT; i++) {
+                chaptersList.push(todosCapitulosAT[i]);
+            }
+            atChapterIndex = fimBlocoAT;
+            adicionouAlgoNestaRodada = true;
+        }
+
+        // Adiciona o PRÓXIMO livro completo do NT
+        if (currentNTBookIndex < ntBooks.length) {
+            const proximoLivroNT = ntBooks[currentNTBookIndex];
+            console.log("Adicionando próximo livro do NT:", proximoLivroNT);
+            if (bibleBooksChapters.hasOwnProperty(proximoLivroNT)) {
+                for (let i = 1; i <= bibleBooksChapters[proximoLivroNT]; i++) {
+                    chaptersList.push(`${proximoLivroNT} ${i}`);
+                    // ntChapterIndex não é mais usado para controlar o loop principal aqui,
+                    // mas podemos atualizá-lo se quisermos saber o total de caps NT adicionados.
+                }
+            }
+            currentNTBookIndex++;
+            adicionouAlgoNestaRodada = true;
+        }
+        
+        // Se em uma rodada completa nada foi adicionado, significa que ambos terminaram.
+        if (!adicionouAlgoNestaRodada) {
+            break;
+        }
+    }
+    console.log("Lista intercalada final gerada. Total de capítulos:", chaptersList.length);
+    // console.log(chaptersList.slice(0, 50)); // Para depuração
+    // console.log(chaptersList.slice(-50)); // Para depuração
+    return chaptersList;
+}
+
+// --- Funções de UI e Estado ---
+function showLoading(indicatorDiv, show = true) { if (indicatorDiv) indicatorDiv.style.display = show ? 'block' : 'none'; }
+function showErrorMessage(errorDiv, message) { if (errorDiv) { errorDiv.textContent = message; errorDiv.style.display = message ? 'block' : 'none'; } }
+function toggleForms(showLogin = true) { if (loginForm && signupForm) { loginForm.style.display = showLogin ? 'block' : 'none'; signupForm.style.display = showLogin ? 'none' : 'block'; } showErrorMessage(authErrorDiv, ''); showErrorMessage(signupErrorDiv, ''); }
+
+
+/** CORREÇÃO: Função auxiliar para obter o dia da semana local (0=Dom, 6=Sáb) */
+function getLocalDayOfWeek(date = new Date()) {
+    return date.getDay();
+}
+
+
+/** CORREÇÃO: Atualiza o marcador semanal GLOBAL com base nas interações da semana atual e destaca o dia atual LOCAL */
+function updateGlobalWeeklyTrackerUI() {
+    if (!globalWeeklyTrackerSection || !globalDayIndicatorElements || globalDayIndicatorElements.length === 0) {
+        if(globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
         return;
     }
 
-    if (pendingTargets.length > 0) {
-        pendingTargets.forEach((target) => {
-            if (!target || !target.id) return;
-            const dailyDiv = createTargetElement(target, false); 
-            addPrayButtonFunctionality(dailyDiv, target.id); 
-            dailyTargetsDiv.appendChild(dailyDiv);
-        });
-    } else if (completedTargets.length > 0) {
-        dailyTargetsDiv.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
-    }
+    const currentWeekId = getUTCWeekId(); // A ID da semana continua sendo UTC, é um padrão universal.
+    const weekStartDate = getUTCWeekStartDate(); // O início da semana (domingo) é um ponto fixo no tempo (UTC).
+    const todayStr = getCurrentLocalDateString(); // Pega a data de HOJE no fuso do usuário.
+    const currentLocalDayOfWeek = getLocalDayOfWeek(); // Pega o dia da semana LOCAL (0=Dom, 1=Seg...).
 
-    if (completedTargets.length > 0) {
-        if (pendingTargets.length > 0 || dailyTargetsDiv.innerHTML.includes("todos os alvos de hoje")) {
-             const separator = document.createElement('hr');
-             separator.style.cssText = 'border: none; border-top: 1px solid #eee; margin-top:20px; margin-bottom:15px;';
-             dailyTargetsDiv.appendChild(separator);
-         }
-         const completedTitle = document.createElement('h3');
-         completedTitle.textContent = "Concluídos Hoje";
-         completedTitle.style.cssText = 'color:#777; font-size:1.1em; margin-top:15px; margin-bottom:10px; text-align: center;'; 
-         dailyTargetsDiv.appendChild(completedTitle);
+    const isCurrentWeekDataValid = userGlobalWeeklyInteractions &&
+                                   userGlobalWeeklyInteractions.weekId === currentWeekId &&
+                                   userGlobalWeeklyInteractions.interactions &&
+                                   typeof userGlobalWeeklyInteractions.interactions === 'object';
 
-        completedTargets.forEach((target) => {
-             if (!target || !target.id) return;
-            const dailyDiv = createTargetElement(target, true); 
-            dailyTargetsDiv.appendChild(dailyDiv);
-        });
-    }
+    globalDayIndicatorElements.forEach(el => {
+        const dayIndex = parseInt(el.dataset.day, 10); // 0 para Dom, 1 para Seg, etc.
 
-    if (pendingTargets.length === 0 && completedTargets.length > 0) {
-        displayCompletionPopup();
-    }
-}
+        // Calcula a data UTC correspondente a este indicador na semana
+        const dateForThisDayIndicator = new Date(weekStartDate);
+        dateForThisDayIndicator.setUTCDate(weekStartDate.getUTCDate() + dayIndex);
+        
+        // Converte para uma string de data LOCAL para comparação com 'todayStr'
+        // Isso é crucial para comparar "maçãs com maçãs"
+        const year = dateForThisDayIndicator.getFullYear();
+        const month = (dateForThisDayIndicator.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateForThisDayIndicator.getDate().toString().padStart(2, '0');
+        const dateStringForIndicator = `${year}-${month}-${day}`;
+        
+        const isPastDay = dateStringForIndicator < todayStr;
+        // As interações são salvas com a data local, então a chave é `dateStringForIndicator`
+        const isMarkedRead = isCurrentWeekDataValid && userGlobalWeeklyInteractions.interactions[dateStringForIndicator];
 
+        el.classList.remove('active', 'missed-day', 'inactive-plan-day', 'current-day-highlight');
 
-function createTargetElement(target, isCompleted) {
-    const dailyDiv = document.createElement("div");
-    dailyDiv.classList.add("target");
-    if (isCompleted) dailyDiv.classList.add("completed-target");
-    dailyDiv.dataset.targetId = target.id;
-
-    let categoryTag = '';
-    if (target.category) {
-        categoryTag = `<span class="category-tag">${target.category}</span>`;
-    }
-
-    let deadlineTag = '';
-    if (target.hasDeadline && target.deadlineDate) {
-        deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''} ${isCompleted ? 'completed' : ''}">${formatDateForDisplay(target.deadlineDate)}</span>`;
-    }
-
-    const observationsHTML = renderObservations(target.observations || [], false, target.id);
-
-    dailyDiv.innerHTML = `
-        <h3>${categoryTag} ${deadlineTag ? `Prazo: ${deadlineTag}` : ''} ${target.title || 'Título Indisponível'}</h3>
-        <p class="target-details">${target.details || 'Detalhes Indisponíveis'}</p>
-        <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
-        <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-        ${observationsHTML}`; 
-    return dailyDiv;
-}
-
-function addPrayButtonFunctionality(dailyDiv, targetId) {
-    const prayButton = document.createElement("button");
-    prayButton.textContent = "Orei!";
-    prayButton.classList.add("pray-button", "btn");
-    prayButton.dataset.targetId = targetId; 
-
-    prayButton.onclick = async () => {
-        const user = auth.currentUser; if (!user) { alert("Erro: Usuário não autenticado."); return; }
-        const userId = user.uid; const todayStr = formatDateToISO(new Date()); const dailyDocId = `${userId}_${todayStr}`;
-        const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
-
-        prayButton.disabled = true;
-        prayButton.textContent = "Orado!";
-        prayButton.style.opacity = 0.6;
-
-        try {
-            const dailySnap = await getDoc(dailyRef);
-            if (!dailySnap.exists()) {
-                console.error("Daily doc not found during 'Orei!' click:", dailyDocId);
-                alert("Erro: Documento diário não encontrado. Tente recarregar.");
-                prayButton.disabled = false; prayButton.textContent = "Orei!"; prayButton.style.opacity = 1;
-                return;
-            }
-
-            const dailyData = dailySnap.data();
-            let targetUpdatedInDaily = false;
-
-            const updatedTargets = dailyData.targets.map(t => {
-                if (t && t.targetId === targetId) {
-                    targetUpdatedInDaily = true;
-                    return { ...t, completed: true };
-                }
-                return t;
-            });
-
-            if (!targetUpdatedInDaily) {
-                console.warn(`Target ${targetId} not found in daily doc ${dailyDocId} during 'Orei!' click.`);
-            }
-
-             await updateClickCounts(userId, targetId, targetUpdatedInDaily, updatedTargets, dailyRef);
-
-            await loadDailyTargets();
-
-        } catch (error) {
-            console.error("Error registering 'Orei!':", error);
-            alert("Erro ao registrar oração: " + error.message);
-            prayButton.disabled = false; prayButton.textContent = "Orei!"; prayButton.style.opacity = 1;
+        if (isMarkedRead) {
+            el.classList.add('active');
+        } else if (isPastDay) {
+            el.classList.add('missed-day');
         }
-    };
 
-     const heading = dailyDiv.querySelector('h3');
-     if (heading && heading.nextSibling) {
-         dailyDiv.insertBefore(prayButton, heading.nextSibling); 
-     } else if (heading) {
-         dailyDiv.appendChild(prayButton); 
-     } else if (dailyDiv.firstChild) {
-          dailyDiv.insertBefore(prayButton, dailyDiv.firstChild); 
-     } else {
-         dailyDiv.appendChild(prayButton); 
-     }
-}
-
-async function updateClickCounts(userId, targetId, targetUpdatedInDaily, updatedDailyTargets, dailyRef) {
-     const clickCountsRef = doc(db, "prayerClickCounts", targetId);
-     const weeklyDocRef = doc(db, "weeklyInteractions", userId);
-     const perseveranceDocRef = doc(db, "perseveranceData", userId);
-     const activeTargetRef = doc(db, "users", userId, "prayerTargets", targetId);
-
-     const now = new Date();
-     const nowTimestamp = Timestamp.fromDate(now); 
-
-     const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-     const year = now.getFullYear().toString();
-     const todayUTCStr = formatDateToISO(now); 
-     const weekId = getWeekIdentifier(now); 
-     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); 
-
-     const batch = writeBatch(db);
-     
-     let newRecordAchieved = false; 
-
-     // --- Perseverance Update Logic ---
-     let lastInteractionUTCStart = null;
-     if (perseveranceData.lastInteractionDate) {
-         const liDate = convertToDate(perseveranceData.lastInteractionDate);
-         if (liDate) {
-            lastInteractionUTCStart = new Date(Date.UTC(liDate.getUTCFullYear(), liDate.getUTCMonth(), liDate.getUTCDate()));
-         }
-     }
-
-     if (!lastInteractionUTCStart || todayUTCStart.getTime() > lastInteractionUTCStart.getTime()) {
-         console.log(`[updateClickCounts] First 'Orei!' interaction for ${todayUTCStr} relevant to streak. Updating perseverance.`);
-         let newConsecutiveDays;
-         let isConsecutiveStreak = false;
-
-         if (lastInteractionUTCStart) {
-             const expectedYesterdayUTCStart = new Date(todayUTCStart.getTime() - 86400000); 
-             if (lastInteractionUTCStart.getTime() === expectedYesterdayUTCStart.getTime()) {
-                 isConsecutiveStreak = true;
-             }
-         }
-
-         if (isConsecutiveStreak) {
-             newConsecutiveDays = (perseveranceData.consecutiveDays || 0) + 1;
-         } else {
-             newConsecutiveDays = 1; 
-         }
-         
-         previousRecordDays = perseveranceData.recordDays || 0; 
-         const newRecordDays = Math.max(previousRecordDays, newConsecutiveDays);
-
-         if (newRecordDays > previousRecordDays) { 
-            newRecordAchieved = true;
-            console.log(`[updateClickCounts] NEW RECORD ACHIEVED: ${newRecordDays} days! Previous: ${previousRecordDays}`);
-         }
-
-         perseveranceData.consecutiveDays = newConsecutiveDays;
-         perseveranceData.lastInteractionDate = todayUTCStart; 
-         perseveranceData.recordDays = newRecordDays;
-         
-         batch.set(perseveranceDocRef, { 
-             userId: userId, 
-             consecutiveDays: newConsecutiveDays,
-             lastInteractionDate: Timestamp.fromDate(todayUTCStart), 
-             recordDays: newRecordDays
-         }, { merge: true });
-         
-         updatePerseveranceUI(newRecordAchieved); 
-     } else {
-         console.log(`[updateClickCounts] Subsequent 'Orei!' click for ${todayUTCStr}. Perseverance streak unchanged for this click.`);
-         updatePerseveranceUI(false); 
-     }
-
-    // --- Weekly Chart Update Logic ---
-    if (weeklyPrayerData.weekId !== weekId) { 
-        console.log(`[updateClickCounts] Week changed from ${weeklyPrayerData.weekId} to ${weekId}. Resetting weekly data.`);
-        weeklyPrayerData = {
-            weekId: weekId,
-            interactions: { [todayUTCStr]: true }
-        };
-        batch.set(weeklyDocRef, { userId, ...weeklyPrayerData });
-    } else if (!weeklyPrayerData.interactions[todayUTCStr]) {
-        weeklyPrayerData.interactions[todayUTCStr] = true;
-        batch.update(weeklyDocRef, { [`interactions.${todayUTCStr}`]: true });
-        console.log(`[updateClickCounts] Marked ${todayUTCStr} as interacted for week ${weekId}.`);
-    }
-    updateWeeklyChart();
-
-
-     batch.set(clickCountsRef, {
-         targetId: targetId,
-         userId: userId,
-         totalClicks: increment(1),
-         [`monthlyClicks.${yearMonth}`]: increment(1),
-         [`yearlyClicks.${year}`]: increment(1)
-        }, { merge: true });
-
-     batch.update(activeTargetRef, { lastPrayedDate: nowTimestamp });
-
-     if (targetUpdatedInDaily) {
-         batch.update(dailyRef, { targets: updatedDailyTargets });
-     }
-
-     try {
-         await batch.commit();
-         console.log(`[updateClickCounts] Batch committed successfully for ${targetId}.`);
-
-         const targetIndexLocal = prayerTargets.findIndex(t => t.id === targetId);
-         if (targetIndexLocal !== -1) {
-             prayerTargets[targetIndexLocal].lastPrayedDate = now; 
-             console.log(`[updateClickCounts] Local lastPrayedDate updated for ${targetId}`);
-         } else {
-             console.warn(`[updateClickCounts] Target ${targetId} not found in local prayerTargets array after batch commit.`);
-         }
-
-         } catch (error) {
-         console.error(`[updateClickCounts] Error committing batch for target ${targetId}:`, error);
-         throw error; 
-     }
- }
-
-
-// --- Perseverance (Progress Bar and Weekly Chart) ---
-
-async function loadPerseveranceData(userId) {
-    console.log(`[loadPerseveranceData] Loading PROGRESS BAR data for user ${userId}`);
-    const perseveranceDocRef = doc(db, "perseveranceData", userId);
-    try {
-        const docSnap = await getDoc(perseveranceDocRef);
-        if (docSnap.exists()) {
-            const rawData = docSnap.data();
-            const [hydratedPerseverance] = rehydrateTargets([{...rawData}]);
-            
-            perseveranceData.lastInteractionDate = hydratedPerseverance.lastInteractionDate ? convertToDate(hydratedPerseverance.lastInteractionDate) : null;
-            perseveranceData.consecutiveDays = Number(hydratedPerseverance.consecutiveDays) || 0;
-            perseveranceData.recordDays = Number(hydratedPerseverance.recordDays) || 0;
-            previousRecordDays = perseveranceData.recordDays; 
-            console.log("[loadPerseveranceData] Progress bar data loaded:", perseveranceData);
-        } else {
-            console.log(`[loadPerseveranceData] No progress bar data found for ${userId}. Initializing locally.`);
-            perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 };
-            previousRecordDays = 0; 
-        }
-        updatePerseveranceUI(); 
-        await loadWeeklyPrayerData(userId); 
-
-    } catch (error) {
-        console.error("[loadPerseveranceData] Error loading progress bar data:", error);
-         perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; 
-         previousRecordDays = 0; 
-         updatePerseveranceUI(); 
-         try { await loadWeeklyPrayerData(userId); }
-         catch (weeklyError) {
-            console.error("[loadPerseveranceData] Error loading weekly data after bar error:", weeklyError);
-             weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-             resetWeeklyChart(); 
-         }
-    }
-}
-
-async function loadWeeklyPrayerData(userId) {
-    console.log(`[loadWeeklyPrayerData] Loading WEEKLY CHART data for user ${userId}`);
-    const weeklyDocRef = doc(db, "weeklyInteractions", userId);
-    try {
-        const docSnap = await getDoc(weeklyDocRef);
-        const today = new Date(); const currentWeekId = getWeekIdentifier(today);
-
-        if (docSnap.exists()) {
-            const loadedData = docSnap.data();
-            if (loadedData.weekId === currentWeekId) {
-                weeklyPrayerData = {
-                    weekId: loadedData.weekId,
-                    interactions: loadedData.interactions || {} 
-                };
-                console.log("[loadWeeklyPrayerData] Weekly chart data loaded for current week:", weeklyPrayerData);
-            } else {
-                console.log(`[loadWeeklyPrayerData] Week changed from ${loadedData.weekId} to ${currentWeekId}. Resetting weekly data.`);
-                weeklyPrayerData = { weekId: currentWeekId, interactions: {} };
-                await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }); 
-                console.log(`[loadWeeklyPrayerData] Reset weekly data saved for new week.`);
-            }
-        } else {
-            console.log(`[loadWeeklyPrayerData] No weekly data found. Initializing for ${currentWeekId}.`);
-            weeklyPrayerData = { weekId: currentWeekId, interactions: {} };
-            await setDoc(weeklyDocRef, { userId: userId, ...weeklyPrayerData }); 
-            console.log(`[loadWeeklyPrayerData] Initial weekly data saved.`);
-        }
-        updateWeeklyChart(); 
-
-    } catch (error) {
-        console.error("[loadWeeklyPrayerData] Error loading/initializing weekly chart data:", error);
-         weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-         resetWeeklyChart(); 
-    }
-}
-
-
-function updatePerseveranceUI(isNewRecord = false) { 
-     const consecutiveDays = perseveranceData.consecutiveDays || 0;
-     const recordDays = perseveranceData.recordDays || 0;
-     
-     const displayRecordForBar = Math.max(recordDays, 1); 
-     const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
-
-     const progressBarFill = document.getElementById('perseveranceProgressBar');
-     const currentDaysTextEl = document.getElementById('currentDaysText');
-     const recordDaysTextEl = document.getElementById('recordDaysText');
-     const recordCrownEl = document.getElementById('recordCrown');
-     const barContainer = document.querySelector('.perseverance-bar-container'); 
-
-     if (progressBarFill && currentDaysTextEl && recordDaysTextEl && recordCrownEl && barContainer) {
-         progressBarFill.style.width = `${percentage}%`;
-         currentDaysTextEl.textContent = consecutiveDays;
-         recordDaysTextEl.textContent = recordDays;
-         
-         if (recordDays > 0) {
-            recordCrownEl.classList.add('visible');
-         } else {
-            recordCrownEl.classList.remove('visible');
-         }
-
-         barContainer.title = `Progresso atual: ${consecutiveDays} de ${recordDays} dias consecutivos (Recorde: ${recordDays} dias).`;
-
-         if (isNewRecord && recordDays > 0) {
-            progressBarFill.classList.add('new-record-animation');
-            setTimeout(() => {
-                progressBarFill.classList.remove('new-record-animation');
-            }, 2000); 
-         }
-
-     } else {
-          console.warn("[updatePerseveranceUI] Could not find all progress bar elements.");
-     }
-
-     updateMilestoneMarkers(consecutiveDays);
-
-     console.log("[updatePerseveranceUI] Progress bar UI updated.");
- }
-
-function updateMilestoneMarkers(currentDays) {
-    const iconArea = document.getElementById('milestoneIconsArea');
-    if (!iconArea) return;
-
-    // --- Seletores para todos os ícones de marco ---
-    const crownEl = document.getElementById('recordCrown');
-    const sunEl = iconArea.querySelector('[data-milestone="sun"]');
-    const diamondEl = iconArea.querySelector('[data-milestone="diamond"]');
-    const treeEl = iconArea.querySelector('[data-milestone="tree"]');
-    const starContainer = document.getElementById('starContainer');
-    const flameEl = iconArea.querySelector('[data-milestone="flame"]');
-    const seedEl = iconArea.querySelector('[data-milestone="seed"]');
-
-    const allMilestoneIcons = [sunEl, diamondEl, treeEl, flameEl, seedEl];
-
-    // --- 1. Resetar o estado de todos os ícones ---
-    allMilestoneIcons.forEach(icon => {
-        if (icon) {
-            icon.style.display = 'none';
-            icon.classList.remove('achieved');
+        // Aplica o destaque para o dia atual (comparando o dayIndex do HTML com o dia da semana LOCAL)
+        if (dayIndex === currentLocalDayOfWeek) {
+            el.classList.add('current-day-highlight');
         }
     });
-    if (starContainer) starContainer.innerHTML = '';
-    
-    // --- 2. Lógica da Coroa (Recorde) - CORRIGIDA ---
-    // A coroa agora aparece sempre que houver um recorde maior que 0.
-    if (crownEl) {
-        if (perseveranceData.recordDays > 0) {
-            crownEl.style.display = 'inline-block';
-        } else {
-            crownEl.style.display = 'none';
-        }
-        // A classe 'visible' pode ser usada para um efeito especial de "novo recorde"
-        if (currentDays > 0 && currentDays === perseveranceData.recordDays) {
-            crownEl.classList.add('visible');
-        } else {
-            crownEl.classList.remove('visible');
-        }
-    }
-    
-    if (currentDays === 0) return; // Se não há dias, não exibe mais nada
-
-    // --- 3. Lógica Hierárquica dos Marcos Principais ---
-    let remainingDaysInCycle = 0;
-
-    if (currentDays >= 1000) {
-        sunEl.style.display = 'inline-block';
-        sunEl.classList.add('achieved');
-    } else if (currentDays >= 365) {
-        diamondEl.style.display = 'inline-block';
-        diamondEl.classList.add('achieved');
-        const daysAfterDiamond = currentDays - 365;
-        const numStars = Math.floor(daysAfterDiamond / 30);
-        remainingDaysInCycle = daysAfterDiamond % 30;
-        if (starContainer && numStars > 0) {
-            starContainer.innerHTML = '⭐'.repeat(numStars);
-        }
-    } else if (currentDays >= 100) {
-        treeEl.style.display = 'inline-block';
-        treeEl.classList.add('achieved');
-        const daysAfterTree = currentDays - 100;
-        const numStars = Math.floor(daysAfterTree / 30);
-        remainingDaysInCycle = daysAfterTree % 30;
-        if (starContainer && numStars > 0) {
-            starContainer.innerHTML = '⭐'.repeat(numStars);
-        }
-    } else { // Menos de 100 dias
-        const numStars = Math.floor(currentDays / 30);
-        remainingDaysInCycle = currentDays % 30;
-        if (starContainer && numStars > 0) {
-            starContainer.innerHTML = '⭐'.repeat(numStars);
-        }
-    }
-
-    // --- 4. Lógica para Ícones de Ciclo (Semente e Chama) ---
-    if (remainingDaysInCycle >= 15) {
-        flameEl.style.display = 'inline-block';
-        flameEl.classList.add('achieved');
-    } else if (remainingDaysInCycle >= 7) {
-        seedEl.style.display = 'inline-block';
-        seedEl.classList.add('achieved');
-    }
-}
-
-function resetPerseveranceUI() {
-    const progressBarFill = document.getElementById('perseveranceProgressBar');
-    const currentDaysTextEl = document.getElementById('currentDaysText');
-    const recordDaysTextEl = document.getElementById('recordDaysText');
-    const recordCrownEl = document.getElementById('recordCrown');
-    const barContainer = document.querySelector('.perseverance-bar-container');
-
-    if (progressBarFill && currentDaysTextEl && recordDaysTextEl && recordCrownEl && barContainer) {
-        progressBarFill.style.width = `0%`;
-        currentDaysTextEl.textContent = `0`;
-        recordDaysTextEl.textContent = `0`;
-        recordCrownEl.classList.remove('visible');
-        barContainer.title = 'Nenhum progresso de perseverança ainda.'; 
-    }
-    perseveranceData = { consecutiveDays: 0, lastInteractionDate: null, recordDays: 0 }; 
-    previousRecordDays = 0; 
-    updateMilestoneMarkers(0); 
-    console.log("[resetPerseveranceUI] Progress bar data and UI reset.");
-
-    weeklyPrayerData = { weekId: getWeekIdentifier(new Date()), interactions: {} };
-    resetWeeklyChart(); 
-    console.log("[resetPerseveranceUI] Weekly chart data and UI reset.");
-}
-
-function updateWeeklyChart() {
-    const today = new Date();
-    const todayDayOfWeek = today.getDay(); 
-    const todayUTCReference = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-
-    const firstDayOfWeek = new Date(todayUTCReference);
-    firstDayOfWeek.setUTCDate(todayUTCReference.getUTCDate() - todayDayOfWeek);
-
-    const interactions = weeklyPrayerData.interactions || {};
-    const currentWeekId = weeklyPrayerData.weekId || getWeekIdentifier(today);
-    console.log("[updateWeeklyChart] Updating for week:", currentWeekId, "Interactions:", interactions);
-
-    for (let i = 0; i < 7; i++) { 
-        const dayTick = document.getElementById(`day-${i}`);
-        if (!dayTick) continue;
-
-        const dayContainer = dayTick.parentElement;
-        const currentTickDateUTC = new Date(firstDayOfWeek);
-        currentTickDateUTC.setUTCDate(firstDayOfWeek.getUTCDate() + i);
-        const dateStringUTC = formatDateToISO(currentTickDateUTC);
-
-        dayTick.classList.remove('active', 'inactive', 'current-day');
-        if (dayContainer) dayContainer.classList.remove('current-day-container');
-
-        if (currentTickDateUTC.getTime() === todayUTCReference.getTime()) {
-            dayTick.classList.add('current-day');
-            if (dayContainer) dayContainer.classList.add('current-day-container');
-            if (interactions[dateStringUTC] === true) {
-                dayTick.classList.add('active');
-            }
-        }
-        else if (currentTickDateUTC.getTime() < todayUTCReference.getTime()) {
-            if (interactions[dateStringUTC] === true) {
-                dayTick.classList.add('active');
-            } else {
-                dayTick.classList.add('inactive');
-            }
-        }
-    }
-}
-
-function resetWeeklyChart() {
-    for (let i = 0; i < 7; i++) {
-        const dayTick = document.getElementById(`day-${i}`);
-        if (dayTick) {
-            dayTick.classList.remove('active', 'inactive', 'current-day');
-            const dayContainer = dayTick.parentElement;
-            if (dayContainer) {
-                dayContainer.classList.remove('current-day-container');
-            }
-        }
-    }
-    console.log("[resetWeeklyChart] Weekly chart ticks and containers visually cleared.");
+    globalWeeklyTrackerSection.style.display = currentUser ? 'block' : 'none';
 }
 
 
-// --- Views and Filters ---
-
-function generateViewHTML(targetsToInclude = lastDisplayedTargets, pageTitle = "Alvos de Oração (Visão Atual)") {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1{text-align:center; color: #333;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .resolved{background-color:#eaffea; border-left: 5px solid #9cbe4a;} .completed-target{opacity: 0.8; border-left: 5px solid #b0b0b0;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>${pageTitle}</h1>`;
-    if (!Array.isArray(targetsToInclude) || targetsToInclude.length === 0) {
-        viewHTML += "<p style='text-align:center;'>Nenhum alvo para exibir nesta visualização.</p>";
+function updateUIBasedOnAuthState(user) {
+    currentUser = user;
+    if (user) {
+        authSection.style.display = 'none';
+        logoutButton.style.display = 'inline-block';
+        userEmailSpan.textContent = user.email;
+        userEmailSpan.style.display = 'inline';
+        loadUserDataAndPlans().then(() => {
+             updateStreakCounterUI();
+             updateGlobalWeeklyTrackerUI();
+        });
     } else {
-        targetsToInclude.forEach(target => {
-            if (target?.id) viewHTML += generateTargetViewHTML(target, false); 
+        userInfo = null;
+        activePlanId = null;
+        currentReadingPlan = null;
+        userPlansList = [];
+        userGlobalWeeklyInteractions = { weekId: null, interactions: {} };
+        userStreakData = { lastInteractionDate: null, current: 0, longest: 0 };
+
+
+        authSection.style.display = 'block';
+        planCreationSection.style.display = 'none';
+        readingPlanSection.style.display = 'none';
+        if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+        if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+       if (perseveranceSection) perseveranceSection.style.display = 'none';
+        if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
+        planSelectorContainer.style.display = 'none';
+        logoutButton.style.display = 'none';
+        userEmailSpan.style.display = 'none';
+        userEmailSpan.textContent = '';
+
+
+        resetFormFields();
+        updateGlobalWeeklyTrackerUI();
+        updateProgressBarUI();
+        clearPlanListUI();
+        clearHistoryUI();
+        clearStatsUI();
+        clearOverdueReadingsUI();
+        clearUpcomingReadingsUI();
+        toggleForms(true);
+    }
+    showLoading(authLoadingDiv, false);
+}
+
+
+function resetFormFields() {
+    if (planNameInput) planNameInput.value = "";
+    if (googleDriveLinkInput) googleDriveLinkInput.value = "";
+    if (startBookSelect) startBookSelect.value = "";
+    if (startChapterInput) startChapterInput.value = "";
+    if (endBookSelect) endBookSelect.value = "";
+    if (endChapterInput) endChapterInput.value = "";
+    if (booksSelect) Array.from(booksSelect.options).forEach(opt => opt.selected = false);
+    if (chaptersInput) chaptersInput.value = "";
+    if (daysInput) daysInput.value = "30";
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    if (chaptersPerDayInput) chaptersPerDayInput.value = '3';
+    const intervalRadio = document.querySelector('input[name="creation-method"][value="interval"]');
+    if (intervalRadio) intervalRadio.checked = true;
+    const daysDurationRadio = document.querySelector('input[name="duration-method"][value="days"]');
+    if (daysDurationRadio) daysDurationRadio.checked = true;
+    if(periodicityCheckboxes) {
+        periodicityCheckboxes.forEach(cb => {
+            const dayVal = parseInt(cb.value);
+            cb.checked = (dayVal >= 1 && dayVal <= 5); // Default to Mon-Fri
         });
     }
-    viewHTML += `</body></html>`;
-    const viewTab = window.open('', '_blank');
-    if (viewTab) {
-        viewTab.document.write(viewHTML);
-        viewTab.document.close();
-    } else {
-        alert('Seu navegador bloqueou a abertura de uma nova aba. Por favor, permita pop-ups para este site.');
-    }
+    if (periodicityWarningDiv) showErrorMessage(periodicityWarningDiv, '');
+    showErrorMessage(planErrorDiv, '');
+    togglePlanCreationOptions();
 }
 
-function generateDailyViewHTML() {
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos do Dia</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fff;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .deadline-tag{background-color: #ffcc00; color: #333; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; display: inline-block; border: 1px solid #e6b800;} .deadline-tag.expired{background-color: #ff6666; color: #fff; border-color: #ff4d4d;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} .completed-target{background-color:#f0f0f0 !important; border-left: 5px solid #9cbe4a;} .completed-target .category-tag { background-color: #e0e0e0; color: #757575; border-color: #bdbdbd; } .completed-target .deadline-tag { background-color: #e0e0e0; color: #999; border-color: #bdbdbd; } .target h3 .category-tag, .target h3 .deadline-tag { flex-shrink: 0; } </style></head><body><h1>Alvos do Dia</h1>`;
-    const dailyTargetsDiv = document.getElementById('dailyTargets');
-    let pendingCount = 0;
-    let completedCount = 0;
 
-    if (dailyTargetsDiv) {
-        viewHTML += `<h2>Pendentes</h2>`;
-        const pendingDivs = dailyTargetsDiv.querySelectorAll('.target:not(.completed-target)');
-        if (pendingDivs.length > 0) {
-            pendingDivs.forEach(div => {
-                const targetId = div.dataset.targetId;
-                const targetData = prayerTargets.find(t => t.id === targetId);
-                if (targetData) {
-                    pendingCount++;
-                    viewHTML += generateTargetViewHTML(targetData, false); 
-                } else {
-                    console.warn(`Target data not found for pending daily ID: ${targetId}`);
-                }
-            });
+function updateProgressBarUI() {
+    if (!currentReadingPlan || !progressBarContainer || !progressBarFill || !progressText) {
+        if (progressBarContainer) progressBarContainer.style.display = 'none';
+        return;
+    }
+    const { plan, currentDay, startDate, endDate, name } = currentReadingPlan;
+    const totalReadingDaysInPlan = Object.keys(plan || {}).length;
+    const currentDayForCalc = currentDay || 0;
+    let percentage = 0;
+    let progressLabel = "Nenhum plano ativo.";
+    if (totalReadingDaysInPlan > 0 && startDate && endDate) {
+        progressBarContainer.style.display = 'block';
+        const isCompleted = currentDayForCalc > totalReadingDaysInPlan;
+        percentage = Math.min(100, Math.max(0, ((currentDayForCalc - 1) / totalReadingDaysInPlan) * 100));
+        if (isCompleted) {
+            percentage = 100;
+            progressLabel = `Plano concluído! (${formatUTCDateStringToBrasilian(startDate)} - ${formatUTCDateStringToBrasilian(endDate)})`;
+        } else {
+            progressLabel = `Dia ${currentDayForCalc} de ${totalReadingDaysInPlan} (${Math.round(percentage)}%) | ${formatUTCDateStringToBrasilian(startDate)} - ${formatUTCDateStringToBrasilian(endDate)}`;
         }
-        if (pendingCount === 0) viewHTML += "<p style='text-align:center;'>Nenhum alvo pendente.</p>";
-
-        viewHTML += `<hr style='margin: 25px 0;'/><h2>Concluídos Hoje</h2>`;
-        const completedDivs = dailyTargetsDiv.querySelectorAll('.target.completed-target');
-         if (completedDivs.length > 0) {
-             completedDivs.forEach(div => {
-                 const targetId = div.dataset.targetId;
-                 const targetData = prayerTargets.find(t => t.id === targetId); 
-                 if (targetData) {
-                    completedCount++;
-                    viewHTML += generateTargetViewHTML(targetData, true); 
-                 } else {
-                    console.warn(`Target data not found for completed daily ID: ${targetId}`);
-                 }
-             });
-         }
-        if (completedCount === 0) viewHTML += "<p style='text-align:center;'>Nenhum alvo concluído hoje.</p>";
-
+        progressBarFill.style.width = percentage + '%';
+        progressText.textContent = progressLabel;
     } else {
-        viewHTML += "<p style='text-align:center; color: red;'>Erro: Seção de alvos diários não encontrada na página.</p>";
+        progressBarContainer.style.display = 'none';
+        progressText.textContent = `Plano "${name || 'Sem nome'}" inválido (sem dias/datas)`;
+        console.warn("Progresso não pode ser calculado: plano inválido ou sem datas.", currentReadingPlan);
     }
-    viewHTML += `</body></html>`;
-     const viewTab = window.open('', '_blank');
-     if (viewTab) {
-        viewTab.document.write(viewHTML);
-        viewTab.document.close();
-     } else {
-        alert('Seu navegador bloqueou a abertura de uma nova aba. Por favor, permita pop-ups para este site.');
-     }
-}
-
-function generateTargetViewHTML(target, isCompletedView = false) {
-     if (!target?.id) return ''; 
-     const formattedDate = formatDateForDisplay(target.date);
-     const elapsed = timeElapsed(target.date);
-
-     let categoryTag = '';
-     if (target.category) {
-         categoryTag = `<span class="category-tag">${target.category}</span>`;
-     }
-
-     let deadlineTag = '';
-     if (target.hasDeadline && target.deadlineDate) {
-        const formattedDeadline = formatDateForDisplay(target.deadlineDate);
-        deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formattedDeadline}</span>`;
-     }
-
-     const observations = Array.isArray(target.observations) ? target.observations : [];
-     const observationsHTML = renderObservations(observations, true, target.id); 
-
-     const completedClass = isCompletedView ? 'completed-target' : '';
-
-     return `
-         <div class="target ${completedClass}" data-target-id="${target.id}">
-             <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
-             <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-             <p><strong>Data Criação:</strong> ${formattedDate}</p>
-             <p><strong>Tempo Decorrido:</strong> ${elapsed}</p>
-             ${observationsHTML}
-         </div>`;
 }
 
 
-async function generateResolvedViewHTML(startDate, endDate) {
-    const user = auth.currentUser; if (!user) { alert("Você precisa estar logado."); return; } const uid = user.uid;
+function populatePlanSelector() {
+    if (!planSelect || !planSelectorContainer) return;
+    planSelect.innerHTML = '';
+    if (userPlansList.length === 0) {
+        planSelect.innerHTML = '<option value="">Nenhum plano</option>';
+        planSelectorContainer.style.display = 'flex';
+        return;
+    }
+    userPlansList.forEach(plan => {
+        const option = document.createElement('option');
+        option.value = plan.id;
+        const dateInfo = (plan.startDate && plan.endDate) ? ` (${formatUTCDateStringToBrasilian(plan.startDate)} a ${formatUTCDateStringToBrasilian(plan.endDate)})` : '';
+        option.textContent = (plan.name || `Plano ${plan.id.substring(0, 5)}...`) + dateInfo;
+        if (plan.id === activePlanId) { option.selected = true; }
+        planSelect.appendChild(option);
+    });
+    planSelectorContainer.style.display = 'flex';
+}
 
-    const startUTC = new Date(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
-    const endNextDay = new Date(endDate);
-    endNextDay.setUTCDate(endDate.getUTCDate() + 1);
-    const endUTCStartOfNextDay = new Date(endNextDay.getUTCFullYear(), endNextDay.getUTCMonth(), endNextDay.getUTCDate());
 
-    const startTimestamp = Timestamp.fromDate(startUTC);
-    const endTimestamp = Timestamp.fromDate(endUTCStartOfNextDay); 
+function populateManagePlansModal() {
+    if (!planListDiv) return;
+    showLoading(managePlansLoadingDiv, false);
+    planListDiv.innerHTML = '';
+    if (userPlansList.length === 0) {
+        planListDiv.innerHTML = '<p>Você ainda não criou nenhum plano de leitura.</p>';
+        return;
+    }
+    userPlansList.forEach(plan => {
+        const item = document.createElement('div');
+        item.classList.add('plan-list-item');
+        const dateInfo = (plan.startDate && plan.endDate) ? `<small style="display: block; color: var(--text-color-muted); font-size: 0.8em;">${formatUTCDateStringToBrasilian(plan.startDate)} - ${formatUTCDateStringToBrasilian(plan.endDate)}</small>` : '<small style="display: block; color: red; font-size: 0.8em;">Datas não definidas</small>';
+        const driveLinkHTML = plan.googleDriveLink ? `<a href="${plan.googleDriveLink}" target="_blank" class="manage-drive-link" title="Abrir link do Google Drive associado" onclick="event.stopPropagation();"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0z" fill="none"/><path d="M7.71 5.41L5.77 7.35C4.09 9.03 3 11.36 3 13.95c0 3.31 2.69 6 6 6h1.05c.39 0 .76-.23.92-.59l2.12-4.72c.19-.43.02-.93-.4-1.16L8.8 11.5c-.57-.31-1.3-.17-1.7.4L5.82 14H6c-1.1 0-2-.9-2-2 0-1.84.8-3.5 2.1-4.59zM18 9h-1.05c-.39 0-.76.23-.92.59l-2.12 4.72c-.19.43-.02-.93.4 1.16l3.89 1.98c.57.31 1.3.17 1.7-.4l1.28-2.05H18c1.1 0 2 .9 2 2 0 1.84-.8 3.5-2.1 4.59L18.29 18.59l1.94 1.94C21.91 18.97 23 16.64 23 14.05c0-3.31-2.69-6-6-6zM12 11c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill-rule="evenodd"/></svg></a>` : '';
+        item.innerHTML = `<div><span>${plan.name || `Plano ${plan.id.substring(0,5)}...`}</span>${dateInfo}</div><div class="actions">${driveLinkHTML}<button class="button-primary activate-plan-btn" data-plan-id="${plan.id}" ${plan.id === activePlanId ? 'disabled' : ''}>${plan.id === activePlanId ? 'Ativo' : 'Ativar'}</button><button class="button-danger delete-plan-btn" data-plan-id="${plan.id}">Excluir</button></div>`;
+        planListDiv.appendChild(item);
+    });
+    planListDiv.querySelectorAll('.activate-plan-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const planIdToActivate = e.target.dataset.planId;
+            if (planIdToActivate && planIdToActivate !== activePlanId) {
+                await setActivePlan(planIdToActivate);
+                closeModal('manage-plans-modal');
+            }
+        });
+    });
+    planListDiv.querySelectorAll('.delete-plan-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const planIdToDelete = e.target.dataset.planId;
+            handleDeleteSpecificPlan(planIdToDelete);
+        });
+    });
+}
 
-    console.log(`[generateResolvedViewHTML] Querying resolved targets between: ${startUTC.toISOString()} and ${endUTCStartOfNextDay.toISOString()}`);
 
-    const archivedRef = collection(db, "users", uid, "archivedTargets");
-    const q = query(archivedRef,
-        where("resolved", "==", true),
-        where("resolutionDate", ">=", startTimestamp),
-        where("resolutionDate", "<", endTimestamp),
-        orderBy("resolutionDate", "desc")
-    );
+function clearPlanListUI() {
+    if(planListDiv) planListDiv.innerHTML = '<p>Nenhum plano encontrado.</p>';
+    if(planSelect) planSelect.innerHTML = '<option value="">Nenhum plano</option>';
+}
 
-    let filteredResolvedTargets = [];
+
+function clearHistoryUI() { if(historyListDiv) historyListDiv.innerHTML = '<p>Nenhum histórico registrado.</p>'; }
+
+
+function clearStatsUI() {
+    if(statsActivePlanName) statsActivePlanName.textContent = '--';
+    if(statsActivePlanProgress) statsActivePlanProgress.textContent = '--';
+    if(statsTotalChapters) statsTotalChapters.textContent = '--';
+    if(statsPlansCompleted) statsPlansCompleted.textContent = '--';
+    if(statsAvgPace) statsAvgPace.textContent = '--';
+    if(statsContentDiv) statsContentDiv.style.display = 'block';
+    if(statsErrorDiv) showErrorMessage(statsErrorDiv, '');
+}
+
+
+function clearUpcomingReadingsUI() {
+    if (upcomingReadingsListDiv) upcomingReadingsListDiv.innerHTML = '<p>Carregando...</p>';
+    if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+}
+
+
+function clearOverdueReadingsUI() {
+    if (overdueReadingsListDiv) overdueReadingsListDiv.innerHTML = '<p>Carregando...</p>';
+    if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+}
+
+
+// --- Funções do Firebase ---
+
+
+async function fetchUserInfo(userId) {
+    const userDocRef = doc(db, 'users', userId);
+    try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+            userInfo = docSnap.data();
+            activePlanId = userInfo.activePlanId || null;
+            userStreakData = {
+                lastInteractionDate: userInfo.lastStreakInteractionDate || null,
+                current: userInfo.currentStreak || 0,
+                longest: userInfo.longestStreak || 0
+            };
+            const currentGlobalWeekId = getUTCWeekId();
+            if (userInfo.globalWeeklyInteractions && userInfo.globalWeeklyInteractions.weekId === currentGlobalWeekId) {
+                userGlobalWeeklyInteractions = userInfo.globalWeeklyInteractions;
+            } else {
+                userGlobalWeeklyInteractions = { weekId: currentGlobalWeekId, interactions: {} };
+            }
+            return userInfo;
+        } else {
+            const initialUserInfo = {
+                email: currentUser.email,
+                createdAt: serverTimestamp(),
+                activePlanId: null,
+                lastStreakInteractionDate: null,
+                currentStreak: 0,
+                longestStreak: 0,
+                globalWeeklyInteractions: { weekId: getUTCWeekId(), interactions: {} }
+            };
+            await setDoc(userDocRef, initialUserInfo);
+            userInfo = initialUserInfo;
+            activePlanId = null;
+            userStreakData = { lastInteractionDate: null, current: 0, longest: 0 };
+            userGlobalWeeklyInteractions = initialUserInfo.globalWeeklyInteractions;
+            return userInfo;
+        }
+    } catch (error) {
+        console.error("Error fetching/creating user info:", error);
+        showErrorMessage(authErrorDiv, `Erro ao carregar dados do usuário: ${error.message}`);
+        userStreakData = { lastInteractionDate: null, current: 0, longest: 0 };
+        userGlobalWeeklyInteractions = { weekId: getUTCWeekId(), interactions: {} };
+        return null;
+    }
+}
+
+
+async function fetchUserPlansList(userId) {
+    const plansCollectionRef = collection(db, 'users', userId, 'plans');
+    const q = query(plansCollectionRef, orderBy("createdAt", "desc"));
+    userPlansList = [];
     try {
         const querySnapshot = await getDocs(q);
-        const rawTargets = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        filteredResolvedTargets = rehydrateTargets(rawTargets); 
-        console.log(`[generateResolvedViewHTML] Found ${filteredResolvedTargets.length} resolved targets in the period.`);
+        querySnapshot.forEach((docSnap) => { userPlansList.push({ id: docSnap.id, ...docSnap.data() }); });
+        return userPlansList;
     } catch (error) {
-        console.error("Error fetching resolved targets for view:", error);
-        alert("Erro ao buscar alvos respondidos no período selecionado: " + error.message);
+        console.error("Error fetching user plans list:", error);
+        showErrorMessage(planViewErrorDiv, `Erro ao carregar lista de planos: ${error.message}`);
+        return [];
+    }
+}
+
+
+async function loadActivePlanData(userId, planId) {
+    if (!userId || !planId) {
+        currentReadingPlan = null;
+        readingPlanSection.style.display = 'none';
+        if(progressBarContainer) progressBarContainer.style.display = 'none';
+        planCreationSection.style.display = userPlansList.length === 0 ? 'block' : 'none';
+        updateProgressBarUI();
+        showLoading(planLoadingViewDiv, false);
         return;
     }
-
-    let viewHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Alvos Respondidos (${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)})</title><style>body{font-family: sans-serif; margin: 20px; line-height: 1.5;} .target{border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #eaffea; border-left: 5px solid #9cbe4a;} h1, h2 {text-align:center; color: #333;} h2 { margin-top: 5px; margin-bottom: 20px; font-size: 1.2em; color: #555;} h3{margin-top:0; margin-bottom: 5px; color: #444; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;} p { margin: 4px 0; color: #555;} .target-details, .observation-item { text-align: justify; } strong{color: #333;} .category-tag { background-color: #C71585; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; border: 1px solid #A01069; vertical-align: middle;} .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #c3e6cb;} .observation-item{margin-left: 0; font-size: 0.9em; color: #555; padding-left: 0; border-left: none; margin-bottom: 5px;} hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; } .target h3 .category-tag { flex-shrink: 0; } </style></head><body><h1>Alvos Respondidos</h1>`;
-    viewHTML += `<h2>Período: ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}</h2><hr/>`;
-
-     if (filteredResolvedTargets.length === 0) {
-         viewHTML += "<p style='text-align:center;'>Nenhum alvo respondido encontrado neste período.</p>";
-     } else {
-         filteredResolvedTargets.forEach(target => {
-             viewHTML += generateTargetViewHTMLForResolved(target);
-         });
-     }
-
-    viewHTML += `</body></html>`;
-
-    const viewTab = window.open('', '_blank');
-    if (viewTab) {
-        viewTab.document.write(viewHTML);
-        viewTab.document.close();
-    } else {
-        alert('Seu navegador bloqueou a abertura de uma nova aba. Por favor, permita pop-ups para este site.');
-    }
-}
-
-function generateTargetViewHTMLForResolved(target) {
-     if (!target?.id) return '';
-     const formattedResolutionDate = formatDateForDisplay(target.resolutionDate);
-     let totalTime = 'N/A';
-     if (target.date && target.resolutionDate) {
-         let diffInSeconds = Math.floor((target.resolutionDate.getTime() - target.date.getTime()) / 1000); if (diffInSeconds < 0) diffInSeconds = 0;
-         if (diffInSeconds < 60) totalTime = `${diffInSeconds} seg`;
-         else { let diffInMinutes = Math.floor(diffInSeconds / 60); if (diffInMinutes < 60) totalTime = `${diffInMinutes} min`;
-             else { let diffInHours = Math.floor(diffInMinutes / 60); if (diffInHours < 24) totalTime = `${diffInHours} hr`;
-                 else { let diffInDays = Math.floor(diffInHours / 24); if (diffInDays < 30) totalTime = `${diffInDays} dias`;
-                     else { let diffInMonths = Math.floor(diffInDays / 30.44); if (diffInMonths < 12) totalTime = `${diffInMonths} meses`;
-                         else { let diffInYears = Math.floor(diffInDays / 365.25); totalTime = `${diffInYears} anos`; }}}}}
-     }
-
-     let categoryTag = '';
-     if (target.category) {
-         categoryTag = `<span class="category-tag">${target.category}</span>`;
-     }
-
-     const observations = Array.isArray(target.observations) ? target.observations : [];
-     const observationsHTML = renderObservations(observations, true, target.id); 
-
-     return `
-         <div class="target resolved"> 
-             <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
-             <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-             <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
-             <p><strong>Data Respondido:</strong> ${formattedResolutionDate}</p>
-             <p><strong>Tempo Total (Criação -> Resposta):</strong> ${totalTime}</p>
-             ${observationsHTML}
-         </div>`;
-}
-
-
-function filterTargets(targets, searchTerm) {
-    if (!searchTerm) return targets;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return targets.filter(target => {
-        if (!target) return false; 
-         const titleMatch = target.title?.toLowerCase().includes(lowerSearchTerm);
-         const detailsMatch = target.details?.toLowerCase().includes(lowerSearchTerm);
-         const categoryMatch = target.category?.toLowerCase().includes(lowerSearchTerm); 
-         const observationMatch = Array.isArray(target.observations) &&
-             target.observations.some(obs => obs?.text?.toLowerCase().includes(lowerSearchTerm));
-        return titleMatch || detailsMatch || categoryMatch || observationMatch;
-    });
-}
-function handleSearchMain(event) { currentSearchTermMain = event.target.value; currentPage = 1; renderTargets(); }
-function handleSearchArchived(event) { currentSearchTermArchived = event.target.value; currentArchivedPage = 1; renderArchivedTargets(); }
-function handleSearchResolved(event) { currentSearchTermResolved = event.target.value; currentResolvedPage = 1; renderResolvedTargets(); }
-
-function showPanel(panelIdToShow) {
-    const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel'];
-    const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator']; 
-
-    allPanels.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
-    });
-
-    dailyRelatedElements.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
-    });
-
-    const panelToShowElement = document.getElementById(panelIdToShow);
-    if(panelToShowElement) {
-        panelToShowElement.style.display = 'block';
-    } else {
-        console.warn(`Panel ${panelIdToShow} not found.`);
-    }
-
-    if (panelIdToShow === 'dailySection') {
-        dailyRelatedElements.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.style.display = 'block';
-        });
-    }
-    console.log(`Showing panel: ${panelIdToShow}`);
-}
-
-// --- Verses and Popups ---
-const verses = [ 
-    "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5", "“Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças; e a paz de Deus, que excede todo o entendimento, guardará os vossos corações e os vossos pensamentos em Cristo Jesus.” - Filipenses 4:6-7", "“Orai sem cessar.” - 1 Tessalonicenses 5:17", "“Confessai, pois, os vossos pecados uns aos outros, e orai uns aos outros, para serdes curados. Muito pode, por sua eficácia, a súplica do justo.” - Tiago 5:16", "“E tudo quanto pedirdes em meu nome, eu o farei, para que o Pai seja glorificado no Filho.” - João 14:13", "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á. Pois todo o que pede, recebe; e quem busca, encontra; e a quem bate, abrir-se-lhe-á.” - Mateus 7:7-8", "“Se vós, pois, sendo maus, sabeis dar boas dádivas aos vossos filhos, quanto mais vosso Pai celestial dará o Espírito Santo àqueles que lho pedirem?” - Lucas 11:13", "“Este é o dia que o Senhor fez; regozijemo-nos e alegremo-nos nele.” - Salmos 118:24", "“Antes de clamarem, eu responderei; ainda não estarão falando, e eu já terei ouvido.” - Isaías 65:24", "“Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e ocultas, que não sabes.” - Jeremias 33:3"
-];
-function displayRandomVerse() {
-    const verseDisplay = document.getElementById('dailyVerses');
-    if (verseDisplay) {
-        const randomIndex = Math.floor(Math.random() * verses.length);
-        verseDisplay.textContent = verses[randomIndex];
-    }
-}
-function displayCompletionPopup() {
-    const popup = document.getElementById('completionPopup');
-    if (popup) {
-        popup.style.display = 'flex'; 
-        const popupVerseElement = popup.querySelector('#popupVerse');
-        if (popupVerseElement) {
-            const randomIndex = Math.floor(Math.random() * verses.length);
-            popupVerseElement.textContent = verses[randomIndex];
+    showLoading(planLoadingViewDiv, true);
+    showErrorMessage(planViewErrorDiv, '');
+    planCreationSection.style.display = 'none';
+    readingPlanSection.style.display = 'none';
+    const planDocRef = doc(db, 'users', userId, 'plans', planId);
+    try {
+        const docSnap = await getDoc(planDocRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const mandatoryFieldsValid = data && typeof data.plan === 'object' && !Array.isArray(data.plan) && data.plan !== null && typeof data.currentDay === 'number' && Array.isArray(data.chaptersList) && typeof data.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.startDate) && typeof data.endDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.endDate) && Array.isArray(data.allowedDays);
+            const recalcFieldsValid = (!data.recalculationBaseDay || typeof data.recalculationBaseDay === 'number') && (!data.recalculationBaseDate || (typeof data.recalculationBaseDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.recalculationBaseDate)));
+            if (!mandatoryFieldsValid || !recalcFieldsValid) {
+                console.error("Invalid plan data format loaded:", data);
+                currentReadingPlan = null; activePlanId = null;
+                if(userInfo) await updateDoc(doc(db, 'users', userId), { activePlanId: null });
+                throw new Error("Formato de dados do plano ativo é inválido. Plano desativado.");
+            }
+            currentReadingPlan = { id: planId, ...data };
+            if (!currentReadingPlan.dailyChapterReadStatus || typeof currentReadingPlan.dailyChapterReadStatus !== 'object') {
+                 currentReadingPlan.dailyChapterReadStatus = {};
+            }
+            loadDailyReadingUI();
+            updateProgressBarUI();
+            readingPlanSection.style.display = 'block';
+            planCreationSection.style.display = 'none';
+        } else {
+            console.warn("Active plan document (", planId, ") not found in Firestore.");
+            currentReadingPlan = null;
+            if(userInfo && userInfo.activePlanId === planId) {
+                await updateDoc(doc(db, 'users', userId), { activePlanId: null });
+                activePlanId = null;
+            }
+            readingPlanSection.style.display = 'none';
+            planCreationSection.style.display = userPlansList.length === 0 ? 'block' : 'none';
+            updateProgressBarUI();
+            populatePlanSelector();
         }
+    } catch (error) {
+        console.error("Error loading active plan data:", error);
+        showErrorMessage(planViewErrorDiv, `Erro ao carregar plano ativo: ${error.message}`);
+        currentReadingPlan = null;
+        readingPlanSection.style.display = 'none';
+        planCreationSection.style.display = userPlansList.length === 0 ? 'block' : 'none';
+        updateProgressBarUI();
+    } finally {
+        showLoading(planLoadingViewDiv, false);
     }
 }
 
-// --- Manual Addition of Target to Daily List ---
 
-function openManualTargetModal() {
-    const modal = document.getElementById('manualTargetModal');
-    const searchInput = document.getElementById('manualTargetSearchInput');
-    const resultsDiv = document.getElementById('manualTargetSearchResults');
-    if (!modal || !searchInput || !resultsDiv) {
-        console.error("Manual target addition modal elements not found.");
-        return;
+async function loadUserDataAndPlans() {
+    if (!currentUser) return;
+    const userId = currentUser.uid;
+    showLoading(planLoadingViewDiv, true);
+    readingPlanSection.style.display = 'none';
+    planCreationSection.style.display = 'none';
+    if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+    if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+    if (perseveranceSection) perseveranceSection.style.display = 'none';
+    if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
+    showErrorMessage(planViewErrorDiv, '');
+    try {
+        await fetchUserInfo(userId);
+        await fetchUserPlansList(userId);
+        populatePlanSelector();
+        await loadActivePlanData(userId, activePlanId);
+        await displayScheduledReadings();
+    } catch (error) {
+        console.error("Error during initial data load sequence:", error);
+        readingPlanSection.style.display = 'none';
+        planCreationSection.style.display = 'block';
+        if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+        if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+        if (perseveranceSection) perseveranceSection.style.display = 'none';
+        if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
+    } finally {
+        showLoading(planLoadingViewDiv, false);
     }
-
-    searchInput.value = ''; 
-    resultsDiv.innerHTML = '<p>Digite algo para buscar...</p>'; 
-    modal.style.display = 'block';
-    searchInput.focus();
 }
 
-async function handleManualTargetSearch() {
-    const searchInput = document.getElementById('manualTargetSearchInput');
-    const resultsDiv = document.getElementById('manualTargetSearchResults');
-    const searchTerm = searchInput.value.toLowerCase().trim();
 
-    if (searchTerm.length < 2) { 
-        resultsDiv.innerHTML = '<p>Digite pelo menos 2 caracteres...</p>';
-        return;
+async function setActivePlan(planId) {
+    if (!currentUser || !planId) return;
+    const userId = currentUser.uid;
+    const userDocRef = doc(db, 'users', userId);
+    if(planSelect) planSelect.disabled = true;
+    try {
+        await updateDoc(userDocRef, { activePlanId: planId });
+        activePlanId = planId;
+        if (userInfo) userInfo.activePlanId = planId;
+        if (planSelect) planSelect.value = planId;
+        await loadActivePlanData(userId, planId);
+        await displayScheduledReadings();
+        if (managePlansModal.style.display === 'flex') { populateManagePlansModal(); }
+    } catch (error) {
+        console.error("Error setting active plan:", error);
+        showErrorMessage(planViewErrorDiv, `Erro ao ativar plano: ${error.message}`);
+        if (planSelect && currentReadingPlan) planSelect.value = currentReadingPlan.id;
+        else if (planSelect) planSelect.value = '';
+    } finally {
+        if(planSelect) planSelect.disabled = false;
     }
-
-    resultsDiv.innerHTML = '<p>Buscando...</p>';
-
-    const filteredActiveTargets = prayerTargets.filter(target => {
-        if (!target || target.archived || target.resolved) return false; 
-        const titleMatch = target.title?.toLowerCase().includes(searchTerm);
-        const detailsMatch = target.details?.toLowerCase().includes(searchTerm);
-        const categoryMatch = target.category?.toLowerCase().includes(searchTerm);
-        return titleMatch || detailsMatch || categoryMatch;
-    });
-
-    const targetsNotInDailyList = filteredActiveTargets.filter(target => !currentDailyTargets.includes(target.id));
-
-    renderManualSearchResults(targetsNotInDailyList);
 }
 
-function renderManualSearchResults(targets) {
-    const resultsDiv = document.getElementById('manualTargetSearchResults');
-    resultsDiv.innerHTML = ''; 
 
-    if (targets.length === 0) {
-        resultsDiv.innerHTML = '<p>Nenhum alvo ativo encontrado ou todos já estão na lista do dia.</p>';
-        return;
+async function saveNewPlanToFirestore(userId, planData) {
+    if (!userId) { showErrorMessage(planErrorDiv, "Erro: Usuário não autenticado."); return null; }
+    showLoading(planLoadingCreateDiv, true);
+    if (createPlanButton) createPlanButton.disabled = true;
+    if (cancelCreationButton) cancelCreationButton.disabled = true;
+    const plansCollectionRef = collection(db, 'users', userId, 'plans');
+    try {
+        if(typeof planData.plan !== 'object' || Array.isArray(planData.plan) || planData.plan === null) throw new Error("Formato interno do plano inválido.");
+        if (!planData.name || planData.name.trim() === '') throw new Error("O nome do plano é obrigatório.");
+        if (!planData.startDate || !planData.endDate) throw new Error("Datas de início e/ou fim não foram definidas para o plano.");
+        if (!Array.isArray(planData.allowedDays)) throw new Error("Dias de leitura permitidos inválidos.");
+        if (typeof planData.currentDay !== 'number' || planData.currentDay < 1) throw new Error("Dia inicial do plano inválido.");
+        if (!Array.isArray(planData.chaptersList)) throw new Error("Lista de capítulos inválida.");
+        if (typeof planData.totalChapters !== 'number') throw new Error("Total de capítulos inválido.");
+        
+        const dataToSave = {
+            ...planData,
+            weeklyInteractions: { weekId: getUTCWeekId(), interactions: {} },
+            dailyChapterReadStatus: {},
+            createdAt: serverTimestamp(),
+            recalculationBaseDay: null,
+            recalculationBaseDate: null
+        };
+
+        const newPlanDocRef = await addDoc(plansCollectionRef, dataToSave);
+        userPlansList.unshift({ id: newPlanDocRef.id, ...dataToSave }); // Add to start of list
+        await setActivePlan(newPlanDocRef.id); // Set the new plan as active
+        return newPlanDocRef.id;
+    } catch (error) {
+        console.error("Error saving new plan to Firestore:", error);
+        // If planErrorDiv is visible (generic plan creation), show error there.
+        // Otherwise, error might be handled by createFavoriteAnnualPlanSet if called from there.
+        if (planCreationSection.style.display === 'block') {
+            showErrorMessage(planErrorDiv, `Erro ao salvar plano: ${error.message}`);
+        }
+        return null;
+    } finally {
+        showLoading(planLoadingCreateDiv, false);
+        if (createPlanButton) createPlanButton.disabled = false;
+        if (cancelCreationButton) cancelCreationButton.disabled = false;
     }
-
-    targets.forEach(target => {
-        const itemDiv = document.createElement('div');
-        itemDiv.classList.add('manual-target-item');
-        itemDiv.onclick = () => selectManualTarget(target.id, target.title); 
-
-        let categoryInfo = target.category ? `[${target.category}] ` : '';
-        let detailsSnippet = target.details ? `- ${target.details.substring(0, 50)}...` : '';
-
-        itemDiv.innerHTML = `
-            <h4>${target.title || 'Sem Título'}</h4>
-            <span>${categoryInfo}${formatDateForDisplay(target.date)} ${detailsSnippet}</span>
-        `;
-        resultsDiv.appendChild(itemDiv);
-    });
 }
 
-async function selectManualTarget(targetId, targetTitle) {
-    if (!confirm(`Adicionar "${targetTitle || targetId}" à lista de oração de hoje?`)) {
-        return;
+
+async function updateChapterStatusAndUserInteractions(userId, planId, chapterName, isRead) {
+    if (!userId || !planId || !currentReadingPlan) {
+        console.error("Erro ao atualizar status do capítulo: Usuário/Plano não carregado.");
+        return false;
+    }
+    const planDocRef = doc(db, 'users', userId, 'plans', planId);
+    const userDocRef = doc(db, 'users', userId);
+    // MODIFICADO: Usa a data local para registrar a interação
+    const actualDateMarkedStr = getCurrentLocalDateString();
+    let firestoreStreakUpdate = {};
+    let updatedStreakDataForSave = null;
+
+    const dailyChapterStatusUpdate = {};
+    dailyChapterStatusUpdate[`dailyChapterReadStatus.${chapterName}`] = isRead;
+
+    if (isRead && userStreakData.lastInteractionDate !== actualDateMarkedStr) {
+        let daysDiff = Infinity;
+        if (userStreakData.lastInteractionDate) {
+            // MODIFICADO: Usa a função de diff de dias corrigida.
+            daysDiff = dateDiffInDays(userStreakData.lastInteractionDate, actualDateMarkedStr);
+        }
+        updatedStreakDataForSave = { ...userStreakData };
+        if (daysDiff === 1) {
+            updatedStreakDataForSave.current += 1;
+        } else if (daysDiff > 1 || daysDiff === Infinity) {
+            // Se a diferença não for 1, a sequência é reiniciada para 1 (o dia atual).
+            // A comparação `userStreakData.lastInteractionDate !== actualDateMarkedStr` já garante que não é o mesmo dia.
+            updatedStreakDataForSave.current = 1;
+        }
+        updatedStreakDataForSave.longest = Math.max(updatedStreakDataForSave.longest, updatedStreakDataForSave.current);
+        updatedStreakDataForSave.lastInteractionDate = actualDateMarkedStr;
+        firestoreStreakUpdate = {
+            lastStreakInteractionDate: updatedStreakDataForSave.lastInteractionDate,
+            currentStreak: updatedStreakDataForSave.current,
+            longestStreak: updatedStreakDataForSave.longest
+        };
     }
 
-    const user = auth.currentUser;
-    if (!user) { alert("Você precisa estar logado."); return; }
-    const userId = user.uid;
-    const todayStr = formatDateToISO(new Date());
-    const dailyDocId = `${userId}_${todayStr}`;
-    const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
-    const modal = document.getElementById('manualTargetModal');
-
-    console.log(`[selectManualTarget] Attempting to add ${targetId} to daily doc ${dailyDocId}`);
+    let updatedGlobalWeeklyData = null;
+    if (isRead) {
+        const currentGlobalWeekId = getUTCWeekId();
+        updatedGlobalWeeklyData = JSON.parse(JSON.stringify(userGlobalWeeklyInteractions));
+        if (updatedGlobalWeeklyData.weekId !== currentGlobalWeekId) {
+            updatedGlobalWeeklyData = { weekId: currentGlobalWeekId, interactions: {} };
+        }
+        if (!updatedGlobalWeeklyData.interactions) updatedGlobalWeeklyData.interactions = {};
+        // MODIFICADO: Salva a interação no tracker semanal usando a data local
+        updatedGlobalWeeklyData.interactions[actualDateMarkedStr] = true;
+    }
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const dailyDocSnap = await transaction.get(dailyRef);
-            let currentTargetsArray = [];
+        await updateDoc(planDocRef, dailyChapterStatusUpdate);
+        currentReadingPlan.dailyChapterReadStatus[chapterName] = isRead;
 
-            if (dailyDocSnap.exists()) {
-                currentTargetsArray = dailyDocSnap.data().targets || [];
-            } else {
-                console.warn(`[selectManualTarget] Daily document ${dailyDocId} does not exist during transaction!`);
-                throw new Error("Documento diário não encontrado. Tente recarregar a página.");
+        const userUpdates = {};
+        if (firestoreStreakUpdate && Object.keys(firestoreStreakUpdate).length > 0) {
+            Object.assign(userUpdates, firestoreStreakUpdate);
+        }
+        if (updatedGlobalWeeklyData) {
+             userUpdates.globalWeeklyInteractions = updatedGlobalWeeklyData;
+        }
+
+        if (Object.keys(userUpdates).length > 0) {
+            await updateDoc(userDocRef, userUpdates);
+            if (updatedStreakDataForSave) {
+                userStreakData = updatedStreakDataForSave;
             }
-
-            const alreadyExists = currentTargetsArray.some(t => t?.targetId === targetId);
-            if (alreadyExists) {
-                alert(`"${targetTitle || targetId}" já está na lista de hoje.`);
-                console.log(`[selectManualTarget] Target ${targetId} already in list.`);
-                return; 
+            if (updatedGlobalWeeklyData) {
+                userGlobalWeeklyInteractions = updatedGlobalWeeklyData;
             }
-
-            const newTargetEntry = {
-                targetId: targetId,
-                completed: false,
-                manuallyAdded: true 
-            };
-            const updatedTargetsArray = [...currentTargetsArray, newTargetEntry];
-
-            transaction.update(dailyRef, { targets: updatedTargetsArray });
-            console.log(`[selectManualTarget] Target ${targetId} added to daily doc via transaction.`);
-        });
-
-        alert(`"${targetTitle || targetId}" adicionado à lista do dia!`);
-        if (modal) modal.style.display = 'none'; 
-
-        await loadDailyTargets();
-
+        }
+        return true;
     } catch (error) {
-        console.error("Error adding manual target to daily list:", error);
-        alert("Erro ao adicionar alvo manual: " + error.message);
+        console.error("Error updating chapter status/user interactions:", error);
+        showErrorMessage(planViewErrorDiv, `Erro ao salvar leitura do capítulo: ${error.message}.`);
+        return false;
     }
 }
 
-// --- Category View Functions ---
-function openCategorySelectionModal() {
-    const modal = document.getElementById('categorySelectionModal');
-    const checkboxesContainer = document.getElementById('categoryCheckboxesContainer');
-    if (!modal || !checkboxesContainer) {
-        console.error("Category selection modal elements not found.");
-        alert("Erro ao abrir a seleção de categorias.");
-        return;
+
+async function advanceToNextDayAndUpdateLog(userId, planId, newDay, chaptersReadForLog) {
+    if (!userId || !planId || !currentReadingPlan) {
+        console.error("Erro ao avançar dia: Usuário/Plano não carregado.");
+        showErrorMessage(planViewErrorDiv, "Erro crítico ao salvar progresso. Recarregue.");
+        return false;
     }
+    const planDocRef = doc(db, 'users', userId, 'plans', planId);
+    try {
+        // MODIFICADO: O log de leitura também usa a data local
+        const actualDateMarkedStr = getCurrentLocalDateString();
+        const logEntry = { date: actualDateMarkedStr, chapters: chaptersReadForLog };
 
-    checkboxesContainer.innerHTML = '';
-
-    predefinedCategories.forEach(category => {
-        const checkboxId = `category-${category.replace(/\s+/g, '-')}`; 
-        const div = document.createElement('div');
-        div.classList.add('category-checkbox-item'); 
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = checkboxId;
-        checkbox.value = category;
-        checkbox.name = 'selectedCategories';
-
-        const label = document.createElement('label');
-        label.htmlFor = checkboxId;
-        label.textContent = category;
-
-        div.appendChild(checkbox);
-        div.appendChild(label);
-        checkboxesContainer.appendChild(div);
-    });
-
-    modal.style.display = 'block';
-}
-
-function generateCategoryFilteredView() {
-    const modal = document.getElementById('categorySelectionModal');
-    const checkboxesContainer = document.getElementById('categoryCheckboxesContainer');
-    if (!checkboxesContainer || !modal) return;
-
-    const selectedCheckboxes = checkboxesContainer.querySelectorAll('input[name="selectedCategories"]:checked');
-    const selectedCategories = Array.from(selectedCheckboxes).map(cb => cb.value);
-
-    if (selectedCategories.length === 0) {
-        alert("Por favor, selecione pelo menos uma categoria.");
-        return;
-    }
-
-    const filteredTargets = prayerTargets.filter(target => {
-        return !target.archived && !target.resolved && target.category && selectedCategories.includes(target.category);
-    });
-
-    filteredTargets.sort((a, b) => {
-        const catCompare = (a.category || '').localeCompare(b.category || '');
-        if (catCompare !== 0) return catCompare;
-        const dateA = a.date ? a.date.getTime() : 0;
-        const dateB = b.date ? b.date.getTime() : 0;
-        return dateB - dateA; 
-    });
-
-    const pageTitle = `Alvos por Categoria: ${selectedCategories.join(', ')}`;
-    generateViewHTML(filteredTargets, pageTitle);
-
-    modal.style.display = 'none';
-}
-
-
-// --- Event Listeners ---
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOMContentLoaded] DOM fully loaded. Setting up listeners.");
-    
-    const dateInput = document.getElementById('date');
-    if (dateInput) dateInput.value = formatDateToISO(new Date()); 
-
-    onAuthStateChanged(auth, (user) => loadData(user));
-
-    document.getElementById('searchMain')?.addEventListener('input', handleSearchMain);
-    document.getElementById('searchArchived')?.addEventListener('input', handleSearchArchived);
-    document.getElementById('searchResolved')?.addEventListener('input', handleSearchResolved);
-    document.getElementById('showDeadlineOnly')?.addEventListener('change', handleDeadlineFilterChange);
-    document.getElementById('showExpiredOnlyMain')?.addEventListener('change', handleExpiredOnlyMainChange);
-
-    document.getElementById('btnEmailSignUp')?.addEventListener('click', signUpWithEmailPassword);
-    document.getElementById('btnEmailSignIn')?.addEventListener('click', signInWithEmailPassword);
-    document.getElementById('btnForgotPassword')?.addEventListener('click', resetPassword);
-    document.getElementById('btnLogout')?.addEventListener('click', () => {
-        signOut(auth).catch(error => console.error("Logout error:", error));
-    });
-
-    document.getElementById("viewReportButton")?.addEventListener('click', () => window.location.href = 'orei.html');
-
-    document.getElementById("refreshDaily")?.addEventListener("click", async () => {
-        const user = auth.currentUser; if (!user) { alert("Você precisa estar logado."); return; }
-        if (confirm("Gerar nova lista de alvos para hoje? Isso substituirá a lista atual, incluindo os que já foram marcados como 'Orado'.")) {
-            const userId = user.uid; const todayStr = formatDateToISO(new Date()); const dailyDocId = `${userId}_${todayStr}`;
-            const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
-            document.getElementById("dailyTargets").innerHTML = '<p>Gerando nova lista...</p>'; 
-            try {
-                const newTargetsData = await generateDailyTargets(userId, todayStr); 
-                await setDoc(dailyRef, newTargetsData); 
-                await loadDailyTargets(); 
-                alert("Nova lista de alvos do dia gerada!");
-            } catch (error) {
-                console.error("Error refreshing daily targets:", error);
-                alert("Erro ao gerar nova lista de alvos: " + error.message);
-                await loadDailyTargets(); 
-            }
+        const currentWeekId = getUTCWeekId();
+        let updatedWeeklyDataForPlan = JSON.parse(JSON.stringify(currentReadingPlan.weeklyInteractions || { weekId: null, interactions: {} }));
+        if (updatedWeeklyDataForPlan.weekId !== currentWeekId) {
+            updatedWeeklyDataForPlan = { weekId: currentWeekId, interactions: {} };
         }
-     });
-     document.getElementById("copyDaily")?.addEventListener("click", () => {
-        const dailyTargetsDiv = document.getElementById('dailyTargets');
-        let textToCopy = 'Alvos Pendentes Hoje:\n\n';
-        let count = 0;
-        if (!dailyTargetsDiv) return;
-        const targetDivs = dailyTargetsDiv.querySelectorAll('.target:not(.completed-target)'); 
-        targetDivs.forEach((div) => {
-            const titleElement = div.querySelector('h3');
-            let titleText = 'Sem Título';
-            if(titleElement && titleElement.lastChild && titleElement.lastChild.nodeType === Node.TEXT_NODE) {
-                 titleText = titleElement.lastChild.textContent.trim();
-            } else if (titleElement) {
-                titleText = titleElement.textContent.replace(/Prazo:.*?\d{2}\/\d{2}\/\d{4}/, '').trim(); 
-                predefinedCategories.forEach(cat => titleText = titleText.replace(cat, '')); 
-                titleText = titleText.trim() || 'Sem Título';
-            }
+        if (!updatedWeeklyDataForPlan.interactions) updatedWeeklyDataForPlan.interactions = {};
+        // Este é um tracker semanal *por plano*, não global. Mantê-lo também com data local é consistente.
+        updatedWeeklyDataForPlan.interactions[actualDateMarkedStr] = true;
 
-            const detailsElement = div.querySelector('p.target-details'); 
-            const detailsText = detailsElement ? detailsElement.textContent.trim() : 'Sem Detalhes';
-            count++;
-            textToCopy += `${count}. ${titleText}\n   ${detailsText}\n\n`;
-        });
-        if (count > 0) {
-            navigator.clipboard.writeText(textToCopy.trim())
-                .then(() => alert(`${count} alvo(s) pendente(s) copiado(s) para a área de transferência!`))
-                .catch(err => {
-                    console.error('Falha ao copiar para clipboard:', err);
-                    prompt("Não foi possível copiar automaticamente. Copie manualmente abaixo:", textToCopy.trim());
-                });
+        const dataToUpdate = {
+            currentDay: newDay,
+            weeklyInteractions: updatedWeeklyDataForPlan,
+            dailyChapterReadStatus: {}
+        };
+        if (logEntry.date && Array.isArray(logEntry.chapters)) {
+            dataToUpdate[`readLog.${logEntry.date}`] = logEntry.chapters;
+        }
+
+        await updateDoc(planDocRef, dataToUpdate);
+
+        currentReadingPlan.currentDay = newDay;
+        currentReadingPlan.weeklyInteractions = updatedWeeklyDataForPlan;
+        currentReadingPlan.dailyChapterReadStatus = {};
+        if (logEntry.date && Array.isArray(logEntry.chapters)) {
+            if (!currentReadingPlan.readLog) currentReadingPlan.readLog = {};
+            currentReadingPlan.readLog[logEntry.date] = logEntry.chapters;
+        }
+        return true;
+    } catch (error) {
+        console.error("Error advancing day and updating log:", error);
+        showErrorMessage(planViewErrorDiv, `Erro ao salvar progresso do plano: ${error.message}. Tente novamente.`);
+        return false;
+    }
+}
+
+
+async function saveRecalculatedPlanToFirestore(userId, planId, updatedPlanData) {
+    if (!userId || !planId) { showErrorMessage(recalculateErrorDiv, "Erro: Usuário ou plano ativo inválido."); return false; }
+    showLoading(recalculateLoadingDiv, true);
+    if (confirmRecalculateButton) confirmRecalculateButton.disabled = true;
+    const planDocRef = doc(db, 'users', userId, 'plans', planId);
+    try {
+        if(typeof updatedPlanData.plan !== 'object' || Array.isArray(updatedPlanData.plan) || updatedPlanData.plan === null) throw new Error("Formato interno do plano recalculado inválido.");
+        if(!updatedPlanData.startDate || !updatedPlanData.endDate) throw new Error("Datas de início/fim ausentes no plano recalculado.");
+        if(typeof updatedPlanData.currentDay !== 'number') throw new Error("Dia atual ausente ou inválido no plano recalculado.");
+        if(typeof updatedPlanData.recalculationBaseDay !== 'number') throw new Error("Dia base do recálculo inválido.");
+        if(typeof updatedPlanData.recalculationBaseDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(updatedPlanData.recalculationBaseDate)) throw new Error("Data base do recálculo inválida.");
+        
+        const dataToSave = {
+            ...updatedPlanData,
+            dailyChapterReadStatus: updatedPlanData.dailyChapterReadStatus || {}
+        };
+        await setDoc(planDocRef, dataToSave);
+
+        currentReadingPlan = { id: planId, ...dataToSave };
+        const index = userPlansList.findIndex(p => p.id === planId);
+        if (index > -1) { userPlansList[index] = { id: planId, ...dataToSave }; }
+        return true;
+    } catch (error) {
+        console.error("Error saving recalculated plan:", error);
+        showErrorMessage(recalculateErrorDiv, `Erro ao salvar recálculo: ${error.message}`);
+        return false;
+    } finally {
+        showLoading(recalculateLoadingDiv, false);
+        if (confirmRecalculateButton) confirmRecalculateButton.disabled = false;
+    }
+}
+
+
+async function deletePlanFromFirestore(userId, planIdToDelete) {
+    if (!userId || !planIdToDelete) { console.error("Erro ao deletar: Usuário ou ID do plano inválido."); return false; }
+    const planDocRef = doc(db, 'users', userId, 'plans', planIdToDelete);
+    const userDocRef = doc(db, 'users', userId);
+    try {
+        await deleteDoc(planDocRef);
+        userPlansList = userPlansList.filter(p => p.id !== planIdToDelete);
+        if (activePlanId === planIdToDelete) {
+            activePlanId = null; currentReadingPlan = null;
+            const nextActivePlanId = userPlansList.length > 0 ? userPlansList[0].id : null;
+            await updateDoc(userDocRef, { activePlanId: nextActivePlanId });
+            activePlanId = nextActivePlanId;
+            populatePlanSelector();
+            await loadActivePlanData(userId, activePlanId); // This will update UI for the new active plan
+            await displayScheduledReadings();
         } else {
-            alert('Nenhum alvo pendente para copiar.');
+            populatePlanSelector(); // Just update selector if deleted plan was not active
+            if (managePlansModal.style.display === 'flex') { populateManagePlansModal(); }
+            await displayScheduledReadings(); // Overdue/upcoming might change
         }
-     });
+        return true;
+    } catch (error) {
+        console.error("Error deleting plan from Firestore:", error);
+        const errorTargetDiv = (managePlansModal.style.display === 'flex') ? managePlansErrorDiv : planViewErrorDiv;
+        showErrorMessage(errorTargetDiv, `Erro ao deletar plano: ${error.message}`);
+        return false;
+    }
+}
 
-    document.getElementById("addManualTargetButton")?.addEventListener('click', () => {
-        const user = auth.currentUser;
-        if (!user) { alert("Você precisa estar logado para adicionar alvos."); return; }
-        openManualTargetModal();
+
+// --- Funções Principais de Interação ---
+
+
+function togglePlanCreationOptions() {
+    const creationMethodRadio = document.querySelector('input[name="creation-method"]:checked');
+    const durationMethodRadio = document.querySelector('input[name="duration-method"]:checked');
+    const creationMethod = creationMethodRadio ? creationMethodRadio.value : 'interval';
+    const durationMethod = durationMethodRadio ? durationMethodRadio.value : 'days';
+    if (intervalOptionsDiv) intervalOptionsDiv.style.display = creationMethod === 'interval' ? 'block' : 'none';
+    if (selectionOptionsDiv) selectionOptionsDiv.style.display = (creationMethod === 'selection' || creationMethod === 'chapters-per-day') ? 'block' : 'none';
+    const showDaysOption = durationMethod === 'days' && creationMethod !== 'chapters-per-day';
+    const showEndDateOption = durationMethod === 'end-date' && creationMethod !== 'chapters-per-day';
+    const showChaptersPerDayOption = creationMethod === 'chapters-per-day';
+    if (daysOptionDiv) daysOptionDiv.style.display = showDaysOption ? 'block' : 'none';
+    if (endDateOptionDiv) endDateOptionDiv.style.display = showEndDateOption ? 'block' : 'none';
+    if (chaptersPerDayOptionDiv) chaptersPerDayOptionDiv.style.display = showChaptersPerDayOption ? 'block' : 'none';
+    if (daysInput) daysInput.disabled = !showDaysOption;
+    if (startDateInput) startDateInput.disabled = !showEndDateOption;
+    if (endDateInput) endDateInput.disabled = !showEndDateOption;
+    if (chaptersPerDayInput) chaptersPerDayInput.disabled = !showChaptersPerDayOption;
+    if (durationMethodRadios) { durationMethodRadios.forEach(r => r.disabled = showChaptersPerDayOption); }
+    if (showChaptersPerDayOption) {
+        if (daysOptionDiv) daysOptionDiv.style.display = 'none';
+        if (endDateOptionDiv) endDateOptionDiv.style.display = 'none';
+    }
+    if (showEndDateOption && startDateInput && !startDateInput.value) {
+        try {
+            const todayLocal = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000));
+            startDateInput.value = todayLocal.toISOString().split('T')[0];
+        } catch (e) { console.error("Erro ao definir data inicial padrão:", e); }
+    }
+}
+
+
+function showPlanCreationSection() {
+    resetFormFields();
+    readingPlanSection.style.display = 'none';
+    if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+    if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+    if (perseveranceSection) perseveranceSection.style.display = 'none'; // MODIFICADO: usa o novo ID
+    if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
+    planCreationSection.style.display = 'block';
+    if (cancelCreationButton) { cancelCreationButton.style.display = userPlansList.length > 0 ? 'inline-block' : 'none'; }
+    window.scrollTo(0, 0);
+}
+
+
+function cancelPlanCreation() {
+    planCreationSection.style.display = 'none';
+    showErrorMessage(planErrorDiv, '');
+    if (currentReadingPlan && activePlanId) {
+        readingPlanSection.style.display = 'block';
+        if (perseveranceSection) perseveranceSection.style.display = 'block';
+        if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'block';
+        if (overdueReadingsSection) overdueReadingsSection.style.display = overdueReadingsListDiv.children.length > 0 && !overdueReadingsListDiv.querySelector('p') ? 'block' : 'none';
+        if (upcomingReadingsSection) upcomingReadingsSection.style.display = upcomingReadingsListDiv.children.length > 0 && !upcomingReadingsListDiv.querySelector('p') ? 'block' : 'none';
+    } else {
+        console.log("Cancel creation: No active plan to return to.");
+        if (currentUser && perseveranceSection) perseveranceSection.style.display = 'block'; // MODIFICADO: usa novo ID
+        if (currentUser && globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'block';
+        displayScheduledReadings(); // Show overdue/upcoming if any plan exists
+    }
+}
+
+
+async function createReadingPlan() {
+    if (!currentUser) { alert("Você precisa estar logado para criar um plano."); return; }
+    const userId = currentUser.uid;
+    showErrorMessage(planErrorDiv, '');
+    showErrorMessage(periodicityWarningDiv, '');
+    const planName = planNameInput.value.trim();
+    const googleDriveLink = googleDriveLinkInput.value.trim();
+    if (!planName) { showErrorMessage(planErrorDiv, "Por favor, dê um nome ao seu plano."); planNameInput.focus(); return; }
+    if (googleDriveLink && !(googleDriveLink.startsWith('http://') || googleDriveLink.startsWith('https://'))) {
+        showErrorMessage(planErrorDiv, "O link do Google Drive parece inválido. Use o endereço completo (http:// ou https://).");
+        googleDriveLinkInput.focus(); return;
+    }
+    const allowedDaysOfWeek = Array.from(periodicityCheckboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value, 10));
+    const validAllowedDaysForCalculation = allowedDaysOfWeek.length > 0 ? allowedDaysOfWeek : [0, 1, 2, 3, 4, 5, 6];
+    let chaptersToRead = [];
+    try {
+        const creationMethodRadio = document.querySelector('input[name="creation-method"]:checked');
+        const creationMethod = creationMethodRadio ? creationMethodRadio.value : null;
+        if (!creationMethod) throw new Error("Método de criação não selecionado.");
+        if (creationMethod === 'interval') {
+            const startBook = startBookSelect.value; const startChap = parseInt(startChapterInput.value, 10);
+            const endBook = endBookSelect.value; const endChap = parseInt(endChapterInput.value, 10);
+            if (!startBook || isNaN(startChap) || !endBook || isNaN(endChap)) { throw new Error("Selecione os livros e capítulos inicial/final corretamente."); }
+            const generatedChapters = generateChaptersInRange(startBook, startChap, endBook, endChap);
+            if (generatedChapters === null) return; chaptersToRead = generatedChapters;
+        } else if (creationMethod === 'selection' || creationMethod === 'chapters-per-day') {
+            const selectedBooks = booksSelect ? Array.from(booksSelect.selectedOptions).map(opt => opt.value) : [];
+            const chaptersText = chaptersInput ? chaptersInput.value.trim() : "";
+            if (selectedBooks.length === 0 && !chaptersText) { throw new Error("Escolha livros na lista OU digite capítulos/intervalos."); }
+            let chaptersFromSelectedBooks = [];
+            selectedBooks.forEach(book => {
+                if (!bibleBooksChapters[book]) return; const maxChap = bibleBooksChapters[book];
+                for (let i = 1; i <= maxChap; i++) chaptersFromSelectedBooks.push(`${book} ${i}`);
+            });
+            let chaptersFromTextInput = parseChaptersInput(chaptersText);
+            const combinedSet = new Set([...chaptersFromSelectedBooks, ...chaptersFromTextInput]);
+            const combinedChapters = Array.from(combinedSet);
+            combinedChapters.sort((a, b) => {
+                const matchA = a.match(/^(.*)\s+(\d+)$/); const matchB = b.match(/^(.*)\s+(\d+)$/); if (!matchA || !matchB) return 0;
+                const bookA = matchA[1]; const chapA = parseInt(matchA[2], 10); const bookB = matchB[1]; const chapB = parseInt(matchB[2], 10);
+                const indexA = canonicalBookOrder.indexOf(bookA); const indexB = canonicalBookOrder.indexOf(bookB); if (indexA === -1 || indexB === -1) return 0;
+                if (indexA !== indexB) return indexA - indexB; return chapA - chapB;
+            });
+            chaptersToRead = combinedChapters;
+        }
+        if (!chaptersToRead || chaptersToRead.length === 0) { throw new Error("Nenhum capítulo válido foi selecionado ou gerado para o plano."); }
+        // MODIFICADO: A data de início padrão é a data LOCAL, não UTC.
+        let startDateStr = getCurrentLocalDateString();
+        let totalReadingDays = 0;
+        let planMap = {};
+        let endDateStr = '';
+        const durationMethodRadio = document.querySelector('input[name="duration-method"]:checked');
+        const durationMethod = (creationMethod === 'chapters-per-day') ? null : (durationMethodRadio ? durationMethodRadio.value : 'days');
+        if (creationMethod === 'chapters-per-day') {
+            const chapPerDay = parseInt(chaptersPerDayInput.value, 10);
+            if (isNaN(chapPerDay) || chapPerDay <= 0) throw new Error("Número inválido de capítulos por dia de leitura.");
+            totalReadingDays = Math.ceil(chaptersToRead.length / chapPerDay);
+            if (totalReadingDays < 1) totalReadingDays = 1;
+            planMap = distributeChaptersOverReadingDays(chaptersToRead, totalReadingDays);
+        } else if (durationMethod === 'days') {
+            const totalCalendarDaysInput = parseInt(daysInput.value, 10);
+            if (isNaN(totalCalendarDaysInput) || totalCalendarDaysInput <= 0) throw new Error("Número total de dias de calendário inválido.");
+            let readingDaysInPeriod = 0; let tempDate = new Date(startDateStr + 'T00:00:00Z');
+            for (let i = 0; i < totalCalendarDaysInput; i++) {
+                if (validAllowedDaysForCalculation.includes(tempDate.getUTCDay())) { readingDaysInPeriod++; }
+                tempDate.setUTCDate(tempDate.getUTCDate() + 1);
+                 if (i > 365*10) { console.warn("Loop break: calculating reading days in period (days)."); break; }
+            }
+            totalReadingDays = Math.max(1, readingDaysInPeriod);
+            planMap = distributeChaptersOverReadingDays(chaptersToRead, totalReadingDays);
+        } else if (durationMethod === 'end-date') {
+            const inputStartDateStr = startDateInput.value || startDateStr; const inputEndDateStr = endDateInput.value;
+            if (!inputEndDateStr) throw new Error("Selecione a data final.");
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(inputStartDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(inputEndDateStr)) throw new Error("Formato de data inválido (use YYYY-MM-DD).");
+            const start = new Date(inputStartDateStr + 'T00:00:00Z'); const end = new Date(inputEndDateStr + 'T00:00:00Z');
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new Error("Datas inválidas.");
+            if (end < start) throw new Error("A data final não pode ser anterior à data inicial.");
+            startDateStr = inputStartDateStr; const calendarDuration = dateDiffInDays(inputStartDateStr, inputEndDateStr) + 1;
+            let readingDaysInPeriod = 0; let tempDate = new Date(start);
+            for (let i = 0; i < calendarDuration; i++) {
+                if (validAllowedDaysForCalculation.includes(tempDate.getUTCDay())) { readingDaysInPeriod++; }
+                tempDate.setUTCDate(tempDate.getUTCDate() + 1);
+                if (i > 365*10) { console.warn("Loop break: calculating reading days in period (end-date)."); break; }
+            }
+            totalReadingDays = Math.max(1, readingDaysInPeriod);
+            planMap = distributeChaptersOverReadingDays(chaptersToRead, totalReadingDays);
+        } else { if(creationMethod !== 'chapters-per-day') { throw new Error("Método de duração inválido ou não determinado."); } }
+        endDateStr = calculateDateForDay(startDateStr, totalReadingDays, allowedDaysOfWeek);
+        if (!endDateStr) {
+            if (totalReadingDays === 0 && chaptersToRead.length > 0) {
+                showErrorMessage(periodicityWarningDiv, "Aviso: O período definido (dias ou datas) não contém nenhum dos dias selecionados para leitura. O plano será criado, mas pode não ter leituras agendadas. Considere aumentar o período ou ajustar os dias da semana.");
+                endDateStr = calculateDateForDay(startDateStr, totalReadingDays, [0,1,2,3,4,5,6]); // Try with all days if no valid ones
+                if (!endDateStr) throw new Error("Falha crítica ao calcular data final alternativa.");
+            } else { throw new Error("Não foi possível calcular a data final do plano. Verifique os dias da semana selecionados ou o período."); }
+        }
+        if (totalReadingDays === 0 && chaptersToRead.length > 0 && allowedDaysOfWeek.length > 0) {
+            showErrorMessage(periodicityWarningDiv, "Aviso: Com os dias selecionados, não há dias de leitura no período definido. O plano foi criado, mas pode não ter uma data final válida ou pode terminar imediatamente. Verifique as datas/duração ou dias da semana.");
+        }
+        const newPlanData = { name: planName, plan: planMap, currentDay: 1, totalChapters: chaptersToRead.length, chaptersList: chaptersToRead, allowedDays: allowedDaysOfWeek, startDate: startDateStr, endDate: endDateStr, readLog: {}, googleDriveLink: googleDriveLink || null, recalculationBaseDay: null, recalculationBaseDate: null, dailyChapterReadStatus: {} };
+        const newPlanId = await saveNewPlanToFirestore(userId, newPlanData);
+        if (newPlanId) { alert(`Plano "${planName}" criado com sucesso! Iniciando em ${formatUTCDateStringToBrasilian(startDateStr)} e terminando em ${formatUTCDateStringToBrasilian(endDateStr)}.`); }
+    } catch (error) {
+        console.error("Erro durante createReadingPlan:", error);
+        showErrorMessage(planErrorDiv, `Erro ao criar plano: ${error.message}`);
+    }
+}
+
+// NOVO: Função para criar o conjunto de planos favoritos anuais (COMPLETA E ATUALIZADA)
+async function createFavoriteAnnualPlanSet() {
+    if (!currentUser) {
+        alert("Você precisa estar logado para criar planos.");
+        return;
+    }
+    const userId = currentUser.uid;
+
+    // Desabilitar botões no modal de gerenciamento
+    if (createFavoritePlanButton) createFavoritePlanButton.disabled = true;
+    if (createNewPlanButton) createNewPlanButton.disabled = true;
+    showLoading(managePlansLoadingDiv, true); // Mostrar loading no modal
+    showErrorMessage(managePlansErrorDiv, ''); // Limpar erros anteriores no modal
+
+    let allPlansCreatedSuccessfully = true;
+    const createdPlanNames = []; // Para a mensagem de sucesso
+
+    try {
+        for (const planConfig of FAVORITE_ANNUAL_PLAN_CONFIG) {
+            let chaptersToRead = [];
+            const planName = planConfig.name;
+
+            console.log(`Processando configuração para o plano: ${planName}`);
+
+            // Gerar a lista de capítulos
+            if (planConfig.intercalate && planConfig.bookBlocks) {
+                console.log(`Gerando lista intercalada para o plano: ${planName}`);
+                chaptersToRead = generateIntercalatedChaptersForPlanC(planConfig.bookBlocks); // Usar a função de intercalação
+                if (chaptersToRead.length === 0) {
+                    throw new Error(`Falha ao gerar lista de capítulos intercalada para "${planName}".`);
+                }
+                console.log(`Lista intercalada para "${planName}" gerada com ${chaptersToRead.length} capítulos.`);
+            } else if (planConfig.books && Array.isArray(planConfig.books)) {
+                console.log(`Gerando lista padrão de capítulos para: ${planName}`);
+                chaptersToRead = generateChaptersForBookList(planConfig.books);
+                if (chaptersToRead.length === 0) {
+                     throw new Error(`Nenhum capítulo encontrado para o plano "${planName}" a partir da lista de livros.`);
+                }
+                console.log(`Lista padrão para "${planName}" gerada com ${chaptersToRead.length} capítulos.`);
+            } else {
+                throw new Error(`Configuração de livros (books ou bookBlocks) ausente ou inválida para o plano "${planName}".`);
+            }
+
+            const totalChaptersInPlan = chaptersToRead.length;
+            if (totalChaptersInPlan === 0) { // Dupla checagem, mas importante
+                 throw new Error(`A lista de capítulos para "${planName}" está vazia após a geração.`);
+            }
+
+            // Calcular total de dias de leitura e mapa do plano
+            const totalReadingDays = Math.ceil(totalChaptersInPlan / planConfig.chaptersPerReadingDay);
+            const effectiveTotalReadingDays = Math.max(1, totalReadingDays); // Garante pelo menos 1 dia
+            console.log(`Plano "${planName}": ${totalChaptersInPlan} caps, ${planConfig.chaptersPerReadingDay} caps/dia de leitura => ${effectiveTotalReadingDays} dias de leitura.`);
+
+            const planMap = distributeChaptersOverReadingDays(chaptersToRead, effectiveTotalReadingDays);
+            if (Object.keys(planMap).length === 0 && effectiveTotalReadingDays > 0) {
+                console.warn(`O planMap para "${planName}" está vazio, mas effectiveTotalReadingDays é ${effectiveTotalReadingDays}. Capítulos: ${chaptersToRead.length}`);
+                // Se chaptersToRead não estiver vazio, distributeChapters deveria retornar algo.
+                // Isso pode indicar um problema em distributeChaptersOverReadingDays se totalReadingDays for 0 ou negativo.
+                // A checagem de effectiveTotalReadingDays >= 1 deve prevenir isso.
+            }
+
+
+            // Calcular datas de início e fim
+            // MODIFICADO: Usa a data local como ponto de partida
+            const startDateStr = getCurrentLocalDateString();
+            const allowedDaysOfWeek = planConfig.allowedDays;
+            const endDateStr = calculateDateForDay(startDateStr, effectiveTotalReadingDays, allowedDaysOfWeek);
+
+            if (!endDateStr) {
+                throw new Error(`Não foi possível calcular a data final para o plano "${planName}". Verifique os dias da semana (${allowedDaysOfWeek.join(',')}), a duração (${effectiveTotalReadingDays} dias) e a data de início (${startDateStr}).`);
+            }
+            console.log(`Plano "${planName}" - Início: ${startDateStr}, Fim: ${endDateStr}`);
+
+            // Preparar dados para salvar no Firestore
+            const newPlanData = {
+                name: planName,
+                plan: planMap,
+                currentDay: 1,
+                totalChapters: totalChaptersInPlan,
+                chaptersList: chaptersToRead,
+                allowedDays: allowedDaysOfWeek,
+                startDate: startDateStr,
+                endDate: endDateStr,
+                readLog: {},
+                googleDriveLink: null, // Plano favorito não tem link do Drive por padrão
+                recalculationBaseDay: null,
+                recalculationBaseDate: null,
+                dailyChapterReadStatus: {} // Inicializa vazio
+            };
+
+            // Salvar o plano individual
+            // A função saveNewPlanToFirestore internamente lida com o loading do createPlanButton, etc.
+            // e também define o plano salvo como ativo. O último plano do loop será o ativo final.
+            const newPlanId = await saveNewPlanToFirestore(userId, newPlanData);
+            if (!newPlanId) {
+                allPlansCreatedSuccessfully = false;
+                // O erro específico já deve ter sido mostrado por saveNewPlanToFirestore no planErrorDiv
+                // se a criação genérica estivesse visível, ou será capturado no catch geral.
+                // Aqui, podemos adicionar uma mensagem específica para o modal de gerenciamento.
+                showErrorMessage(managePlansErrorDiv, `Falha ao salvar o plano "${planName}" no Firestore. Verifique o console para mais detalhes.`);
+                console.error(`Falha ao salvar o plano "${planName}" no Firestore.`);
+                break; // Interrompe a criação dos planos subsequentes se um falhar
+            }
+            createdPlanNames.push(planName); // Adiciona o nome do plano criado com sucesso
+            console.log(`Plano "${planName}" (ID: ${newPlanId}) criado e salvo com sucesso.`);
+        } // Fim do loop for...of
+
+        // Feedback final para o usuário
+        if (allPlansCreatedSuccessfully && createdPlanNames.length === FAVORITE_ANNUAL_PLAN_CONFIG.length) {
+            alert(`Conjunto de Planos Favoritos Anuais (${createdPlanNames.join(', ')}) criado com sucesso!`);
+            closeModal('manage-plans-modal');
+        } else if (createdPlanNames.length > 0 && !allPlansCreatedSuccessfully) {
+            alert(`Alguns planos do conjunto favorito (${createdPlanNames.join(', ')}) foram criados, mas ocorreram erros com os demais. Verifique a lista de planos e o console.`);
+        } else if (!allPlansCreatedSuccessfully && createdPlanNames.length === 0) {
+            // Se nenhum plano foi criado e houve falha, a mensagem de erro já deve ter sido mostrada.
+            // Não precisa de alert adicional aqui, apenas garantir que o erro foi exibido.
+            if (!managePlansErrorDiv.textContent) { // Se nenhuma mensagem de erro específica foi definida
+                 showErrorMessage(managePlansErrorDiv, "Ocorreu um erro geral ao tentar criar o conjunto de planos favoritos. Verifique o console.");
+            }
+        }
+        // A UI (plano ativo, lista de planos no seletor) é atualizada por setActivePlan,
+        // que é chamado dentro de saveNewPlanToFirestore.
+
+    } catch (error) { // Captura erros do loop ou da lógica de preparação antes de salvar
+        console.error("Erro crítico ao criar o conjunto de planos favoritos:", error);
+        showErrorMessage(managePlansErrorDiv, `Erro: ${error.message}`);
+        allPlansCreatedSuccessfully = false; // Garante que sabemos que algo deu errado
+    } finally {
+        showLoading(managePlansLoadingDiv, false); // Esconder loading do modal
+        // Reabilitar botões no modal de gerenciamento
+        if (createFavoritePlanButton) createFavoritePlanButton.disabled = false;
+        if (createNewPlanButton) createNewPlanButton.disabled = false;
+
+        // Se o modal ainda estiver aberto (por exemplo, se houve um erro e não foi fechado),
+        // repopular a lista de planos para refletir quaisquer planos que possam ter sido criados.
+        if (document.getElementById('manage-plans-modal').style.display === 'flex') {
+            await fetchUserPlansList(userId); // Recarregar a lista de planos do usuário
+            populateManagePlansModal();     // Atualizar o conteúdo do modal
+            populatePlanSelector();         // Atualizar o seletor principal de planos
+        } else if (allPlansCreatedSuccessfully && createdPlanNames.length === FAVORITE_ANNUAL_PLAN_CONFIG.length) {
+            // Se o modal foi fechado devido ao sucesso, ainda precisamos garantir que o seletor principal e outras partes da UI sejam atualizadas.
+            // setActivePlan (chamado por saveNewPlanToFirestore) já deve ter lidado com loadActivePlanData e displayScheduledReadings.
+            // Apenas uma atualização explícita do seletor e da lista (se necessário para outros contextos) pode ser útil.
+            await fetchUserPlansList(userId);
+            populatePlanSelector();
+            await displayScheduledReadings(); // Recarregar leituras agendadas
+        }
+        // Se houve erro e o modal não está aberto, o usuário verá o erro no local apropriado (se houver)
+        // ou precisará verificar o console.
+    }
+}
+
+function loadDailyReadingUI() {
+    if (!dailyReadingHeaderDiv || !dailyReadingChaptersListDiv || !completeDayButton || !recalculatePlanButton || !deleteCurrentPlanButton || !readingPlanTitle || !activePlanDriveLink || !readingPlanSection || !planCreationSection) {
+        console.warn("Elementos da UI do plano ou de criação não encontrados em loadDailyReadingUI.");
+        if(readingPlanSection) readingPlanSection.style.display = 'none';
+        if(planCreationSection) planCreationSection.style.display = 'none';
+        if(progressBarContainer) progressBarContainer.style.display = 'none';
+        return;
+    }
+    updateProgressBarUI();
+    dailyReadingHeaderDiv.innerHTML = '';
+    dailyReadingChaptersListDiv.innerHTML = '';
+
+
+    if (!currentReadingPlan || !activePlanId) {
+        dailyReadingHeaderDiv.innerHTML = "<p>Nenhum plano ativo selecionado.</p>";
+        completeDayButton.style.display = 'none';
+        recalculatePlanButton.style.display = 'none';
+        deleteCurrentPlanButton.style.display = 'none';
+        showStatsButton.style.display = 'none';
+        showHistoryButton.style.display = 'none';
+        readingPlanSection.style.display = 'none';
+        if(readingPlanTitle) readingPlanTitle.textContent = "Nenhum Plano Ativo";
+        if(activePlanDriveLink) activePlanDriveLink.style.display = 'none';
+        if(progressBarContainer) progressBarContainer.style.display = 'none';
+        if (currentUser && userPlansList.length === 0) { planCreationSection.style.display = 'block'; }
+        else { planCreationSection.style.display = 'none'; }
+        return;
+    }
+
+
+    readingPlanSection.style.display = 'block';
+    planCreationSection.style.display = 'none';
+    const { plan, currentDay, name, startDate, endDate, allowedDays, googleDriveLink, dailyChapterReadStatus } = currentReadingPlan;
+    const totalReadingDaysInPlan = Object.keys(plan || {}).length;
+    const isCompleted = currentDay > totalReadingDaysInPlan;
+
+
+    if (readingPlanTitle) { readingPlanTitle.textContent = name ? `${name}` : "Plano de Leitura Ativo"; }
+    if (activePlanDriveLink) {
+        if (googleDriveLink) {
+            activePlanDriveLink.href = googleDriveLink; activePlanDriveLink.style.display = 'inline-flex';
+            activePlanDriveLink.setAttribute('title', `Abrir link do Drive para: ${name || 'este plano'}`);
+        } else { activePlanDriveLink.style.display = 'none'; }
+    }
+
+
+    completeDayButton.style.display = 'inline-block';
+    recalculatePlanButton.style.display = 'inline-block';
+    deleteCurrentPlanButton.style.display = 'inline-block';
+    showStatsButton.style.display = 'inline-block';
+    showHistoryButton.style.display = 'inline-block';
+
+
+    recalculatePlanButton.disabled = isCompleted;
+
+
+    if (isCompleted) {
+        dailyReadingHeaderDiv.innerHTML = `<p style="font-weight: bold; color: var(--success-color);">Parabéns!</p><p>Plano "${name || ''}" concluído!</p><small>(${formatUTCDateStringToBrasilian(startDate)} - ${formatUTCDateStringToBrasilian(endDate)})</small>`;
+        completeDayButton.style.display = 'none';
+        recalculatePlanButton.style.display = 'none';
+    } else if (currentDay > 0 && currentDay <= totalReadingDaysInPlan && allowedDays) {
+        const currentDayStr = currentDay.toString();
+        const chaptersForToday = plan[currentDayStr] || [];
+        const currentDateOfReadingStr = getEffectiveDateForDay(currentReadingPlan, currentDay);
+        const formattedDate = currentDateOfReadingStr ? formatUTCDateStringToBrasilian(currentDateOfReadingStr) : "[Data Inválida]";
+
+
+        dailyReadingHeaderDiv.innerHTML = `<p style="margin-bottom: 5px;"><strong style="color: var(--primary-action); font-size: 1.1em;">${formattedDate}</strong><span style="font-size: 0.9em; color: var(--text-color-muted); margin-left: 10px;">(Dia ${currentDay} de ${totalReadingDaysInPlan})</span></p>`;
+
+
+        if (chaptersForToday.length > 0) {
+            let allChaptersChecked = true;
+            chaptersForToday.forEach((chapter, index) => {
+                const chapterId = `ch-${currentDay}-${index}`;
+                const isChecked = dailyChapterReadStatus && dailyChapterReadStatus[chapter];
+
+
+                const chapterItemDiv = document.createElement('div');
+                chapterItemDiv.classList.add('daily-chapter-item');
+
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = chapterId;
+                checkbox.checked = !!isChecked;
+                checkbox.dataset.chapterName = chapter;
+                checkbox.addEventListener('change', (e) => handleChapterToggle(e.target.dataset.chapterName, e.target.checked));
+
+
+                const label = document.createElement('label');
+                label.htmlFor = chapterId;
+                label.textContent = chapter;
+
+
+                chapterItemDiv.appendChild(checkbox);
+                chapterItemDiv.appendChild(label);
+                dailyReadingChaptersListDiv.appendChild(chapterItemDiv);
+
+
+                if (!isChecked) {
+                    allChaptersChecked = false;
+                }
+            });
+            completeDayButton.disabled = !allChaptersChecked;
+            completeDayButton.style.display = 'inline-block';
+        } else {
+            dailyReadingChaptersListDiv.innerHTML = "<p>Dia sem leitura designada ou erro no plano.</p>";
+            completeDayButton.style.display = 'none';
+        }
+    } else {
+        dailyReadingHeaderDiv.innerHTML = "<p>Erro: Dia inválido ou dados do plano incompletos para exibir leitura.</p>";
+        console.error("Erro ao exibir leitura diária:", currentReadingPlan);
+        completeDayButton.style.display = 'none';
+        recalculatePlanButton.style.display = 'none';
+        showStatsButton.style.display = 'none';
+        showHistoryButton.style.display = 'none';
+        if(activePlanDriveLink) activePlanDriveLink.style.display = 'none';
+    }
+}
+
+
+async function handleChapterToggle(chapterName, isRead) {
+    if (!currentReadingPlan || !currentUser || !activePlanId) return;
+    const userId = currentUser.uid;
+
+    const checkboxes = dailyReadingChaptersListDiv.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.disabled = true);
+
+    const success = await updateChapterStatusAndUserInteractions(userId, activePlanId, chapterName, isRead);
+
+    if (success) {
+        updateStreakCounterUI();
+        updateGlobalWeeklyTrackerUI();
+
+        const chaptersForToday = currentReadingPlan.plan[currentReadingPlan.currentDay.toString()] || [];
+        let allChecked = true;
+        if (chaptersForToday.length > 0) {
+            for (const chap of chaptersForToday) {
+                if (!currentReadingPlan.dailyChapterReadStatus[chap]) {
+                    allChecked = false;
+                    break;
+                }
+            }
+        } else {
+            allChecked = false;
+        }
+        completeDayButton.disabled = !allChecked;
+    } else {
+        const checkboxToRevert = Array.from(checkboxes).find(cb => cb.dataset.chapterName === chapterName);
+        if (checkboxToRevert) checkboxToRevert.checked = !isRead;
+    }
+    checkboxes.forEach(cb => cb.disabled = false);
+}
+
+
+async function handleCompleteDay() {
+    if (!currentReadingPlan || !currentUser || !activePlanId || completeDayButton.disabled) return;
+    const userId = currentUser.uid;
+    const { plan, currentDay } = currentReadingPlan;
+    const totalReadingDaysInPlan = Object.keys(plan || {}).length;
+
+
+    if (currentDay > 0 && currentDay <= totalReadingDaysInPlan) {
+        const chaptersJustReadBlock = plan[currentDay.toString()] || [];
+        const nextReadingDayNumber = currentDay + 1;
+
+
+        completeDayButton.disabled = true;
+
+
+        try {
+            const advanceSuccess = await advanceToNextDayAndUpdateLog(userId, activePlanId, nextReadingDayNumber, chaptersJustReadBlock);
+            if (advanceSuccess) {
+                const activePlanInList = userPlansList.find(p => p.id === activePlanId);
+                if (activePlanInList) {
+                    activePlanInList.currentDay = currentReadingPlan.currentDay;
+                    activePlanInList.readLog = currentReadingPlan.readLog;
+                    activePlanInList.weeklyInteractions = currentReadingPlan.weeklyInteractions;
+                    activePlanInList.dailyChapterReadStatus = currentReadingPlan.dailyChapterReadStatus;
+                }
+
+                loadDailyReadingUI();
+                updateProgressBarUI();
+                await displayScheduledReadings();
+
+                if (nextReadingDayNumber > totalReadingDaysInPlan) {
+                    setTimeout(() => alert(`Você concluiu o plano "${currentReadingPlan.name || ''}"! Parabéns!`), 100);
+                }
+            } else {
+                showErrorMessage(planViewErrorDiv, "Falha ao avançar para o próximo dia. Tente novamente.");
+                completeDayButton.disabled = false;
+            }
+        } catch (error) {
+            console.error("Error during handleCompleteDay Firestore updates:", error);
+            showErrorMessage(planViewErrorDiv, `Erro ao avançar dia: ${error.message}`);
+            completeDayButton.disabled = false;
+        }
+    } else {
+        console.warn("Tentativa de concluir dia quando plano já concluído ou inválido.", currentReadingPlan);
+        completeDayButton.disabled = true;
+    }
+}
+
+
+function handleDeleteSpecificPlan(planIdToDelete) {
+    if (!currentUser || !planIdToDelete) return;
+    const userId = currentUser.uid;
+    const planToDelete = userPlansList.find(p => p.id === planIdToDelete);
+    const planName = planToDelete?.name || `ID ${planIdToDelete.substring(0,5)}...`;
+    if (confirm(`Tem certeza que deseja excluir o plano "${planName}" permanentemente? Todo o progresso e histórico serão perdidos.`)) {
+        if (managePlansModal.style.display === 'flex') { showLoading(managePlansLoadingDiv, true); }
+        deletePlanFromFirestore(userId, planIdToDelete)
+            .then(success => { if (success) { alert(`Plano "${planName}" excluído com sucesso.`); if (managePlansModal.style.display === 'flex') { closeModal('manage-plans-modal'); } } })
+            .finally(() => { if (managePlansModal.style.display === 'flex') { showLoading(managePlansLoadingDiv, false); } });
+    }
+}
+
+
+// --- Funções de Recálculo ---
+
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        const errorDiv = modal.querySelector('.error-message'); if (errorDiv) showErrorMessage(errorDiv, '');
+        const extendOption = modal.querySelector('input[name="recalc-option"][value="extend_date"]'); if (extendOption) extendOption.checked = true;
+        const paceInput = modal.querySelector('#new-pace-input'); if (paceInput) paceInput.value = '3';
+        modal.style.display = 'flex';
+    } else { console.error(`Modal com ID "${modalId}" não encontrado.`); }
+}
+
+
+function closeModal(modalId) { const modal = document.getElementById(modalId); if (modal) modal.style.display = 'none'; }
+
+
+async function handleRecalculate() {
+    if (!currentReadingPlan || !currentUser || !activePlanId || confirmRecalculateButton.disabled) return;
+    const userId = currentUser.uid;
+    const recalcOptionRadio = document.querySelector('input[name="recalc-option"]:checked');
+    const recalcOption = recalcOptionRadio ? recalcOptionRadio.value : null;
+    if (!recalcOption) { showErrorMessage(recalculateErrorDiv, "Selecione uma opção de recálculo."); return; }
+    showLoading(recalculateLoadingDiv, true); showErrorMessage(recalculateErrorDiv, ''); confirmRecalculateButton.disabled = true;
+    const { chaptersList, currentDay, plan: originalPlanMap, startDate: originalStartDate, allowedDays, name, readLog, weeklyInteractions, createdAt, googleDriveLink, endDate: currentEndDate, dailyChapterReadStatus } = JSON.parse(JSON.stringify(currentReadingPlan));
+    const validAllowedDays = (Array.isArray(allowedDays) && allowedDays.length > 0) ? allowedDays : [0, 1, 2, 3, 4, 5, 6];
+    try {
+        let chaptersDesignatedBeforeCurrent = 0;
+        for (let dayKey in originalPlanMap) {
+            const dayNum = parseInt(dayKey, 10);
+            if (dayNum < currentDay && Array.isArray(originalPlanMap[dayKey])) { chaptersDesignatedBeforeCurrent += originalPlanMap[dayKey].length; }
+        }
+        chaptersDesignatedBeforeCurrent = Math.min(chaptersDesignatedBeforeCurrent, chaptersList.length);
+        const remainingChapters = chaptersList.slice(chaptersDesignatedBeforeCurrent);
+        if (remainingChapters.length === 0) throw new Error("Não há capítulos restantes para recalcular. O plano já cobriu todo o conteúdo.");
+        let newTotalReadingDaysForRemainder = 0; let newPlanMapForRemainder = {};
+        if (recalcOption === 'extend_date') {
+            const originalReadingDaysWithContent = Object.values(originalPlanMap || {}).filter(chaps => Array.isArray(chaps) && chaps.length > 0).length;
+            const avgPace = originalReadingDaysWithContent > 0 ? Math.max(1, Math.ceil(chaptersList.length / originalReadingDaysWithContent)) : 3;
+            newTotalReadingDaysForRemainder = Math.max(1, Math.ceil(remainingChapters.length / avgPace));
+            newPlanMapForRemainder = distributeChaptersOverReadingDays(remainingChapters, newTotalReadingDaysForRemainder);
+        } else if (recalcOption === 'increase_pace') {
+            // MODIFICADO: Usa a data local como referência para o "hoje"
+            const todayStr = getCurrentLocalDateString();
+            const todayDate = new Date(todayStr); // Objeto Date para o início do dia local
+            const originalEndDate = new Date(currentEndDate); // Interpreta a string como local
+            const originalScheduledDateForCurrentDayStr = getEffectiveDateForDay(currentReadingPlan, currentDay);
+            let countStartDate = todayDate;
+            if (originalScheduledDateForCurrentDayStr) {
+                 const scheduledDate = new Date(originalScheduledDateForCurrentDayStr);
+                 if (scheduledDate > todayDate) {
+                    countStartDate = scheduledDate;
+                 }
+            }
+
+            if (isNaN(originalEndDate.getTime()) || originalEndDate < countStartDate) {
+                 console.warn("Recalculate: Data final original inválida ou já passou para 'increase_pace'. Estendendo a data.");
+                 const originalReadingDaysWithContent = Object.values(originalPlanMap || {}).filter(chaps => Array.isArray(chaps) && chaps.length > 0).length;
+                 const avgPace = originalReadingDaysWithContent > 0 ? Math.max(1, Math.ceil(chaptersList.length / originalReadingDaysWithContent)) : 3;
+                 newTotalReadingDaysForRemainder = Math.max(1, Math.ceil(remainingChapters.length / avgPace));
+            } else {
+                let remainingReadingDaysCount = 0;
+                let currentDate = new Date(countStartDate);
+                while (currentDate <= originalEndDate) {
+                     // getDay() é local, mas os dias da semana (0-6) são universais.
+                     // getUTCDay() é usado no agendamento, então para consistência, mantemos aqui.
+                     if (validAllowedDays.includes(currentDate.getUTCDay())) {
+                         remainingReadingDaysCount++;
+                     }
+                     currentDate.setDate(currentDate.getDate() + 1); // Avança um dia local
+                     if(remainingReadingDaysCount > 365*10) { console.warn("Safety break: increase_pace date count exceeded limit."); break; }
+                }
+                 newTotalReadingDaysForRemainder = Math.max(1, remainingReadingDaysCount);
+            }
+            newPlanMapForRemainder = distributeChaptersOverReadingDays(remainingChapters, newTotalReadingDaysForRemainder);
+        } else if (recalcOption === 'new_pace') {
+            const newPacePerReadingDay = parseInt(newPaceInput.value, 10);
+            if (isNaN(newPacePerReadingDay) || newPacePerReadingDay <= 0) throw new Error("Novo ritmo de capítulos por dia de leitura inválido.");
+            newTotalReadingDaysForRemainder = Math.max(1, Math.ceil(remainingChapters.length / newPacePerReadingDay));
+            newPlanMapForRemainder = distributeChaptersOverReadingDays(remainingChapters, newTotalReadingDaysForRemainder);
+        }
+        if (Object.keys(newPlanMapForRemainder).length === 0 && remainingChapters.length > 0) { throw new Error("Falha ao redistribuir os capítulos restantes. Verifique a lógica de cálculo dos dias."); }
+        // MODIFICADO: A data base para o recálculo é a data LOCAL de hoje
+        const todayStr = getCurrentLocalDateString();
+        const scheduledDateForCurrentDayStr = getEffectiveDateForDay(currentReadingPlan, currentDay);
+        let recalcEffectiveStartDate = todayStr;
+        if (scheduledDateForCurrentDayStr && scheduledDateForCurrentDayStr > todayStr) { recalcEffectiveStartDate = scheduledDateForCurrentDayStr; }
+        
+        const updatedFullPlanMap = {};
+        for (let dayKey in originalPlanMap) {
+            const dayNum = parseInt(dayKey, 10); if (dayNum < currentDay) { updatedFullPlanMap[dayKey] = originalPlanMap[dayKey]; }
+        }
+        let newMapDayCounter = 0;
+        Object.keys(newPlanMapForRemainder).sort((a,b) => parseInt(a) - parseInt(b)).forEach(remDayKey => {
+            const newDayKey = (currentDay + newMapDayCounter).toString(); updatedFullPlanMap[newDayKey] = newPlanMapForRemainder[remDayKey]; newMapDayCounter++;
+        });
+        const newEndDateStr = calculateDateForDay(recalcEffectiveStartDate, newTotalReadingDaysForRemainder, allowedDays);
+        if (!newEndDateStr) throw new Error(`Falha ao calcular a nova data final após recálculo, partindo de ${recalcEffectiveStartDate} por ${newTotalReadingDaysForRemainder} dias de leitura.`);
+        
+        const updatedPlanData = {
+            name: name,
+            chaptersList: chaptersList,
+            totalChapters: chaptersList.length,
+            allowedDays: allowedDays,
+            readLog: readLog || {},
+            weeklyInteractions: weeklyInteractions || { weekId: getUTCWeekId(), interactions: {} },
+            createdAt: createdAt || serverTimestamp(),
+            googleDriveLink: googleDriveLink || null,
+            startDate: originalStartDate,
+            plan: updatedFullPlanMap,
+            currentDay: currentDay,
+            endDate: newEndDateStr,
+            recalculationBaseDay: currentDay,
+            recalculationBaseDate: recalcEffectiveStartDate,
+            dailyChapterReadStatus: dailyChapterReadStatus || {}
+        };
+
+        const success = await saveRecalculatedPlanToFirestore(userId, activePlanId, updatedPlanData);
+        if (success) {
+            alert("Seu plano foi recalculado com sucesso! O cronograma restante foi ajustado.");
+            closeModal('recalculate-modal'); loadDailyReadingUI(); updateProgressBarUI();
+            updateGlobalWeeklyTrackerUI();
+            await displayScheduledReadings(); populatePlanSelector();
+        }
+    } catch (error) {
+        console.error("Erro ao recalcular plano:", error);
+        showErrorMessage(recalculateErrorDiv, `Erro: ${error.message}`);
+    } finally {
+        showLoading(recalculateLoadingDiv, false);
+        if (confirmRecalculateButton) confirmRecalculateButton.disabled = false;
+    }
+}
+
+
+// --- Funções de Histórico e Estatísticas ---
+
+
+function displayReadingHistory() {
+    if (!currentReadingPlan || !historyListDiv) { if(historyListDiv) historyListDiv.innerHTML = '<p>Nenhum plano ativo selecionado ou histórico disponível.</p>'; return; }
+    showLoading(historyLoadingDiv, false); showErrorMessage(historyErrorDiv, ''); historyListDiv.innerHTML = '';
+    const readLog = currentReadingPlan.readLog || {};
+    const sortedDates = Object.keys(readLog).filter(dateStr => /^\d{4}-\d{2}-\d{2}$/.test(dateStr)).sort().reverse();
+    if (sortedDates.length === 0) { historyListDiv.innerHTML = '<p>Nenhum registro de leitura encontrado para este plano.</p>'; return; }
+    sortedDates.forEach(dateStr => {
+        const chaptersRead = readLog[dateStr] || []; const entryDiv = document.createElement('div');
+        entryDiv.classList.add('history-entry'); const formattedDate = formatUTCDateStringToBrasilian(dateStr);
+        const chaptersText = chaptersRead.length > 0 ? chaptersRead.join(', ') : 'Nenhum capítulo registrado nesta data.';
+        entryDiv.innerHTML = `<span class="history-date">${formattedDate}</span><span class="history-chapters">${chaptersText}</span>`;
+        historyListDiv.appendChild(entryDiv);
     });
+}
 
-     document.getElementById('generateViewButton')?.addEventListener('click', () => generateViewHTML(lastDisplayedTargets)); 
-     document.getElementById('generateCategoryViewButton')?.addEventListener('click', openCategorySelectionModal); 
-     document.getElementById('viewDaily')?.addEventListener('click', generateDailyViewHTML);
-     document.getElementById("viewResolvedViewButton")?.addEventListener("click", () => {
-         const modal = document.getElementById("dateRangeModal");
-         if(modal) {
-            modal.style.display = "block";
-            const today = new Date();
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(today.getDate() - 30);
-            const endDateInput = document.getElementById("endDate");
-            const startDateInput = document.getElementById("startDate");
-            if(endDateInput) endDateInput.value = formatDateToISO(today);
-            if(startDateInput) startDateInput.value = formatDateToISO(thirtyDaysAgo);
+
+async function calculateAndShowStats() {
+    if (!currentUser || !statsContentDiv) return;
+    showLoading(statsLoadingDiv, true); showErrorMessage(statsErrorDiv, ''); statsContentDiv.style.display = 'none';
+    try {
+        let activePlanName = "--"; let activePlanProgress = 0; let activePlanTotalReadingDays = 0;
+        let activePlanChaptersReadFromLog = 0; let activePlanDaysReadFromLog = 0; let planIsCompleted = false;
+        if (currentReadingPlan && activePlanId) {
+            activePlanName = currentReadingPlan.name || `ID ${activePlanId.substring(0,5)}...`;
+            activePlanTotalReadingDays = Object.keys(currentReadingPlan.plan || {}).length;
+            if (activePlanTotalReadingDays > 0) {
+                const effectiveCurrentDay = Math.max(1, currentReadingPlan.currentDay || 0);
+                const progress = ((effectiveCurrentDay - 1) / activePlanTotalReadingDays) * 100;
+                activePlanProgress = Math.min(100, Math.max(0, progress));
+                planIsCompleted = effectiveCurrentDay > activePlanTotalReadingDays;
+                if (planIsCompleted) activePlanProgress = 100;
+            }
+            const readLog = currentReadingPlan.readLog || {};
+            Object.values(readLog).forEach(chaptersArray => {
+                if (Array.isArray(chaptersArray)) { activePlanChaptersReadFromLog += chaptersArray.length; activePlanDaysReadFromLog++; }
+            });
+        }
+        statsActivePlanName.textContent = activePlanName; statsActivePlanProgress.textContent = `${Math.round(activePlanProgress)}%`;
+        statsTotalChapters.textContent = activePlanChaptersReadFromLog > 0 ? activePlanChaptersReadFromLog : "--";
+        statsPlansCompleted.textContent = planIsCompleted ? "Sim" : (activePlanId ? "Não" : "--");
+        const avgPace = activePlanDaysReadFromLog > 0 ? (activePlanChaptersReadFromLog / activePlanDaysReadFromLog).toFixed(1) : "--";
+        statsAvgPace.textContent = avgPace; statsContentDiv.style.display = 'block';
+    } catch (error) {
+        console.error("Error calculating stats:", error);
+        showErrorMessage(statsErrorDiv, `Erro ao calcular estatísticas: ${error.message}`);
+    } finally { showLoading(statsLoadingDiv, false); }
+}
+
+
+// --- Função para Leituras Atrasadas e Próximas ---
+async function displayScheduledReadings(upcomingCount = 3) {
+    if (!overdueReadingsSection || !overdueReadingsListDiv || !upcomingReadingsSection || !upcomingReadingsListDiv || !currentUser) {
+        console.warn("Elementos UI para 'Overdue/Upcoming Readings' ou usuário não disponíveis.");
+        if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
+        if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
+        return;
+    }
+    showLoading(overdueReadingsLoadingDiv, true); showLoading(upcomingReadingsLoadingDiv, true);
+    overdueReadingsSection.style.display = 'block'; upcomingReadingsSection.style.display = 'block';
+    overdueReadingsListDiv.innerHTML = ''; upcomingReadingsListDiv.innerHTML = '';
+    showErrorMessage(planViewErrorDiv, '');
+    // MODIFICADO: Usa a data local para determinar o que está atrasado.
+    const todayStr = getCurrentLocalDateString();
+    const overdueList = []; const upcomingList = []; 
+    if (userPlansList.length === 0) {
+        overdueReadingsListDiv.innerHTML = '<p>Nenhum plano para verificar.</p>';
+        upcomingReadingsListDiv.innerHTML = '<p>Você ainda não tem planos de leitura.</p>';
+        showLoading(overdueReadingsLoadingDiv, false); showLoading(upcomingReadingsLoadingDiv, false); return;
+    }
+    try {
+        for (const plan of userPlansList) {
+            if (!plan.id || !plan.plan || typeof plan.currentDay !== 'number' || !plan.startDate || !plan.allowedDays || typeof plan.plan !== 'object' || Object.keys(plan.plan).length === 0) {
+                console.warn(`Plano ${plan.id || 'desconhecido'} (${plan.name || 'sem nome'}) pulado por falta de dados ou plano vazio.`); continue;
+            }
+            const totalReadingDays = Object.keys(plan.plan).length;
+            if (plan.currentDay > totalReadingDays) continue;
+            const currentScheduledDateStr = getEffectiveDateForDay(plan, plan.currentDay);
+            if (currentScheduledDateStr && currentScheduledDateStr < todayStr) {
+                 const chaptersForDay = plan.plan[plan.currentDay.toString()] || [];
+                 if (chaptersForDay.length > 0) { overdueList.push({ date: currentScheduledDateStr, planId: plan.id, planName: plan.name || `Plano ${plan.id.substring(0,5)}...`, chapters: chaptersForDay.join(', '), isOverdue: true }); }
+            }
+            let upcomingFoundForThisPlan = 0;
+            for (let dayOffset = 0; upcomingFoundForThisPlan < upcomingCount; dayOffset++) {
+                const targetDayNumber = plan.currentDay + dayOffset;
+                if (targetDayNumber > totalReadingDays) break;
+                const dateStr = getEffectiveDateForDay(plan, targetDayNumber);
+                if (dateStr) {
+                    if (dateStr >= todayStr) {
+                         const chaptersForDay = plan.plan[targetDayNumber.toString()] || [];
+                         if (chaptersForDay.length > 0) {
+                             upcomingList.push({ date: dateStr, planId: plan.id, planName: plan.name || `Plano ${plan.id.substring(0,5)}...`, chapters: chaptersForDay.join(', '), isOverdue: false });
+                             upcomingFoundForThisPlan++;
+                         }
+                    }
+                } else { console.warn(`Não foi possível calcular data efetiva para dia ${targetDayNumber} do plano ${plan.id}. Parando busca de próximas para este plano.`); break; }
+                 if (dayOffset > totalReadingDays + upcomingCount + 7) { console.warn(`Safety break atingido ao buscar próximas leituras para plano ${plan.id}`); break; }
+            }
+        }
+        if (overdueList.length > 0) {
+            overdueList.sort((a, b) => a.date.localeCompare(b.date));
+            overdueList.forEach(item => {
+                const itemDiv = document.createElement('div'); itemDiv.classList.add('overdue-reading-item');
+                itemDiv.innerHTML = `<div class="overdue-date">${formatUTCDateStringToBrasilian(item.date)} (Atrasada!)</div><div class="overdue-plan-name">${item.planName}</div><div class="overdue-chapters">${item.chapters}</div>`;
+                itemDiv.addEventListener('click', () => { if (item.planId !== activePlanId) { setActivePlan(item.planId); } else { readingPlanSection.scrollIntoView({ behavior: 'smooth' }); } });
+                itemDiv.style.cursor = 'pointer'; overdueReadingsListDiv.appendChild(itemDiv);
+            });
+        } else { overdueReadingsListDiv.innerHTML = '<p>Nenhuma leitura atrasada encontrada.</p>'; }
+        if (upcomingList.length > 0) {
+            upcomingList.sort((a, b) => a.date.localeCompare(b.date));
+            const itemsToShow = upcomingList.slice(0, upcomingCount);
+            itemsToShow.forEach(item => {
+                const itemDiv = document.createElement('div'); itemDiv.classList.add('upcoming-reading-item');
+                itemDiv.innerHTML = `<div class="upcoming-date">${formatUTCDateStringToBrasilian(item.date)}</div><div class="upcoming-plan-name">${item.planName}</div><div class="upcoming-chapters">${item.chapters}</div>`;
+                itemDiv.addEventListener('click', () => { if (item.planId !== activePlanId) { setActivePlan(item.planId); } else { readingPlanSection.scrollIntoView({ behavior: 'smooth' }); } });
+                itemDiv.style.cursor = 'pointer'; upcomingReadingsListDiv.appendChild(itemDiv);
+            });
+        } else { upcomingReadingsListDiv.innerHTML = '<p>Nenhuma leitura próxima encontrada.</p>'; }
+    } catch (error) {
+        console.error("Erro ao buscar leituras agendadas:", error);
+        if (overdueReadingsListDiv) overdueReadingsListDiv.innerHTML = '<p style="color: red;">Erro ao verificar atrasos.</p>';
+        if (upcomingReadingsListDiv) upcomingReadingsListDiv.innerHTML = '<p style="color: red;">Erro ao carregar próximas leituras.</p>';
+        showErrorMessage(planViewErrorDiv, `Erro nas leituras agendadas: ${error.message}`);
+    } finally {
+        showLoading(overdueReadingsLoadingDiv, false); showLoading(upcomingReadingsLoadingDiv, false);
+        overdueReadingsSection.style.display = (overdueReadingsListDiv.children.length > 0 && !overdueReadingsListDiv.querySelector('p')) || userPlansList.length === 0 ? 'block' : 'none';
+        upcomingReadingsSection.style.display = (upcomingReadingsListDiv.children.length > 0 && !upcomingReadingsListDiv.querySelector('p')) || userPlansList.length === 0 ? 'block' : 'none';
+    }
+}
+
+
+function updateStreakCounterUI() {
+    // --- INÍCIO DO CÓDIGO DO PAINEL DE PERSEVERANÇA APRIMORADO ---
+
+    // Cache dos elementos do novo painel
+    const perseveranceSection = document.getElementById('perseverance-section');
+    const currentDaysText = perseveranceSection.querySelector('.current-days-text');
+    const recordDaysText = perseveranceSection.querySelector('.record-days-text');
+    const progressFill = document.getElementById('perseverance-progress-fill');
+    
+    // Ícones
+    const crownIcon = perseveranceSection.querySelector('.record-crown');
+    const sunIcon = perseveranceSection.querySelector('[data-milestone="sun"]');
+    const diamondIcon = perseveranceSection.querySelector('[data-milestone="diamond"]');
+    const treeIcon = perseveranceSection.querySelector('[data-milestone="tree"]');
+    const flameIcon = perseveranceSection.querySelector('[data-milestone="flame"]');
+    const seedIcon = perseveranceSection.querySelector('[data-milestone="seed"]');
+    const starContainer = document.getElementById('starContainer');
+
+    if (!perseveranceSection || !currentUser || !userInfo) {
+        if(perseveranceSection) perseveranceSection.style.display = 'none';
+        // Esconde o painel antigo também, caso ainda exista na estrutura por algum motivo
+        const oldStreakCounter = document.getElementById('streak-counter-section');
+        if(oldStreakCounter) oldStreakCounter.style.display = 'none';
+        return;
+    }
+    
+    // Mostra o painel se o usuário estiver logado e não estiver na tela de criação de plano
+    perseveranceSection.style.display = (planCreationSection.style.display !== 'block') ? 'block' : 'none';
+
+    // Pega os dados de perseverança do estado da aplicação
+    const consecutiveDays = userStreakData.current || 0;
+    const recordDays = userStreakData.longest || 0;
+
+    // 1. Lógica da Barra de Progresso
+    let percentage = recordDays > 0 ? (consecutiveDays / recordDays) * 100 : 0;
+    percentage = Math.min(100, Math.max(0, percentage)); // Garante que a % esteja entre 0 e 100
+    
+    if (progressFill) progressFill.style.width = percentage + '%';
+    if (currentDaysText) currentDaysText.textContent = consecutiveDays;
+    if (recordDaysText) recordDaysText.textContent = recordDays;
+
+    // 2. Lógica dos Ícones de Marcos
+    
+    // Helper para resetar os ícones
+    const allIcons = [crownIcon, sunIcon, diamondIcon, treeIcon, flameIcon, seedIcon];
+    allIcons.forEach(icon => icon.classList.remove('achieved'));
+    starContainer.innerHTML = ''; // Limpa as estrelas
+
+    // Coroa do Recorde
+    if (recordDays > 0 && consecutiveDays >= recordDays) {
+        crownIcon.classList.add('achieved');
+    }
+
+    // Marcos Principais (lógica hierárquica e exclusiva)
+    if (consecutiveDays >= 1000) {
+        sunIcon.classList.add('achieved');
+    } else if (consecutiveDays >= 365) {
+        diamondIcon.classList.add('achieved');
+        const stars = Math.floor((consecutiveDays - 365) / 30);
+        for (let i = 0; i < stars; i++) {
+            const star = document.createElement('span');
+            star.className = 'star-icon achieved';
+            star.textContent = '⭐';
+            starContainer.appendChild(star);
+        }
+    } else if (consecutiveDays >= 100) {
+        treeIcon.classList.add('achieved');
+        const stars = Math.floor((consecutiveDays - 100) / 30);
+        for (let i = 0; i < stars; i++) {
+            const star = document.createElement('span');
+            star.className = 'star-icon achieved';
+            star.textContent = '⭐';
+            starContainer.appendChild(star);
+        }
+    } else {
+        const stars = Math.floor(consecutiveDays / 30);
+        for (let i = 0; i < stars; i++) {
+            const star = document.createElement('span');
+            star.className = 'star-icon achieved';
+            star.textContent = '⭐';
+            starContainer.appendChild(star);
+        }
+    }
+
+    // Marcos de Ciclo (baseado no resto da divisão por 30)
+    const daysInCurrentCycle = consecutiveDays % 30;
+    if (consecutiveDays > 0 && consecutiveDays < 100) { // Só mostra semente/chama antes do marco de 100 dias
+        if (daysInCurrentCycle >= 15) {
+            flameIcon.classList.add('achieved');
+        } else if (daysInCurrentCycle >= 7) {
+            seedIcon.classList.add('achieved');
+        }
+    }
+    
+    // --- FIM DO CÓDIGO DO PAINEL DE PERSEVERANÇA APRIMORADO ---
+}
+
+
+// --- Inicialização e Event Listeners ---
+document.addEventListener("DOMContentLoaded", () => {
+    if (!loginButton || !createPlanButton || !completeDayButton || !recalculateModal || !managePlansModal ||
+        !statsModal || !historyModal || !planSelect || !periodicityCheckboxes ||
+        !overdueReadingsSection || !overdueReadingsListDiv || !upcomingReadingsSection || !upcomingReadingsListDiv ||
+        !googleDriveLinkInput || !readingPlanTitle || !activePlanDriveLink ||
+        !globalWeeklyTrackerSection || !globalDayIndicatorElements ||
+        !dailyReadingHeaderDiv || !dailyReadingChaptersListDiv ||
+        !createFavoritePlanButton // Adicionado à verificação
+       ) {
+        console.error("Erro crítico: Elementos essenciais da UI não encontrados.");
+        document.body.innerHTML = '<p style="color: red; text-align: center; padding: 50px;">Erro ao carregar a página. Elementos faltando.</p>';
+        return;
+    }
+    populateBookSelectors();
+    togglePlanCreationOptions();
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault(); if (loginButton.disabled) return;
+        showLoading(authLoadingDiv, true); showErrorMessage(authErrorDiv, ''); loginButton.disabled = true;
+        try { await signInWithEmailAndPassword(auth, loginEmailInput.value, loginPasswordInput.value); }
+        catch (error) { console.error("Login error:", error); showErrorMessage(authErrorDiv, `Erro de login: ${error.code} - ${error.message}`); }
+        finally { showLoading(authLoadingDiv, false); loginButton.disabled = false; }
+    });
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault(); if (signupButton.disabled) return;
+        showLoading(authLoadingDiv, true); showErrorMessage(signupErrorDiv, ''); signupButton.disabled = true;
+        try {
+            await createUserWithEmailAndPassword(auth, signupEmailInput.value, signupPasswordInput.value);
+             alert("Cadastro realizado com sucesso! Você já está logado.");
+             if (signupEmailInput) signupEmailInput.value = ''; if (signupPasswordInput) signupPasswordInput.value = '';
+        } catch (error) { console.error("Signup error:", error); showErrorMessage(signupErrorDiv, `Erro no cadastro: ${error.code} - ${error.message}`); }
+        finally { showLoading(authLoadingDiv, false); signupButton.disabled = false; }
+    });
+    logoutButton.addEventListener('click', async () => {
+        if (logoutButton.disabled) return; logoutButton.disabled = true;
+        try { await signOut(auth); }
+        catch (error) { console.error("Sign out error:", error); alert(`Erro ao sair: ${error.message}`); }
+    });
+    showSignupLink.addEventListener('click', (e) => { e.preventDefault(); toggleForms(false); });
+    showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleForms(true); });
+    createPlanButton.addEventListener('click', createReadingPlan);
+    if (cancelCreationButton) cancelCreationButton.addEventListener('click', cancelPlanCreation);
+    creationMethodRadios.forEach(radio => radio.addEventListener('change', togglePlanCreationOptions));
+    durationMethodRadios.forEach(radio => radio.addEventListener('change', togglePlanCreationOptions));
+    if (chaptersInput) chaptersInput.addEventListener('input', updateBookSuggestions);
+    
+    completeDayButton.addEventListener('click', handleCompleteDay);
+
+    deleteCurrentPlanButton.addEventListener('click', () => { if(activePlanId && currentReadingPlan) { handleDeleteSpecificPlan(activePlanId); } else { alert("Nenhum plano ativo para deletar."); } });
+    recalculatePlanButton.addEventListener('click', () => openModal('recalculate-modal'));
+    showStatsButton.addEventListener('click', () => { calculateAndShowStats(); openModal('stats-modal'); });
+    showHistoryButton.addEventListener('click', () => { displayReadingHistory(); openModal('history-modal'); });
+    planSelect.addEventListener('change', (e) => { const selectedPlanId = e.target.value; if (selectedPlanId && selectedPlanId !== activePlanId) { setActivePlan(selectedPlanId); } });
+    managePlansButton.addEventListener('click', () => { populateManagePlansModal(); openModal('manage-plans-modal'); });
+    confirmRecalculateButton.addEventListener('click', handleRecalculate);
+    createNewPlanButton.addEventListener('click', () => { closeModal('manage-plans-modal'); showPlanCreationSection(); });
+    createFavoritePlanButton.addEventListener('click', createFavoriteAnnualPlanSet); // NOVO EVENT LISTENER
+
+    [recalculateModal, managePlansModal, statsModal, historyModal].forEach(modal => {
+         if (modal) {
+             modal.addEventListener('click', (event) => { if (event.target === modal) { closeModal(modal.id); } });
+             const closeBtn = modal.querySelector('.close-button');
+             if (closeBtn) { if (!closeBtn.dataset.listenerAttached) { closeBtn.addEventListener('click', () => closeModal(modal.id)); closeBtn.dataset.listenerAttached = 'true'; } }
          }
      });
-     document.getElementById('closePopup')?.addEventListener('click', () => {
-        const popup = document.getElementById('completionPopup');
-        if(popup) popup.style.display = 'none';
-     });
-
-    document.getElementById('backToMainButton')?.addEventListener('click', () => showPanel('dailySection'));
-    document.getElementById('addNewTargetButton')?.addEventListener('click', () => showPanel('appContent'));
-    document.getElementById('viewAllTargetsButton')?.addEventListener('click', () => { showPanel('mainPanel'); currentPage = 1; renderTargets(); });
-    document.getElementById("viewArchivedButton")?.addEventListener("click", () => { showPanel('archivedPanel'); currentArchivedPage = 1; renderArchivedTargets(); });
-    document.getElementById("viewResolvedButton")?.addEventListener("click", () => { showPanel('resolvedPanel'); currentResolvedPage = 1; renderResolvedTargets(); });
-
-    const dateRangeModal = document.getElementById("dateRangeModal");
-    document.getElementById("closeDateRangeModal")?.addEventListener("click", () => {if(dateRangeModal) dateRangeModal.style.display = "none"});
-    document.getElementById("generateResolvedView")?.addEventListener("click", () => {
-        const startDateStr = document.getElementById("startDate").value;
-        const endDateStr = document.getElementById("endDate").value;
-        if (startDateStr && endDateStr) {
-            const start = new Date(startDateStr + 'T00:00:00Z'); 
-            const end = new Date(endDateStr + 'T00:00:00Z');   
-             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                 alert("Datas inválidas selecionadas.");
-                 return;
-             }
-             if (start > end) {
-                 alert("A data de início não pode ser posterior à data de fim.");
-                 return;
-             }
-            generateResolvedViewHTML(start, end); 
-            if(dateRangeModal) dateRangeModal.style.display = "none"; 
-        } else {
-            alert("Por favor, selecione as datas de início e fim.");
-        }
+    onAuthStateChanged(auth, (user) => {
+        if (loginButton) loginButton.disabled = false;
+        if (signupButton) signupButton.disabled = false;
+        if (logoutButton) logoutButton.disabled = false;
+        updateUIBasedOnAuthState(user);
     });
-    document.getElementById("cancelDateRange")?.addEventListener("click", () => {if(dateRangeModal) dateRangeModal.style.display = "none"});
-
-    const manualTargetModal = document.getElementById("manualTargetModal");
-    document.getElementById("closeManualTargetModal")?.addEventListener("click", () => { if(manualTargetModal) manualTargetModal.style.display = "none" });
-    document.getElementById("manualTargetSearchInput")?.addEventListener('input', handleManualTargetSearch);
-
-    const categoryModal = document.getElementById('categorySelectionModal');
-    document.getElementById('closeCategoryModal')?.addEventListener('click', () => { if(categoryModal) categoryModal.style.display = 'none'; });
-    document.getElementById('cancelCategoryView')?.addEventListener('click', () => { if(categoryModal) categoryModal.style.display = 'none'; });
-    document.getElementById('confirmCategoryView')?.addEventListener('click', generateCategoryFilteredView);
-
-
-    window.addEventListener('click', (event) => {
-        if (event.target == dateRangeModal) {
-            dateRangeModal.style.display = "none";
-        }
-        if (event.target == manualTargetModal) {
-            manualTargetModal.style.display = "none";
-        }
-        if (event.target == categoryModal) {
-             categoryModal.style.display = "none";
-        }
-    });
-
-}); 
-
-// Expondo funções globalmente para onclicks no HTML
-window.markAsResolved = markAsResolved;
-window.archiveTarget = archiveTarget;
-window.deleteArchivedTarget = deleteArchivedTarget;
-window.toggleAddObservation = toggleAddObservation;
-window.saveObservation = saveObservation;
-window.editDeadline = editDeadline;
-window.saveEditedDeadline = saveEditedDeadline;
-window.cancelEditDeadline = cancelEditDeadline;
-window.editCategory = editCategory;
-window.saveEditedCategory = saveEditedCategory;
-window.cancelEditCategory = cancelEditCategory;
-window.openManualTargetModal = openManualTargetModal;
-window.handleManualTargetSearch = handleManualTargetSearch;
-window.selectManualTarget = selectManualTarget;
+    console.log("Event listeners attached and application initialized.");
+});
