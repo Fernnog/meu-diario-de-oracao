@@ -1,4 +1,4 @@
-// --- START OF MODIFIED FILE script.js ---
+// --- START OF MODIFIED AND FIXED FILE script.js ---
 
 
 // Import Firebase modular SDKs
@@ -189,7 +189,7 @@ const managePlansLoadingDiv = document.getElementById('manage-plans-loading');
 const managePlansErrorDiv = document.getElementById('manage-plans-error');
 const planListDiv = document.getElementById('plan-list');
 const createNewPlanButton = document.getElementById('create-new-plan-button');
-const createFavoritePlanButton = document.getElementById('create-favorite-plan-button'); // NOVO
+const createFavoritePlanButton = document.getElementById('create-favorite-plan-button');
 const statsModal = document.getElementById('stats-modal');
 const statsLoadingDiv = document.getElementById('stats-loading');
 const statsErrorDiv = document.getElementById('stats-error');
@@ -458,7 +458,7 @@ function updateBookSuggestions() {
     }
 }
 
-// NOVO: Função para gerar lista de capítulos a partir de uma lista de livros
+
 function generateChaptersForBookList(bookList) {
     const chapters = [];
     if (!Array.isArray(bookList)) return chapters;
@@ -490,7 +490,6 @@ function generateChaptersForBookList(bookList) {
     return chapters;
 }
 
-// Coloque esta função perto de generateChaptersForBookList
 
 function generateIntercalatedChaptersForPlanC(bookBlocks, chaptersPerBlockAT = 15) {
     console.log("Iniciando geração intercalada para Plano C:", bookBlocks);
@@ -516,16 +515,10 @@ function generateIntercalatedChaptersForPlanC(bookBlocks, chaptersPerBlockAT = 1
         }
     });
 
-    // Garantir que Mateus venha primeiro, se ele estiver na lista do NT
-    // A lista ntBooks já está na ordem canônica, então Mateus é o primeiro.
-    // Vamos processar o Novo Testamento livro a livro.
-    // E o Antigo Testamento em blocos.
-
     let ntChapterIndex = 0;
     let atChapterIndex = 0;
     let currentNTBookIndex = 0;
 
-    // Começa com o primeiro livro do NT (Mateus) completo
     if (ntBooks.length > 0) {
         const primeiroLivroNT = ntBooks[currentNTBookIndex];
         console.log("Adicionando primeiro livro do NT:", primeiroLivroNT);
@@ -535,14 +528,13 @@ function generateIntercalatedChaptersForPlanC(bookBlocks, chaptersPerBlockAT = 1
                 ntChapterIndex++;
             }
         }
-        currentNTBookIndex++; // Avança para o próximo livro do NT
+        currentNTBookIndex++; 
     }
 
 
     while (currentNTBookIndex < ntBooks.length || atChapterIndex < todosCapitulosAT.length) {
         let adicionouAlgoNestaRodada = false;
 
-        // Adiciona um bloco de capítulos do AT (Profetas Maiores)
         if (atChapterIndex < todosCapitulosAT.length) {
             const fimBlocoAT = Math.min(atChapterIndex + chaptersPerBlockAT, todosCapitulosAT.length);
             console.log(`Adicionando bloco AT: de ${atChapterIndex} até ${fimBlocoAT-1}`);
@@ -553,29 +545,23 @@ function generateIntercalatedChaptersForPlanC(bookBlocks, chaptersPerBlockAT = 1
             adicionouAlgoNestaRodada = true;
         }
 
-        // Adiciona o PRÓXIMO livro completo do NT
         if (currentNTBookIndex < ntBooks.length) {
             const proximoLivroNT = ntBooks[currentNTBookIndex];
             console.log("Adicionando próximo livro do NT:", proximoLivroNT);
             if (bibleBooksChapters.hasOwnProperty(proximoLivroNT)) {
                 for (let i = 1; i <= bibleBooksChapters[proximoLivroNT]; i++) {
                     chaptersList.push(`${proximoLivroNT} ${i}`);
-                    // ntChapterIndex não é mais usado para controlar o loop principal aqui,
-                    // mas podemos atualizá-lo se quisermos saber o total de caps NT adicionados.
                 }
             }
             currentNTBookIndex++;
             adicionouAlgoNestaRodada = true;
         }
         
-        // Se em uma rodada completa nada foi adicionado, significa que ambos terminaram.
         if (!adicionouAlgoNestaRodada) {
             break;
         }
     }
     console.log("Lista intercalada final gerada. Total de capítulos:", chaptersList.length);
-    // console.log(chaptersList.slice(0, 50)); // Para depuração
-    // console.log(chaptersList.slice(-50)); // Para depuração
     return chaptersList;
 }
 
@@ -611,19 +597,15 @@ function updateGlobalWeeklyTrackerUI() {
     globalDayIndicatorElements.forEach(el => {
         const dayIndex = parseInt(el.dataset.day, 10); // 0 para Dom, 1 para Seg, etc.
 
-        // Calcula a data UTC correspondente a este indicador na semana
         const dateForThisDayIndicator = new Date(weekStartDate);
         dateForThisDayIndicator.setUTCDate(weekStartDate.getUTCDate() + dayIndex);
         
-        // Converte para uma string de data LOCAL para comparação com 'todayStr'
-        // Isso é crucial para comparar "maçãs com maçãs"
         const year = dateForThisDayIndicator.getFullYear();
         const month = (dateForThisDayIndicator.getMonth() + 1).toString().padStart(2, '0');
         const day = dateForThisDayIndicator.getDate().toString().padStart(2, '0');
         const dateStringForIndicator = `${year}-${month}-${day}`;
         
         const isPastDay = dateStringForIndicator < todayStr;
-        // As interações são salvas com a data local, então a chave é `dateStringForIndicator`
         const isMarkedRead = isCurrentWeekDataValid && userGlobalWeeklyInteractions.interactions[dateStringForIndicator];
 
         el.classList.remove('active', 'missed-day', 'inactive-plan-day', 'current-day-highlight');
@@ -634,7 +616,6 @@ function updateGlobalWeeklyTrackerUI() {
             el.classList.add('missed-day');
         }
 
-        // Aplica o destaque para o dia atual (comparando o dayIndex do HTML com o dia da semana LOCAL)
         if (dayIndex === currentLocalDayOfWeek) {
             el.classList.add('current-day-highlight');
         }
@@ -1045,8 +1026,6 @@ async function saveNewPlanToFirestore(userId, planData) {
         return newPlanDocRef.id;
     } catch (error) {
         console.error("Error saving new plan to Firestore:", error);
-        // If planErrorDiv is visible (generic plan creation), show error there.
-        // Otherwise, error might be handled by createFavoriteAnnualPlanSet if called from there.
         if (planCreationSection.style.display === 'block') {
             showErrorMessage(planErrorDiv, `Erro ao salvar plano: ${error.message}`);
         }
@@ -1066,7 +1045,6 @@ async function updateChapterStatusAndUserInteractions(userId, planId, chapterNam
     }
     const planDocRef = doc(db, 'users', userId, 'plans', planId);
     const userDocRef = doc(db, 'users', userId);
-    // MODIFICADO: Usa a data local para registrar a interação
     const actualDateMarkedStr = getCurrentLocalDateString();
     let firestoreStreakUpdate = {};
     let updatedStreakDataForSave = null;
@@ -1077,15 +1055,12 @@ async function updateChapterStatusAndUserInteractions(userId, planId, chapterNam
     if (isRead && userStreakData.lastInteractionDate !== actualDateMarkedStr) {
         let daysDiff = Infinity;
         if (userStreakData.lastInteractionDate) {
-            // MODIFICADO: Usa a função de diff de dias corrigida.
             daysDiff = dateDiffInDays(userStreakData.lastInteractionDate, actualDateMarkedStr);
         }
         updatedStreakDataForSave = { ...userStreakData };
         if (daysDiff === 1) {
             updatedStreakDataForSave.current += 1;
         } else if (daysDiff > 1 || daysDiff === Infinity) {
-            // Se a diferença não for 1, a sequência é reiniciada para 1 (o dia atual).
-            // A comparação `userStreakData.lastInteractionDate !== actualDateMarkedStr` já garante que não é o mesmo dia.
             updatedStreakDataForSave.current = 1;
         }
         updatedStreakDataForSave.longest = Math.max(updatedStreakDataForSave.longest, updatedStreakDataForSave.current);
@@ -1105,7 +1080,6 @@ async function updateChapterStatusAndUserInteractions(userId, planId, chapterNam
             updatedGlobalWeeklyData = { weekId: currentGlobalWeekId, interactions: {} };
         }
         if (!updatedGlobalWeeklyData.interactions) updatedGlobalWeeklyData.interactions = {};
-        // MODIFICADO: Salva a interação no tracker semanal usando a data local
         updatedGlobalWeeklyData.interactions[actualDateMarkedStr] = true;
     }
 
@@ -1147,7 +1121,6 @@ async function advanceToNextDayAndUpdateLog(userId, planId, newDay, chaptersRead
     }
     const planDocRef = doc(db, 'users', userId, 'plans', planId);
     try {
-        // MODIFICADO: O log de leitura também usa a data local
         const actualDateMarkedStr = getCurrentLocalDateString();
         const logEntry = { date: actualDateMarkedStr, chapters: chaptersReadForLog };
 
@@ -1157,7 +1130,6 @@ async function advanceToNextDayAndUpdateLog(userId, planId, newDay, chaptersRead
             updatedWeeklyDataForPlan = { weekId: currentWeekId, interactions: {} };
         }
         if (!updatedWeeklyDataForPlan.interactions) updatedWeeklyDataForPlan.interactions = {};
-        // Este é um tracker semanal *por plano*, não global. Mantê-lo também com data local é consistente.
         updatedWeeklyDataForPlan.interactions[actualDateMarkedStr] = true;
 
         const dataToUpdate = {
@@ -1284,19 +1256,20 @@ function togglePlanCreationOptions() {
 }
 
 
+// ERRO CORRIGIDO AQUI: As referências a `streakCounterSection` foram substituídas por `perseveranceSection`.
 function showPlanCreationSection() {
     resetFormFields();
     readingPlanSection.style.display = 'none';
     if (overdueReadingsSection) overdueReadingsSection.style.display = 'none';
     if (upcomingReadingsSection) upcomingReadingsSection.style.display = 'none';
-    if (perseveranceSection) perseveranceSection.style.display = 'none'; // MODIFICADO: usa o novo ID
+    if (perseveranceSection) perseveranceSection.style.display = 'none';
     if (globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'none';
     planCreationSection.style.display = 'block';
     if (cancelCreationButton) { cancelCreationButton.style.display = userPlansList.length > 0 ? 'inline-block' : 'none'; }
     window.scrollTo(0, 0);
 }
 
-
+// ERRO CORRIGIDO AQUI: As referências a `streakCounterSection` foram substituídas por `perseveranceSection`.
 function cancelPlanCreation() {
     planCreationSection.style.display = 'none';
     showErrorMessage(planErrorDiv, '');
@@ -1308,9 +1281,9 @@ function cancelPlanCreation() {
         if (upcomingReadingsSection) upcomingReadingsSection.style.display = upcomingReadingsListDiv.children.length > 0 && !upcomingReadingsListDiv.querySelector('p') ? 'block' : 'none';
     } else {
         console.log("Cancel creation: No active plan to return to.");
-        if (currentUser && perseveranceSection) perseveranceSection.style.display = 'block'; // MODIFICADO: usa novo ID
+        if (currentUser && perseveranceSection) perseveranceSection.style.display = 'block';
         if (currentUser && globalWeeklyTrackerSection) globalWeeklyTrackerSection.style.display = 'block';
-        displayScheduledReadings(); // Show overdue/upcoming if any plan exists
+        displayScheduledReadings();
     }
 }
 
@@ -1361,7 +1334,6 @@ async function createReadingPlan() {
             chaptersToRead = combinedChapters;
         }
         if (!chaptersToRead || chaptersToRead.length === 0) { throw new Error("Nenhum capítulo válido foi selecionado ou gerado para o plano."); }
-        // MODIFICADO: A data de início padrão é a data LOCAL, não UTC.
         let startDateStr = getCurrentLocalDateString();
         let totalReadingDays = 0;
         let planMap = {};
@@ -1422,7 +1394,7 @@ async function createReadingPlan() {
     }
 }
 
-// NOVO: Função para criar o conjunto de planos favoritos anuais (COMPLETA E ATUALIZADA)
+
 async function createFavoriteAnnualPlanSet() {
     if (!currentUser) {
         alert("Você precisa estar logado para criar planos.");
@@ -1430,14 +1402,13 @@ async function createFavoriteAnnualPlanSet() {
     }
     const userId = currentUser.uid;
 
-    // Desabilitar botões no modal de gerenciamento
     if (createFavoritePlanButton) createFavoritePlanButton.disabled = true;
     if (createNewPlanButton) createNewPlanButton.disabled = true;
-    showLoading(managePlansLoadingDiv, true); // Mostrar loading no modal
-    showErrorMessage(managePlansErrorDiv, ''); // Limpar erros anteriores no modal
+    showLoading(managePlansLoadingDiv, true); 
+    showErrorMessage(managePlansErrorDiv, ''); 
 
     let allPlansCreatedSuccessfully = true;
-    const createdPlanNames = []; // Para a mensagem de sucesso
+    const createdPlanNames = []; 
 
     try {
         for (const planConfig of FAVORITE_ANNUAL_PLAN_CONFIG) {
@@ -1446,10 +1417,9 @@ async function createFavoriteAnnualPlanSet() {
 
             console.log(`Processando configuração para o plano: ${planName}`);
 
-            // Gerar a lista de capítulos
             if (planConfig.intercalate && planConfig.bookBlocks) {
                 console.log(`Gerando lista intercalada para o plano: ${planName}`);
-                chaptersToRead = generateIntercalatedChaptersForPlanC(planConfig.bookBlocks); // Usar a função de intercalação
+                chaptersToRead = generateIntercalatedChaptersForPlanC(planConfig.bookBlocks);
                 if (chaptersToRead.length === 0) {
                     throw new Error(`Falha ao gerar lista de capítulos intercalada para "${planName}".`);
                 }
@@ -1466,26 +1436,19 @@ async function createFavoriteAnnualPlanSet() {
             }
 
             const totalChaptersInPlan = chaptersToRead.length;
-            if (totalChaptersInPlan === 0) { // Dupla checagem, mas importante
+            if (totalChaptersInPlan === 0) {
                  throw new Error(`A lista de capítulos para "${planName}" está vazia após a geração.`);
             }
 
-            // Calcular total de dias de leitura e mapa do plano
             const totalReadingDays = Math.ceil(totalChaptersInPlan / planConfig.chaptersPerReadingDay);
-            const effectiveTotalReadingDays = Math.max(1, totalReadingDays); // Garante pelo menos 1 dia
+            const effectiveTotalReadingDays = Math.max(1, totalReadingDays);
             console.log(`Plano "${planName}": ${totalChaptersInPlan} caps, ${planConfig.chaptersPerReadingDay} caps/dia de leitura => ${effectiveTotalReadingDays} dias de leitura.`);
 
             const planMap = distributeChaptersOverReadingDays(chaptersToRead, effectiveTotalReadingDays);
             if (Object.keys(planMap).length === 0 && effectiveTotalReadingDays > 0) {
                 console.warn(`O planMap para "${planName}" está vazio, mas effectiveTotalReadingDays é ${effectiveTotalReadingDays}. Capítulos: ${chaptersToRead.length}`);
-                // Se chaptersToRead não estiver vazio, distributeChapters deveria retornar algo.
-                // Isso pode indicar um problema em distributeChaptersOverReadingDays se totalReadingDays for 0 ou negativo.
-                // A checagem de effectiveTotalReadingDays >= 1 deve prevenir isso.
             }
 
-
-            // Calcular datas de início e fim
-            // MODIFICADO: Usa a data local como ponto de partida
             const startDateStr = getCurrentLocalDateString();
             const allowedDaysOfWeek = planConfig.allowedDays;
             const endDateStr = calculateDateForDay(startDateStr, effectiveTotalReadingDays, allowedDaysOfWeek);
@@ -1495,7 +1458,6 @@ async function createFavoriteAnnualPlanSet() {
             }
             console.log(`Plano "${planName}" - Início: ${startDateStr}, Fim: ${endDateStr}`);
 
-            // Preparar dados para salvar no Firestore
             const newPlanData = {
                 name: planName,
                 plan: planMap,
@@ -1506,71 +1468,51 @@ async function createFavoriteAnnualPlanSet() {
                 startDate: startDateStr,
                 endDate: endDateStr,
                 readLog: {},
-                googleDriveLink: null, // Plano favorito não tem link do Drive por padrão
+                googleDriveLink: null,
                 recalculationBaseDay: null,
                 recalculationBaseDate: null,
-                dailyChapterReadStatus: {} // Inicializa vazio
+                dailyChapterReadStatus: {}
             };
 
-            // Salvar o plano individual
-            // A função saveNewPlanToFirestore internamente lida com o loading do createPlanButton, etc.
-            // e também define o plano salvo como ativo. O último plano do loop será o ativo final.
             const newPlanId = await saveNewPlanToFirestore(userId, newPlanData);
             if (!newPlanId) {
                 allPlansCreatedSuccessfully = false;
-                // O erro específico já deve ter sido mostrado por saveNewPlanToFirestore no planErrorDiv
-                // se a criação genérica estivesse visível, ou será capturado no catch geral.
-                // Aqui, podemos adicionar uma mensagem específica para o modal de gerenciamento.
                 showErrorMessage(managePlansErrorDiv, `Falha ao salvar o plano "${planName}" no Firestore. Verifique o console para mais detalhes.`);
                 console.error(`Falha ao salvar o plano "${planName}" no Firestore.`);
-                break; // Interrompe a criação dos planos subsequentes se um falhar
+                break;
             }
-            createdPlanNames.push(planName); // Adiciona o nome do plano criado com sucesso
+            createdPlanNames.push(planName);
             console.log(`Plano "${planName}" (ID: ${newPlanId}) criado e salvo com sucesso.`);
-        } // Fim do loop for...of
+        } 
 
-        // Feedback final para o usuário
         if (allPlansCreatedSuccessfully && createdPlanNames.length === FAVORITE_ANNUAL_PLAN_CONFIG.length) {
             alert(`Conjunto de Planos Favoritos Anuais (${createdPlanNames.join(', ')}) criado com sucesso!`);
             closeModal('manage-plans-modal');
         } else if (createdPlanNames.length > 0 && !allPlansCreatedSuccessfully) {
             alert(`Alguns planos do conjunto favorito (${createdPlanNames.join(', ')}) foram criados, mas ocorreram erros com os demais. Verifique a lista de planos e o console.`);
         } else if (!allPlansCreatedSuccessfully && createdPlanNames.length === 0) {
-            // Se nenhum plano foi criado e houve falha, a mensagem de erro já deve ter sido mostrada.
-            // Não precisa de alert adicional aqui, apenas garantir que o erro foi exibido.
-            if (!managePlansErrorDiv.textContent) { // Se nenhuma mensagem de erro específica foi definida
+            if (!managePlansErrorDiv.textContent) {
                  showErrorMessage(managePlansErrorDiv, "Ocorreu um erro geral ao tentar criar o conjunto de planos favoritos. Verifique o console.");
             }
         }
-        // A UI (plano ativo, lista de planos no seletor) é atualizada por setActivePlan,
-        // que é chamado dentro de saveNewPlanToFirestore.
-
-    } catch (error) { // Captura erros do loop ou da lógica de preparação antes de salvar
+    } catch (error) { 
         console.error("Erro crítico ao criar o conjunto de planos favoritos:", error);
         showErrorMessage(managePlansErrorDiv, `Erro: ${error.message}`);
-        allPlansCreatedSuccessfully = false; // Garante que sabemos que algo deu errado
+        allPlansCreatedSuccessfully = false; 
     } finally {
-        showLoading(managePlansLoadingDiv, false); // Esconder loading do modal
-        // Reabilitar botões no modal de gerenciamento
+        showLoading(managePlansLoadingDiv, false); 
         if (createFavoritePlanButton) createFavoritePlanButton.disabled = false;
         if (createNewPlanButton) createNewPlanButton.disabled = false;
 
-        // Se o modal ainda estiver aberto (por exemplo, se houve um erro e não foi fechado),
-        // repopular a lista de planos para refletir quaisquer planos que possam ter sido criados.
         if (document.getElementById('manage-plans-modal').style.display === 'flex') {
-            await fetchUserPlansList(userId); // Recarregar a lista de planos do usuário
-            populateManagePlansModal();     // Atualizar o conteúdo do modal
-            populatePlanSelector();         // Atualizar o seletor principal de planos
+            await fetchUserPlansList(userId); 
+            populateManagePlansModal();     
+            populatePlanSelector();         
         } else if (allPlansCreatedSuccessfully && createdPlanNames.length === FAVORITE_ANNUAL_PLAN_CONFIG.length) {
-            // Se o modal foi fechado devido ao sucesso, ainda precisamos garantir que o seletor principal e outras partes da UI sejam atualizadas.
-            // setActivePlan (chamado por saveNewPlanToFirestore) já deve ter lidado com loadActivePlanData e displayScheduledReadings.
-            // Apenas uma atualização explícita do seletor e da lista (se necessário para outros contextos) pode ser útil.
             await fetchUserPlansList(userId);
             populatePlanSelector();
-            await displayScheduledReadings(); // Recarregar leituras agendadas
+            await displayScheduledReadings(); 
         }
-        // Se houve erro e o modal não está aberto, o usuário verá o erro no local apropriado (se houver)
-        // ou precisará verificar o console.
     }
 }
 
@@ -1834,10 +1776,9 @@ async function handleRecalculate() {
             newTotalReadingDaysForRemainder = Math.max(1, Math.ceil(remainingChapters.length / avgPace));
             newPlanMapForRemainder = distributeChaptersOverReadingDays(remainingChapters, newTotalReadingDaysForRemainder);
         } else if (recalcOption === 'increase_pace') {
-            // MODIFICADO: Usa a data local como referência para o "hoje"
             const todayStr = getCurrentLocalDateString();
-            const todayDate = new Date(todayStr); // Objeto Date para o início do dia local
-            const originalEndDate = new Date(currentEndDate); // Interpreta a string como local
+            const todayDate = new Date(todayStr); 
+            const originalEndDate = new Date(currentEndDate); 
             const originalScheduledDateForCurrentDayStr = getEffectiveDateForDay(currentReadingPlan, currentDay);
             let countStartDate = todayDate;
             if (originalScheduledDateForCurrentDayStr) {
@@ -1856,12 +1797,10 @@ async function handleRecalculate() {
                 let remainingReadingDaysCount = 0;
                 let currentDate = new Date(countStartDate);
                 while (currentDate <= originalEndDate) {
-                     // getDay() é local, mas os dias da semana (0-6) são universais.
-                     // getUTCDay() é usado no agendamento, então para consistência, mantemos aqui.
                      if (validAllowedDays.includes(currentDate.getUTCDay())) {
                          remainingReadingDaysCount++;
                      }
-                     currentDate.setDate(currentDate.getDate() + 1); // Avança um dia local
+                     currentDate.setDate(currentDate.getDate() + 1);
                      if(remainingReadingDaysCount > 365*10) { console.warn("Safety break: increase_pace date count exceeded limit."); break; }
                 }
                  newTotalReadingDaysForRemainder = Math.max(1, remainingReadingDaysCount);
@@ -1874,7 +1813,6 @@ async function handleRecalculate() {
             newPlanMapForRemainder = distributeChaptersOverReadingDays(remainingChapters, newTotalReadingDaysForRemainder);
         }
         if (Object.keys(newPlanMapForRemainder).length === 0 && remainingChapters.length > 0) { throw new Error("Falha ao redistribuir os capítulos restantes. Verifique a lógica de cálculo dos dias."); }
-        // MODIFICADO: A data base para o recálculo é a data LOCAL de hoje
         const todayStr = getCurrentLocalDateString();
         const scheduledDateForCurrentDayStr = getEffectiveDateForDay(currentReadingPlan, currentDay);
         let recalcEffectiveStartDate = todayStr;
@@ -1978,7 +1916,6 @@ async function calculateAndShowStats() {
 }
 
 
-// --- Função para Leituras Atrasadas e Próximas ---
 async function displayScheduledReadings(upcomingCount = 3) {
     if (!overdueReadingsSection || !overdueReadingsListDiv || !upcomingReadingsSection || !upcomingReadingsListDiv || !currentUser) {
         console.warn("Elementos UI para 'Overdue/Upcoming Readings' ou usuário não disponíveis.");
@@ -1990,7 +1927,6 @@ async function displayScheduledReadings(upcomingCount = 3) {
     overdueReadingsSection.style.display = 'block'; upcomingReadingsSection.style.display = 'block';
     overdueReadingsListDiv.innerHTML = ''; upcomingReadingsListDiv.innerHTML = '';
     showErrorMessage(planViewErrorDiv, '');
-    // MODIFICADO: Usa a data local para determinar o que está atrasado.
     const todayStr = getCurrentLocalDateString();
     const overdueList = []; const upcomingList = []; 
     if (userPlansList.length === 0) {
@@ -2060,15 +1996,11 @@ async function displayScheduledReadings(upcomingCount = 3) {
 
 
 function updateStreakCounterUI() {
-    // --- INÍCIO DO CÓDIGO DO PAINEL DE PERSEVERANÇA APRIMORADO ---
-
-    // Cache dos elementos do novo painel
     const perseveranceSection = document.getElementById('perseverance-section');
     const currentDaysText = perseveranceSection.querySelector('.current-days-text');
     const recordDaysText = perseveranceSection.querySelector('.record-days-text');
     const progressFill = document.getElementById('perseverance-progress-fill');
     
-    // Ícones
     const crownIcon = perseveranceSection.querySelector('.record-crown');
     const sunIcon = perseveranceSection.querySelector('[data-milestone="sun"]');
     const diamondIcon = perseveranceSection.querySelector('[data-milestone="diamond"]');
@@ -2079,59 +2011,48 @@ function updateStreakCounterUI() {
 
     if (!perseveranceSection || !currentUser || !userInfo) {
         if(perseveranceSection) perseveranceSection.style.display = 'none';
-        // Esconde o painel antigo também, caso ainda exista na estrutura por algum motivo
-        const oldStreakCounter = document.getElementById('streak-counter-section');
-        if(oldStreakCounter) oldStreakCounter.style.display = 'none';
         return;
     }
     
-    // Mostra o painel se o usuário estiver logado e não estiver na tela de criação de plano
     perseveranceSection.style.display = (planCreationSection.style.display !== 'block') ? 'block' : 'none';
 
-    // Pega os dados de perseverança do estado da aplicação
     const consecutiveDays = userStreakData.current || 0;
     const recordDays = userStreakData.longest || 0;
 
-    // 1. Lógica da Barra de Progresso
     let percentage = recordDays > 0 ? (consecutiveDays / recordDays) * 100 : 0;
-    percentage = Math.min(100, Math.max(0, percentage)); // Garante que a % esteja entre 0 e 100
+    percentage = Math.min(100, Math.max(0, percentage));
     
     if (progressFill) progressFill.style.width = percentage + '%';
     if (currentDaysText) currentDaysText.textContent = consecutiveDays;
     if (recordDaysText) recordDaysText.textContent = recordDays;
 
-    // 2. Lógica dos Ícones de Marcos
-    
-    // Helper para resetar os ícones
     const allIcons = [crownIcon, sunIcon, diamondIcon, treeIcon, flameIcon, seedIcon];
-    allIcons.forEach(icon => icon.classList.remove('achieved'));
-    starContainer.innerHTML = ''; // Limpa as estrelas
+    allIcons.forEach(icon => { if(icon) icon.classList.remove('achieved'); });
+    if(starContainer) starContainer.innerHTML = '';
 
-    // Coroa do Recorde
     if (recordDays > 0 && consecutiveDays >= recordDays) {
-        crownIcon.classList.add('achieved');
+        if (crownIcon) crownIcon.classList.add('achieved');
     }
 
-    // Marcos Principais (lógica hierárquica e exclusiva)
     if (consecutiveDays >= 1000) {
-        sunIcon.classList.add('achieved');
+        if (sunIcon) sunIcon.classList.add('achieved');
     } else if (consecutiveDays >= 365) {
-        diamondIcon.classList.add('achieved');
+        if (diamondIcon) diamondIcon.classList.add('achieved');
         const stars = Math.floor((consecutiveDays - 365) / 30);
         for (let i = 0; i < stars; i++) {
             const star = document.createElement('span');
             star.className = 'star-icon achieved';
             star.textContent = '⭐';
-            starContainer.appendChild(star);
+            if (starContainer) starContainer.appendChild(star);
         }
     } else if (consecutiveDays >= 100) {
-        treeIcon.classList.add('achieved');
+        if (treeIcon) treeIcon.classList.add('achieved');
         const stars = Math.floor((consecutiveDays - 100) / 30);
         for (let i = 0; i < stars; i++) {
             const star = document.createElement('span');
             star.className = 'star-icon achieved';
             star.textContent = '⭐';
-            starContainer.appendChild(star);
+            if (starContainer) starContainer.appendChild(star);
         }
     } else {
         const stars = Math.floor(consecutiveDays / 30);
@@ -2139,38 +2060,37 @@ function updateStreakCounterUI() {
             const star = document.createElement('span');
             star.className = 'star-icon achieved';
             star.textContent = '⭐';
-            starContainer.appendChild(star);
+            if (starContainer) starContainer.appendChild(star);
         }
     }
 
-    // Marcos de Ciclo (baseado no resto da divisão por 30)
     const daysInCurrentCycle = consecutiveDays % 30;
-    if (consecutiveDays > 0 && consecutiveDays < 100) { // Só mostra semente/chama antes do marco de 100 dias
+    if (consecutiveDays > 0 && consecutiveDays < 100) {
         if (daysInCurrentCycle >= 15) {
-            flameIcon.classList.add('achieved');
+            if (flameIcon) flameIcon.classList.add('achieved');
         } else if (daysInCurrentCycle >= 7) {
-            seedIcon.classList.add('achieved');
+            if (seedIcon) seedIcon.classList.add('achieved');
         }
     }
-    
-    // --- FIM DO CÓDIGO DO PAINEL DE PERSEVERANÇA APRIMORADO ---
 }
 
 
 // --- Inicialização e Event Listeners ---
 document.addEventListener("DOMContentLoaded", () => {
+    // Verificação de robustez aprimorada
     if (!loginButton || !createPlanButton || !completeDayButton || !recalculateModal || !managePlansModal ||
-        !statsModal || !historyModal || !planSelect || !periodicityCheckboxes ||
+        !statsModal || !historyModal || !planSelect || !periodicityCheckboxes || !periodicityCheckboxes.length ||
         !overdueReadingsSection || !overdueReadingsListDiv || !upcomingReadingsSection || !upcomingReadingsListDiv ||
         !googleDriveLinkInput || !readingPlanTitle || !activePlanDriveLink ||
-        !globalWeeklyTrackerSection || !globalDayIndicatorElements ||
+        !globalWeeklyTrackerSection || !globalDayIndicatorElements || !globalDayIndicatorElements.length ||
         !dailyReadingHeaderDiv || !dailyReadingChaptersListDiv ||
-        !createFavoritePlanButton // Adicionado à verificação
+        !createFavoritePlanButton || !perseveranceSection
        ) {
-        console.error("Erro crítico: Elementos essenciais da UI não encontrados.");
-        document.body.innerHTML = '<p style="color: red; text-align: center; padding: 50px;">Erro ao carregar a página. Elementos faltando.</p>';
+        console.error("Erro crítico: Elementos essenciais da UI não encontrados no index.html.");
+        document.body.innerHTML = '<p style="color: red; text-align: center; padding: 50px;">Erro ao carregar a página. Elementos faltando. Verifique o console do navegador para detalhes.</p>';
         return;
     }
+
     populateBookSelectors();
     togglePlanCreationOptions();
     loginForm.addEventListener('submit', async (e) => {
@@ -2213,7 +2133,7 @@ document.addEventListener("DOMContentLoaded", () => {
     managePlansButton.addEventListener('click', () => { populateManagePlansModal(); openModal('manage-plans-modal'); });
     confirmRecalculateButton.addEventListener('click', handleRecalculate);
     createNewPlanButton.addEventListener('click', () => { closeModal('manage-plans-modal'); showPlanCreationSection(); });
-    createFavoritePlanButton.addEventListener('click', createFavoriteAnnualPlanSet); // NOVO EVENT LISTENER
+    createFavoritePlanButton.addEventListener('click', createFavoriteAnnualPlanSet);
 
     [recalculateModal, managePlansModal, statsModal, historyModal].forEach(modal => {
          if (modal) {
@@ -2230,3 +2150,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     console.log("Event listeners attached and application initialized.");
 });
+
+// --- END OF MODIFIED AND FIXED FILE script.js ---
