@@ -222,41 +222,54 @@ export async function updateDailyTargetStatus(uid, targetId, completedStatus) {
 }
 
 export async function recordUserInteraction(uid, currentPerseveranceData, currentWeeklyData) {
-    const todayStr = getISODateString(new Date());
+    const today = new Date();
+    const todayStr = getISODateString(today);
     let isNewRecord = false;
 
-    // Streak
+    // --- LÓGICA DE STREAK (PERSEVERANÇA) ---
     const perseveranceRef = doc(db, "perseveranceData", uid);
     const { consecutiveDays, recordDays, lastInteractionDate } = currentPerseveranceData;
     const lastDateStr = lastInteractionDate ? getISODateString(lastInteractionDate) : null;
+
+    // Só executa a lógica de atualização se a última interação não foi hoje
     if (lastDateStr !== todayStr) {
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0); // Garante que a data 'today' seja no início do dia UTC
+        
+        // *** CORREÇÃO DEFINITIVA APLICADA AQUI ***
+        // Lógica de cálculo de "ontem" 100% baseada em UTC.
         const yesterday = new Date(today);
         yesterday.setUTCDate(today.getUTCDate() - 1);
         const yesterdayStr = getISODateString(yesterday);
         
-        let newConsecutive = (lastDateStr === yesterdayStr) ? (consecutiveDays || 0) + 1 : 1;
+        const isConsecutive = (lastDateStr === yesterdayStr);
+        let newConsecutive = isConsecutive ? (consecutiveDays || 0) + 1 : 1;
         const newRecord = Math.max(recordDays || 0, newConsecutive);
         
-        if (newRecord > (recordDays || 0)) isNewRecord = true;
+        if (newRecord > (recordDays || 0)) {
+            isNewRecord = true;
+        }
+
+        // Atualiza o documento no Firestore
         await setDoc(perseveranceRef, {
             consecutiveDays: newConsecutive,
             recordDays: newRecord,
-            lastInteractionDate: Timestamp.fromDate(new Date())
+            lastInteractionDate: Timestamp.fromDate(today)
         }, { merge: true });
     }
 
-    // Weekly
+    // --- LÓGICA SEMANAL (já estava correta, mantida) ---
     const weeklyRef = doc(db, "weeklyInteractions", uid);
     const d = new Date();
-    d.setUTCHours(0, 0, 0, 0); // Usa UTC para cálculo da semana
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    const weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+    d.setUTCHours(0, 0, 0, 0);
+    const dayOfWeek = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     const weekId = `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    
     let updatedWeekly = { ...currentWeeklyData };
-    if (updatedWeekly.weekId !== weekId) updatedWeekly = { weekId: weekId, interactions: {} };
+    if (updatedWeekly.weekId !== weekId) {
+        updatedWeekly = { weekId: weekId, interactions: {} };
+    }
     if (!updatedWeekly.interactions[todayStr]) {
         updatedWeekly.interactions[todayStr] = true;
         await setDoc(weeklyRef, updatedWeekly, { merge: true });
@@ -264,7 +277,6 @@ export async function recordUserInteraction(uid, currentPerseveranceData, curren
 
     return { isNewRecord };
 }
-
 
 // --- CICLO DE VIDA E ATUALIZAÇÕES GRANULARES DO ALVO ---
 
