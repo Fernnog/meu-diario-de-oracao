@@ -1,4 +1,4 @@
-// script.js (Orquestrador Principal da Aplicação)
+// script.js (Orquestrador Principal da Aplicação - CORRIGIDO)
 
 // --- MÓDULOS ---
 import { auth } from './firebase-config.js'; 
@@ -75,7 +75,62 @@ async function handlePasswordReset() {
     }
 }
 
-// --- FLUXO DE DADOS PRINCIPAL ---
+// --- FLUXO DE DADOS E RENDERIZAÇÃO ---
+
+function applyFiltersAndRender(panelId) {
+    console.log(`[App] Aplicando filtros e renderizando para o painel: ${panelId}`);
+    const panelState = state.pagination[panelId];
+    const panelFilters = state.filters[panelId];
+
+    let sourceData = [];
+    if (panelId === 'mainPanel') sourceData = state.prayerTargets;
+    if (panelId === 'archivedPanel') sourceData = state.archivedTargets;
+    if (panelId === 'resolvedPanel') sourceData = state.resolvedTargets;
+
+    // 1. Aplicar Filtros
+    let filteredData = sourceData.filter(target => {
+        const searchTerm = panelFilters.searchTerm.toLowerCase();
+        const matchesSearch = searchTerm === '' ||
+            target.title.toLowerCase().includes(searchTerm) ||
+            (target.details && target.details.toLowerCase().includes(searchTerm)) ||
+            (target.category && target.category.toLowerCase().includes(searchTerm)) ||
+            (target.observations && target.observations.some(obs => obs.text.toLowerCase().includes(searchTerm)));
+        
+        if (!matchesSearch) return false;
+
+        // Filtros específicos do painel principal
+        if (panelId === 'mainPanel') {
+            const now = new Date();
+            const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+            if (panelFilters.showDeadlineOnly && !target.hasDeadline) return false;
+            if (panelFilters.showExpiredOnly) {
+                 if (!target.hasDeadline || !target.deadlineDate || target.deadlineDate.getTime() >= todayUTCStart.getTime()) {
+                     return false;
+                 }
+            }
+        }
+        return true;
+    });
+
+    // 2. Aplicar Paginação
+    const { currentPage, targetsPerPage } = panelState;
+    const startIndex = (currentPage - 1) * targetsPerPage;
+    const paginatedData = filteredData.slice(startIndex, startIndex + targetsPerPage);
+    
+    // 3. Chamar a função de renderização correta da UI
+    switch (panelId) {
+        case 'mainPanel':
+            UI.renderTargets(paginatedData, filteredData.length, currentPage, targetsPerPage);
+            break;
+        case 'archivedPanel':
+            UI.renderArchivedTargets(paginatedData, filteredData.length, currentPage, targetsPerPage);
+            break;
+        case 'resolvedPanel':
+            UI.renderResolvedTargets(paginatedData, filteredData.length, currentPage, targetsPerPage);
+            break;
+    }
+}
 
 async function loadDataForUser(user) {
     console.log(`[App] User ${user.uid} authenticated. Loading data...`);
@@ -98,10 +153,12 @@ async function loadDataForUser(user) {
 
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
+        
+        // Renderizar tudo com os dados frescos
+        applyFiltersAndRender('mainPanel');
+        applyFiltersAndRender('archivedPanel');
+        applyFiltersAndRender('resolvedPanel');
 
-        UI.renderTargets(state.prayerTargets, state.prayerTargets.length, 1, 10, 'mainPanel');
-        UI.renderArchivedTargets(state.archivedTargets, state.archivedTargets.length, 1, 10, 'archivedPanel');
-        UI.renderResolvedTargets(state.resolvedTargets, state.resolvedTargets.length, 1, 10, 'resolvedPanel');
         UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
         UI.updatePerseveranceUI(state.perseveranceData);
         UI.updateWeeklyChart(state.weeklyPrayerData);
@@ -124,9 +181,9 @@ function handleLogoutState() {
         filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false }, archivedPanel: { searchTerm: '' }, resolvedPanel: { searchTerm: '' }}
     };
 
-    UI.renderTargets([], 0, 1, 10, 'mainPanel');
-    UI.renderArchivedTargets([], 0, 1, 10, 'archivedPanel');
-    UI.renderResolvedTargets([], 0, 1, 10, 'resolvedPanel');
+    UI.renderTargets([], 0, 1, 10);
+    UI.renderArchivedTargets([], 0, 1, 10);
+    UI.renderResolvedTargets([], 0, 1, 10);
     UI.renderDailyTargets([], []);
     UI.resetPerseveranceUI();
     UI.resetWeeklyChart();
@@ -143,12 +200,19 @@ async function handleAddNewTarget(event) {
     const title = document.getElementById('title').value.trim();
     if (!title) return alert("O título é obrigatório.");
 
+    const hasDeadline = document.getElementById('hasDeadline').checked;
+    const deadlineValue = document.getElementById('deadlineDate').value;
+    
+    if (hasDeadline && !deadlineValue) {
+        return alert("Por favor, selecione uma data para o prazo de validade.");
+    }
+    
     const newTarget = {
         title: title,
         details: document.getElementById('details').value.trim(),
-        date: new Date(document.getElementById('date').value + 'T00:00:00Z'), // Use UTC
-        hasDeadline: document.getElementById('hasDeadline').checked,
-        deadlineDate: document.getElementById('hasDeadline').checked ? new Date(document.getElementById('deadlineDate').value + 'T00:00:00Z') : null,
+        date: new Date(document.getElementById('date').value + 'T12:00:00Z'), // Use UTC-like time
+        hasDeadline: hasDeadline,
+        deadlineDate: hasDeadline ? new Date(deadlineValue + 'T12:00:00Z') : null,
         category: document.getElementById('categorySelect').value,
         observations: [],
         resolved: false,
@@ -158,6 +222,7 @@ async function handleAddNewTarget(event) {
         await Service.addNewPrayerTarget(state.user.uid, newTarget);
         alert("Alvo adicionado com sucesso!");
         document.getElementById('prayerForm').reset();
+        document.getElementById('deadlineContainer').style.display = 'none'; // Reset deadline view
         await loadDataForUser(state.user);
         UI.showPanel('mainPanel');
     } catch (error) {
@@ -174,7 +239,7 @@ async function handlePray(targetId) {
         await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
         const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
         
-        // Otimização: Apenas recarrega os dados que mudaram
+        // Recarrega os dados que mudaram
         const [perseveranceData, weeklyData, dailyTargetsData] = await Promise.all([
             Service.loadPerseveranceData(state.user.uid),
             Service.loadWeeklyPrayerData(state.user.uid),
@@ -201,7 +266,7 @@ async function handleRefreshDaily() {
     if (confirm("Isso irá gerar uma nova lista de alvos para hoje, substituindo a atual. Deseja continuar?")) {
         try {
             await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets);
-            await loadDataForUser(state.user); // Recarrega tudo para refletir a nova lista
+            await loadDataForUser(state.user); 
             alert("Nova lista de alvos do dia gerada!");
         } catch (error) {
             console.error("Erro ao forçar a geração de alvos diários:", error);
@@ -273,6 +338,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewDaily').addEventListener('click', handleViewDaily);
     document.getElementById('addManualTargetButton').addEventListener('click', handleOpenManualAddModal);
 
+    // *** CORREÇÃO: Listener do checkbox de prazo ***
+    document.getElementById('hasDeadline').addEventListener('change', (e) => {
+        document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // *** CORREÇÃO: Listeners para busca e filtros ***
+    ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+            const panelId = id === 'searchMain' ? 'mainPanel' : (id === 'searchArchived' ? 'archivedPanel' : 'resolvedPanel');
+            state.filters[panelId].searchTerm = e.target.value;
+            state.pagination[panelId].currentPage = 1; // Reset page on new search
+            applyFiltersAndRender(panelId);
+        });
+    });
+
+    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => {
+        document.getElementById(id).addEventListener('change', (e) => {
+            const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly';
+            state.filters.mainPanel[filterName] = e.target.checked;
+            state.pagination.mainPanel.currentPage = 1; // Reset page on filter change
+            applyFiltersAndRender('mainPanel');
+        });
+    });
+
     // Modal de adição manual
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', (e) => {
@@ -284,10 +373,20 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm);
     });
 
-    // Delegação de Eventos
+    // Delegação de Eventos para ações dinâmicas
     document.body.addEventListener('click', async (e) => {
-        const { action, id } = e.target.dataset;
-        if (!action || !id || !state.user) return;
+        const { action, id, page, panel } = e.target.dataset;
+        if (!action && !page) return; // Se não houver ação ou paginação, sair
+
+        // Ações de paginação
+        if (page && panel) {
+            e.preventDefault();
+            state.pagination[panel].currentPage = parseInt(page);
+            applyFiltersAndRender(panel);
+            return;
+        }
+        
+        if (!id || !state.user) return; // Ações a partir daqui precisam de id e usuário
 
         switch(action) {
             case 'pray':
@@ -304,7 +403,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert(error.message);
                 }
                 break;
-            // ... outros cases (resolve, archive, etc.)
+            // Outras ações como 'resolve', 'archive' podem ser adicionadas aqui
+            // Exemplo:
+            // case 'archive':
+            //     if (confirm("Tem certeza que deseja arquivar este alvo?")) {
+            //         const targetToArchive = state.prayerTargets.find(t => t.id === id);
+            //         if (targetToArchive) {
+            //             await Service.archiveTarget(state.user.uid, targetToArchive);
+            //             await loadDataForUser(state.user); // Recarrega os dados
+            //         }
+            //     }
+            //     break;
         }
     });
 });
