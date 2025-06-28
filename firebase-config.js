@@ -1,13 +1,14 @@
-// --- START OF FILE firebase-config.js ---
+// firebase-config.js
+// Responsabilidade: Configurar e inicializar o Firebase, exportando as instâncias.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 
-// Firebase configuration
+// Cole aqui o objeto de configuração do seu projeto Firebase.
 const firebaseConfig = {
-  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk", // ATENÇÃO: Substitua pela sua chave real se estiver usando este código.
+  apiKey: "AIzaSyDnwmV7Xms2PyAZJDQQ_upjQkldoVkF_tk", // ATENÇÃO: Substitua pela sua chave real.
   authDomain: "meu-diario-de-oracao.firebaseapp.com",
   projectId: "meu-diario-de-oracao",
   storageBucket: "meu-diario-de-oracao.firebasestorage.app",
@@ -16,8 +17,11 @@ const firebaseConfig = {
   measurementId: "G-G0838BBW07"
 };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Inicializa o Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const analytics = getAnalytics(app);
+
+// Exporta as instâncias principais para que outros arquivos possam usá-las
+export { app, auth, db, analytics };
