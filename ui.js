@@ -551,7 +551,7 @@ export function generatePerseveranceReportHTML(data) {
     let historyHTML = '';
     if (data.interactionDates && data.interactionDates.length > 0) {
         historyHTML = data.interactionDates.map(dateStr => {
-            const date = new Date(dateStr + 'T12:00:00Z'); // Evita problemas de fuso
+            const date = new Date(dateStr + 'T12:00:00Z');
             return `<li>${date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</li>`;
         }).join('');
     } else {
@@ -559,7 +559,7 @@ export function generatePerseveranceReportHTML(data) {
     }
 
     return `
-        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança</title>
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança Pessoal</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
             .container { max-width: 750px; margin: 25px auto; padding: 20px 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
@@ -577,20 +577,17 @@ export function generatePerseveranceReportHTML(data) {
         </style>
         </head><body>
         <div class="container">
-            <h1>Relatório de Perseverança</h1>
-            
+            <h1>Relatório de Perseverança Pessoal</h1>
             <div class="section">
                 <h2>Resumo Geral</h2>
                 <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s) consecutivos</div>
                 <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
                 <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
             </div>
-
             <div class="section">
                 <h2>Marcos da Sequência Atual</h2>
                 <ul>${milestonesHTML}</ul>
             </div>
-            
             <div class="section">
                 <h2>Interações Recentes (Semana Atual)</h2>
                 <ul>${historyHTML}</ul>
@@ -599,6 +596,67 @@ export function generatePerseveranceReportHTML(data) {
         </body></html>
     `;
 }
+
+export function generateInteractionReportHTML(allTargets, interactionMap) {
+    const reportData = allTargets.map(target => ({
+        title: target.title,
+        category: target.category || 'Sem Categoria',
+        creationDate: formatDateForDisplay(target.date),
+        count: interactionMap.get(target.id) || 0,
+        status: target.resolved ? 'Respondido' : (target.archived ? 'Arquivado' : 'Ativo')
+    }));
+
+    reportData.sort((a, b) => b.count - a.count);
+
+    let tableRowsHTML = reportData.map(item => `
+        <tr>
+            <td>${item.title}</td>
+            <td class="center">${item.count}</td>
+            <td>${item.category}</td>
+            <td>${item.creationDate}</td>
+            <td class="status-${item.status.toLowerCase()}">${item.status}</td>
+        </tr>
+    `).join('');
+
+    if (reportData.length === 0) {
+        tableRowsHTML = '<tr><td colspan="5">Nenhum alvo encontrado para gerar o relatório.</td></tr>';
+    }
+
+    return `
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Interação por Alvo</title>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
+            h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #e29420; padding-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #e29420; color: white; }
+            tr:nth-child(even) { background-color: #fdfdfd; }
+            tr:hover { background-color: #f1f1f1; }
+            .center { text-align: center; font-weight: bold; font-size: 1.1em; }
+            .status-ativo { color: #2980b9; font-weight: bold; }
+            .status-arquivado { color: #7f8c8d; }
+            .status-respondido { color: #27ae60; font-weight: bold; }
+        </style>
+        </head><body>
+            <h1>Relatório de Interação por Alvo</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Título do Alvo</th>
+                        <th class="center">Interações</th>
+                        <th>Categoria</th>
+                        <th>Data de Criação</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHTML}
+                </tbody>
+            </table>
+        </body></html>
+    `;
+}
+
 
 export function displayCompletionPopup() {
     const popup = document.getElementById('completionPopup');
