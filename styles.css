@@ -897,11 +897,14 @@ input[type="date"] {
     transition: opacity 0.4s ease, transform 0.4s ease, color 0.4s ease;
 }
 
+/* CORREÇÃO APLICADA: Ícones ocultos por padrão */
 .milestone-icon {
-    opacity: 0.35;
-    filter: grayscale(50%);
+    display: none;
 }
+
+/* CORREÇÃO APLICADA: Ícones são exibidos quando a classe .achieved é adicionada */
 .milestone-icon.achieved {
+    display: inline-block;
     opacity: 1;
     transform: scale(1.15);
     color: #e29420; 
@@ -909,12 +912,15 @@ input[type="date"] {
     filter: grayscale(0%);
 }
 
+/* CORREÇÃO APLICADA: Coroa oculta por padrão */
 .record-crown {
-    display: none; /* Initially oculto, JS controls with .visible */
+    display: none; 
     color: #ffbf00; /* Dourado */
     filter: drop-shadow(0 0 2px rgba(0,0,0,0.6)); /* Sombra mais pronunciada */
 }
-.record-crown.visible { /* Applied by JS when recordDays > 0 */
+
+/* CORREÇÃO APLICADA: Coroa exibida com a classe .achieved */
+.record-crown.achieved {
     display: inline-block;
     opacity: 1;
     transform: scale(1.1); /* Slight emphasis for record crown */
@@ -1064,6 +1070,7 @@ input[type="date"] {
     transition: all 0.3s ease; 
 }
 
+/* CORREÇÃO: Estilo do container do dia atual para a borda */
 .day.current-day-container {
     border: 2px solid #9cbe4a; 
     border-radius: 8px;        
