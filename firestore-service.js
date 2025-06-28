@@ -30,11 +30,13 @@ import {
 function rehydrateTargets(rawData) {
     return rawData.map(targetData => {
         const rehydrated = { ...targetData };
+        // Converte todos os campos de primeiro nível que são Timestamps
         for (const key in rehydrated) {
             if (rehydrated[key] instanceof Timestamp) {
                 rehydrated[key] = rehydrated[key].toDate();
             }
         }
+        // Converte Timestamps dentro do array de observações
         if (Array.isArray(rehydrated.observations)) {
             rehydrated.observations = rehydrated.observations.map(obs => {
                 if (obs.date instanceof Timestamp) {
@@ -85,6 +87,8 @@ async function generateDailyTargets(uid, dateStr, availableTargets) {
 
 // --- FUNÇÕES DE SERVIÇO EXPORTADAS ---
 
+// --- CRUD BÁSICO DE ALVOS ---
+
 /**
  * Adiciona um novo alvo de oração para um usuário.
  * @param {string} uid - ID do usuário.
@@ -98,7 +102,7 @@ export async function addNewPrayerTarget(uid, targetData) {
     const dataToSave = {
         ...targetData,
         date: Timestamp.fromDate(targetData.date),
-        deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
+        deadlineDate: targetData.hasDeadline && targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
         createdAt: Timestamp.now()
     };
     await addDoc(targetsRef, dataToSave);
@@ -114,7 +118,7 @@ export async function fetchPrayerTargets(uid) {
     const targetsRef = collection(db, "users", uid, "prayerTargets");
     const q = query(targetsRef, orderBy("date", "desc"));
     const snapshot = await getDocs(q);
-    console.log(`[Service] Found ${snapshot.size} active targets for user ${uid}`);
+    console.log(`[Service] Encontrados ${snapshot.size} alvos ativos para o usuário ${uid}`);
     const rawData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return rehydrateTargets(rawData);
 }
@@ -128,10 +132,13 @@ export async function fetchArchivedTargets(uid) {
     const archivedRef = collection(db, "users", uid, "archivedTargets");
     const q = query(archivedRef, orderBy("archivedDate", "desc"));
     const snapshot = await getDocs(q);
-    console.log(`[Service] Found ${snapshot.size} archived targets for user ${uid}`);
+    console.log(`[Service] Encontrados ${snapshot.size} alvos arquivados para o usuário ${uid}`);
     const rawData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return rehydrateTargets(rawData);
 }
+
+
+// --- CARREGAMENTO DE DADOS PARA UI ---
 
 /**
  * Carrega os dados de perseverança (dias consecutivos) de um usuário.
@@ -142,11 +149,9 @@ export async function loadPerseveranceData(uid) {
     const docRef = doc(db, "perseveranceData", uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        console.log("[Service] Perseverance data loaded.");
         const [rehydratedData] = rehydrateTargets([docSnap.data()]);
         return rehydratedData;
     } else {
-        console.log("[Service] No perseverance data found, returning default.");
         return { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null };
     }
 }
@@ -160,17 +165,14 @@ export async function loadWeeklyPrayerData(uid) {
     const docRef = doc(db, "weeklyInteractions", uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-        console.log("[Service] Weekly data loaded.");
         return docSnap.data();
     } else {
-        console.log("[Service] No weekly data found, returning default.");
         return { weekId: null, interactions: {} };
     }
 }
 
 /**
- * Carrega a lista de alvos do dia para um usuário.
- * Se não existir, gera uma nova, salva no Firestore e a retorna.
+ * Carrega a lista de alvos do dia para um usuário. Se não existir, gera uma nova.
  * @param {string} uid - ID do usuário.
  * @param {Array} allActiveTargets - Lista de todos os alvos ativos para gerar a lista se necessário.
  * @returns {Promise<object>} - Um objeto com as listas { pending: [], completed: [], targetIds: [] }.
@@ -187,14 +189,11 @@ export async function loadDailyTargets(uid, allActiveTargets) {
         if (!dailySnapshot.exists() || !dailySnapshot.data()?.targets) {
             dailyData = await generateDailyTargets(uid, todayStr, allActiveTargets);
             await setDoc(dailyRef, dailyData);
-            console.log(`[Service] Novo documento diário gerado e salvo para ${dailyDocId}.`);
         } else {
             dailyData = dailySnapshot.data();
-            console.log(`[Service] Documento diário ${dailyDocId} carregado do Firestore.`);
         }
 
         if (!dailyData || !Array.isArray(dailyData.targets)) {
-            console.error("[Service] Estrutura de dados diários inválida:", dailyData);
             return { pending: [], completed: [], targetIds: [] };
         }
 
@@ -208,9 +207,12 @@ export async function loadDailyTargets(uid, allActiveTargets) {
 
     } catch (error) {
         console.error("[Service] Erro ao carregar/gerar alvos do dia:", error);
-        return { pending: [], completed: [], targetIds: [] }; // Retorna um estado seguro.
+        return { pending: [], completed: [], targetIds: [] };
     }
 }
+
+
+// --- AÇÕES DO USUÁRIO ---
 
 /**
  * Força a geração de uma nova lista de alvos do dia, sobrescrevendo a existente.
@@ -223,7 +225,7 @@ export async function forceGenerateDailyTargets(uid, allActiveTargets) {
     const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
     
     const dailyData = await generateDailyTargets(uid, todayStr, allActiveTargets);
-    await setDoc(dailyRef, dailyData); // setDoc vai sobrescrever o documento existente
+    await setDoc(dailyRef, dailyData);
     console.log(`[Service] Nova lista diária forçada e salva para ${dailyDocId}.`);
 }
 
@@ -243,18 +245,11 @@ export async function addManualTargetToDailyList(uid, targetId) {
     }
     
     const dailyData = dailySnapshot.data();
-    const isAlreadyInList = dailyData.targets.some(t => t.targetId === targetId);
-    
-    if (isAlreadyInList) {
+    if (dailyData.targets.some(t => t.targetId === targetId)) {
         throw new Error("Este alvo já está na lista do dia.");
     }
 
-    dailyData.targets.push({
-        targetId: targetId,
-        completed: false,
-        manuallyAdded: true // Flag para rastreamento
-    });
-    
+    dailyData.targets.push({ targetId, completed: false, manuallyAdded: true });
     await updateDoc(dailyRef, { targets: dailyData.targets });
     console.log(`[Service] Alvo ${targetId} adicionado manualmente à lista do dia.`);
 }
@@ -269,21 +264,17 @@ export async function updateDailyTargetStatus(uid, targetId, completedStatus) {
     const todayStr = getISODateString(new Date());
     const dailyDocId = `${uid}_${todayStr}`;
     const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
-    console.log(`[Service] Atualizando status do alvo ${targetId} para ${completedStatus} no doc ${dailyDocId}`);
     
     const dailySnapshot = await getDoc(dailyRef);
-    if (!dailySnapshot.exists()) {
-        throw new Error("Documento diário não encontrado para atualização.");
-    }
+    if (!dailySnapshot.exists()) throw new Error("Documento diário não encontrado para atualização.");
 
     const dailyData = dailySnapshot.data();
     const targetIndex = dailyData.targets.findIndex(t => t.targetId === targetId);
     
-    if (targetIndex === -1) {
-        // Se o alvo não estiver na lista, pode ter sido adicionado manualmente. Adicione-o.
-        dailyData.targets.push({ targetId: targetId, completed: completedStatus });
-    } else {
+    if (targetIndex !== -1) {
         dailyData.targets[targetIndex].completed = completedStatus;
+    } else {
+        dailyData.targets.push({ targetId, completed: completedStatus });
     }
     await updateDoc(dailyRef, { targets: dailyData.targets });
 }
@@ -299,9 +290,9 @@ export async function recordUserInteraction(uid, currentPerseveranceData, curren
     const todayStr = getISODateString(new Date());
     let isNewRecord = false;
 
-    // --- Lógica de Perseverança (Streak) ---
+    // Lógica de Perseverança (Streak)
     const perseveranceRef = doc(db, "perseveranceData", uid);
-    const { consecutiveDays = 0, recordDays = 0, lastInteractionDate } = currentPerseveranceData;
+    const { consecutiveDays, recordDays, lastInteractionDate } = currentPerseveranceData;
     const lastDateStr = lastInteractionDate ? getISODateString(lastInteractionDate) : null;
     
     if (lastDateStr !== todayStr) {
@@ -310,29 +301,25 @@ export async function recordUserInteraction(uid, currentPerseveranceData, curren
         yesterday.setDate(today.getDate() - 1);
         const yesterdayStr = getISODateString(yesterday);
         
-        let newConsecutive = (lastDateStr === yesterdayStr) ? consecutiveDays + 1 : 1;
-        const newRecord = Math.max(recordDays, newConsecutive);
+        let newConsecutive = (lastDateStr === yesterdayStr) ? (consecutiveDays || 0) + 1 : 1;
+        const newRecord = Math.max(recordDays || 0, newConsecutive);
         
-        if (newRecord > recordDays) {
-            isNewRecord = true;
-        }
+        if (newRecord > (recordDays || 0)) isNewRecord = true;
 
-        const updatedPerseverance = {
+        await setDoc(perseveranceRef, {
             consecutiveDays: newConsecutive,
             recordDays: newRecord,
             lastInteractionDate: Timestamp.fromDate(new Date())
-        };
-        await setDoc(perseveranceRef, updatedPerseverance, { merge: true });
-        console.log('[Service] Dados de perseverança atualizados.', updatedPerseverance);
+        }, { merge: true });
     }
 
-    // --- Lógica de Interação Semanal ---
+    // Lógica de Interação Semanal
     const weeklyRef = doc(db, "weeklyInteractions", uid);
     const d = new Date();
-    const dayNum = d.getDay() || 7;
-    d.setDate(d.getDate() + 4 - dayNum);
-    const yearStart = new Date(d.getFullYear(), 0, 1);
-    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNo = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
     const weekId = `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 
     let updatedWeekly = { ...currentWeeklyData };
@@ -342,14 +329,13 @@ export async function recordUserInteraction(uid, currentPerseveranceData, curren
     if (!updatedWeekly.interactions[todayStr]) {
         updatedWeekly.interactions[todayStr] = true;
         await setDoc(weeklyRef, updatedWeekly, { merge: true });
-        console.log('[Service] Interação semanal registrada.', updatedWeekly);
     }
 
     return { isNewRecord };
 }
 
 
-// --- Funções de Ciclo de Vida do Alvo ---
+// --- CICLO DE VIDA E ATUALIZAÇÕES GRANULARES DO ALVO ---
 
 /**
  * Move um alvo ativo para a coleção de arquivados.
@@ -406,4 +392,54 @@ export async function deleteArchivedTarget(uid, targetId) {
     const docRef = doc(db, "users", uid, "archivedTargets", targetId);
     await deleteDoc(docRef);
     console.log(`[Service] Alvo arquivado ${targetId} excluído permanentemente.`);
+}
+
+/**
+ * Atualiza campos específicos de um alvo, seja ele ativo ou arquivado.
+ * @param {string} uid - ID do usuário.
+ * @param {string} targetId - ID do alvo a ser atualizado.
+ * @param {boolean} isArchived - True se o alvo está na coleção de arquivados.
+ * @param {object} fieldData - Um objeto com os campos a serem atualizados (ex: { category: "Nova Categoria" }).
+ */
+export async function updateTargetField(uid, targetId, isArchived, fieldData) {
+    const collectionName = isArchived ? "archivedTargets" : "prayerTargets";
+    const docRef = doc(db, "users", uid, collectionName, targetId);
+    
+    const dataToUpdate = { ...fieldData };
+    if (dataToUpdate.deadlineDate instanceof Date) {
+        dataToUpdate.deadlineDate = Timestamp.fromDate(dataToUpdate.deadlineDate);
+    }
+
+    await updateDoc(docRef, dataToUpdate);
+    console.log(`[Service] Campo(s) do alvo ${targetId} atualizado(s) em ${collectionName}.`);
+}
+
+/**
+ * Adiciona uma nova observação a um alvo.
+ * @param {string} uid - ID do usuário.
+ * @param {string} targetId - ID do alvo.
+ * @param {boolean} isArchived - True se o alvo está na coleção de arquivados.
+ * @param {object} observation - O objeto da nova observação.
+ */
+export async function addObservationToTarget(uid, targetId, isArchived, observation) {
+    const collectionName = isArchived ? "archivedTargets" : "prayerTargets";
+    const docRef = doc(db, "users", uid, collectionName, targetId);
+
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const targetData = docSnap.data();
+        const observations = targetData.observations || [];
+        
+        const observationToSave = {
+            ...observation,
+            date: Timestamp.fromDate(observation.date)
+        };
+        observations.push(observationToSave);
+
+        await updateDoc(docRef, { observations: observations });
+        console.log(`[Service] Observação adicionada ao alvo ${targetId}.`);
+    } else {
+        console.error(`[Service] Alvo ${targetId} não encontrado para adicionar observação.`);
+        throw new Error("Alvo não encontrado.");
+    }
 }
