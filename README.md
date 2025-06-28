@@ -11,13 +11,14 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Arquive alvos concluídos ou não mais relevantes, com a opção de marcá-los como "Respondido".
     -   Exclua permanentemente alvos arquivados.
     -   Visualize alvos ativos, arquivados ou respondidos em painéis separados com busca e paginação.
-    -   Adicione observações datadas a qualquer alvo.
+    -   Adicione observações datadas, edite a categoria ou o prazo de qualquer alvo ativo.
 
 -   **Alvos de Oração do Dia**:
     -   Um painel que exibe até 10 alvos de oração ativos por dia.
     -   **Seleção Inteligente**: O sistema seleciona alvos aleatoriamente para compor a lista diária.
     -   **Persistência Diária**: A lista do dia (incluindo o estado "Orado") é salva no Firebase, garantindo consistência mesmo após recarregar a página.
-    -   **Botão "Orei!"**: Marca um alvo como concluído *para aquele dia*. A interação atualiza as estatísticas de perseverança. Alvos concluídos são movidos para uma seção separada no painel do dia.
+    -   **Botão "Orei!"**: Marca um alvo como concluído *para aquele dia*. A interação atualiza as estatísticas de perseverança.
+    -   Adicione alvos manualmente à lista do dia a partir dos seus alvos ativos.
 
 -   **Acompanhamento de Perseverança**:
     -   **Barra de Dias Consecutivos**: Uma barra de progresso visualiza a sequência atual de dias em que o usuário interagiu com pelo menos um alvo, comparado ao seu recorde pessoal.
@@ -55,7 +56,12 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 ### Passos para Configuração
 
 1.  **Clone o Repositório** (ou baixe os arquivos):
-    Obtenha todos os arquivos do projeto: `index.html`, `styles.css`, e os scripts (`script.js`, `ui.js`, `firestore-service.js`, `auth.js`, `firebase-config.js`, etc.).
+    Obtenha todos os arquivos do projeto. A estrutura modularizada do JavaScript inclui os seguintes arquivos principais:
+    -   `script.js`: O orquestrador principal da aplicação. Gerencia o estado, o fluxo de dados e os eventos do usuário.
+    -   `ui.js`: Responsável por toda a manipulação do DOM e renderização da interface.
+    -   `firestore-service.js`: A camada de acesso a dados, contendo todas as funções que interagem com o Firestore.
+    -   `auth.js`: Contém as funções que interagem com o Firebase Authentication.
+    -   `firebase-config.js`: Onde as credenciais do seu projeto Firebase são configuradas.
 
 2.  **Configure o Firebase**:
     -   Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
@@ -120,12 +126,12 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
         -   **Página Inicial**: Exibe os "Alvos de Oração do Dia", o quadro semanal e a barra de perseverança.
         -   **Novo Alvo**: Exibe o formulário para adicionar um novo alvo.
         -   **Ver Todos os Alvos**: Mostra a lista de alvos ativos.
-        -   **Ver Arquivados**: Mostra a lista de alvos arquivados (incluindo os respondidos).
+        -   **Ver Arquivados**: Mostra a lista de alvos arquivados.
         -   **Ver Respondidos**: Mostra apenas os alvos marcados como respondidos.
 
 3.  **Adicione e Gerencie Alvos**:
     -   No painel "Novo Alvo", preencha os detalhes e salve.
-    -   Nos painéis de listagem, use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, etc.
+    -   Nos painéis de listagem, use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, adicionar observação, etc.
 
 4.  **Use o Painel "Alvos de Oração do Dia"**:
     -   Veja os alvos selecionados para o dia.
