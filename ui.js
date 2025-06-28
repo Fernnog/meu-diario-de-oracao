@@ -116,6 +116,8 @@ export function renderArchivedTargets(targets, total, page, perPage) {
                     <button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
+                <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
+                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
             `;
             container.appendChild(div);
         });
@@ -240,26 +242,31 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 
     document.querySelectorAll('.milestone-icon, .record-crown').forEach(icon => {
         icon.classList.remove('achieved');
+        icon.style.display = 'none';
     });
     if (starContainer) starContainer.innerHTML = '';
 
     if (recordDays > 0 && consecutiveDays >= recordDays) {
-        if (crownIcon) crownIcon.classList.add('achieved');
+        if (crownIcon) {
+            crownIcon.classList.add('achieved');
+            crownIcon.style.display = 'inline-block';
+        }
     }
 
-    if (consecutiveDays >= MILESTONES.sun) document.querySelector('.milestone-icon[data-milestone="sun"]')?.classList.add('achieved');
-    if (consecutiveDays >= MILESTONES.diamond) document.querySelector('.milestone-icon[data-milestone="diamond"]')?.classList.add('achieved');
-    if (consecutiveDays >= MILESTONES.tree) document.querySelector('.milestone-icon[data-milestone="tree"]')?.classList.add('achieved');
-    if (consecutiveDays >= MILESTONES.flame) document.querySelector('.milestone-icon[data-milestone="flame"]')?.classList.add('achieved');
-    if (consecutiveDays >= MILESTONES.seed) document.querySelector('.milestone-icon[data-milestone="seed"]')?.classList.add('achieved');
-
+    if (consecutiveDays >= MILESTONES.sun) document.querySelector('.milestone-icon[data-milestone="sun"]').style.display = 'inline-block';
+    if (consecutiveDays >= MILESTONES.diamond) document.querySelector('.milestone-icon[data-milestone="diamond"]').style.display = 'inline-block';
+    if (consecutiveDays >= MILESTONES.tree) document.querySelector('.milestone-icon[data-milestone="tree"]').style.display = 'inline-block';
+    if (consecutiveDays >= MILESTONES.flame) document.querySelector('.milestone-icon[data-milestone="flame"]').style.display = 'inline-block';
+    if (consecutiveDays >= MILESTONES.seed) document.querySelector('.milestone-icon[data-milestone="seed"]').style.display = 'inline-block';
+    
     if (starContainer && consecutiveDays >= MILESTONES.star) {
         const numStars = Math.floor(consecutiveDays / MILESTONES.star);
-        for (let i = 0; i < numStars && i < 3; i++) { // Limit to 3 stars to avoid clutter
+        for (let i = 0; i < numStars && i < 3; i++) { // Limita a 3 estrelas para não poluir
             const star = document.createElement('span');
             star.className = 'milestone-icon achieved';
             star.dataset.milestone = 'star';
             star.innerHTML = '⭐';
+            star.style.display = 'inline-block';
             starContainer.appendChild(star);
         }
     }
@@ -324,13 +331,11 @@ export function showPanel(panelId) {
     if (panelEl) panelEl.style.display = 'block';
 
     if (panelId !== 'authSection') {
-        // Mostra menus principais se o usuário estiver logado
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
         });
     }
-    // Mostra seções da página inicial apenas quando ela estiver ativa
     if (panelId === 'dailySection') {
         dailyRelatedElements.forEach(id => {
             const el = document.getElementById(id);
@@ -344,7 +349,6 @@ export function toggleAddObservationForm(targetId) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    // Fecha outros formulários abertos no mesmo alvo
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
 
@@ -356,6 +360,7 @@ export function toggleAddObservationForm(targetId) {
             <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
             <input type="date" id="observationDate-${targetId}" style="width: 95%;">
             <button class="btn" data-action="save-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
+            <button class="btn cancel-btn" data-action="toggle-observation" data-id="${targetId}" style="background-color: #f44336;">Cancelar</button>
         `;
         document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
         formDiv.style.display = 'block';
@@ -368,7 +373,6 @@ export function toggleEditDeadlineForm(targetId, currentDeadline) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    // Fecha outros formulários abertos no mesmo alvo
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
 
@@ -393,7 +397,6 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    // Fecha outros formulários abertos no mesmo alvo
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
     
@@ -420,14 +423,11 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     }
 }
 
-
 export function toggleManualTargetModal(show) {
     const modal = document.getElementById('manualTargetModal');
     if (modal) {
         modal.style.display = show ? 'flex' : 'none';
-        if (!show) {
-            document.getElementById('manualTargetSearchInput').value = '';
-        }
+        if (!show) document.getElementById('manualTargetSearchInput').value = '';
     }
 }
 
@@ -458,6 +458,45 @@ export function renderManualSearchResults(results, allTargets, searchTerm = '') 
     });
 }
 
+export function toggleDateRangeModal(show) {
+    const modal = document.getElementById('dateRangeModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const today = new Date();
+            const lastMonth = new Date();
+            lastMonth.setMonth(today.getMonth() - 1);
+            document.getElementById('endDate').value = formatDateToISO(today);
+            document.getElementById('startDate').value = formatDateToISO(lastMonth);
+        }
+    }
+}
+
+export function toggleCategoryModal(show, allTargets = []) {
+    const modal = document.getElementById('categorySelectionModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const container = document.getElementById('categoryCheckboxesContainer');
+            container.innerHTML = '';
+            
+            const categories = [...new Set(allTargets.map(t => t.category).filter(Boolean))];
+            if (categories.length === 0) {
+                container.innerHTML = '<p>Nenhuma categoria encontrada nos seus alvos.</p>';
+            } else {
+                categories.sort().forEach(category => {
+                    container.innerHTML += `
+                        <div class="category-checkbox-item">
+                            <input type="checkbox" id="cat-${category}" value="${category}" checked>
+                            <label for="cat-${category}">${category}</label>
+                        </div>
+                    `;
+                });
+            }
+        }
+    }
+}
+
 export function generateViewHTML(targets, pageTitle) {
     let bodyContent = targets.map(target => `
         <div class="target-view-item">
@@ -486,6 +525,36 @@ export function generateViewHTML(targets, pageTitle) {
     `;
 }
 
+export function generatePerseveranceReportHTML(data) {
+    return `
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança</title>
+        <style>
+            body { font-family: sans-serif; margin: 20px; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            h1 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            .stat { margin-bottom: 15px; font-size: 1.2em; }
+            .stat-label { font-weight: bold; color: #0056b3; }
+            .stat-value { color: #555; }
+        </style>
+        </head><body>
+        <div class="container">
+            <h1>Relatório de Perseverança</h1>
+            <div class="stat">
+                <span class="stat-label">Sequência Atual:</span>
+                <span class="stat-value">${data.consecutiveDays} dia(s) consecutivos</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Recorde Pessoal:</span>
+                <span class="stat-value">${data.recordDays} dia(s)</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Última Interação:</span>
+                <span class="stat-value">${data.lastInteractionDate}</span>
+            </div>
+        </div>
+        </body></html>
+    `;
+}
 
 export function displayCompletionPopup() {
     const popup = document.getElementById('completionPopup');
@@ -514,7 +583,6 @@ export function updateAuthUI(user, message = '', isError = false) {
         authStatusContainer.style.display = 'flex';
         btnLogout.style.display = 'inline-block';
         emailPasswordAuthForm.style.display = 'none';
-        const providerType = user.providerData[0]?.providerId === 'password' ? 'E-mail/Senha' : 'Google';
         authStatus.textContent = `Autenticado: ${user.email}`;
         passwordResetMessageDiv.style.display = 'none';
     } else {
