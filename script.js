@@ -54,7 +54,6 @@ async function handleSignIn() {
     }
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        // O listener onAuthStateChanged cuidará do resto.
     } catch (error) {
         console.error("Erro ao entrar:", error);
         UI.updateAuthUI(null, "Erro ao entrar: " + error.message, true);
@@ -100,9 +99,9 @@ async function loadDataForUser(user) {
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
 
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('archivedPanel');
-        applyFiltersAndRender('resolvedPanel');
+        UI.renderTargets(state.prayerTargets, state.prayerTargets.length, 1, 10, 'mainPanel');
+        UI.renderArchivedTargets(state.archivedTargets, state.archivedTargets.length, 1, 10, 'archivedPanel');
+        UI.renderResolvedTargets(state.resolvedTargets, state.resolvedTargets.length, 1, 10, 'resolvedPanel');
         UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
         UI.updatePerseveranceUI(state.perseveranceData);
         UI.updateWeeklyChart(state.weeklyPrayerData);
@@ -139,37 +138,28 @@ function handleLogoutState() {
 
 async function handleAddNewTarget(event) {
     event.preventDefault();
-    if (!state.user) {
-        alert("Você precisa estar logado para adicionar um alvo.");
-        return;
-    }
+    if (!state.user) return alert("Você precisa estar logado para adicionar um alvo.");
 
     const title = document.getElementById('title').value.trim();
-    if (!title) {
-        alert("O título é obrigatório.");
-        return;
-    }
+    if (!title) return alert("O título é obrigatório.");
 
     const newTarget = {
         title: title,
         details: document.getElementById('details').value.trim(),
-        date: new Date(document.getElementById('date').value + 'T00:00:00'),
+        date: new Date(document.getElementById('date').value + 'T00:00:00Z'), // Use UTC
         hasDeadline: document.getElementById('hasDeadline').checked,
-        deadlineDate: document.getElementById('hasDeadline').checked ? new Date(document.getElementById('deadlineDate').value + 'T00:00:00') : null,
+        deadlineDate: document.getElementById('hasDeadline').checked ? new Date(document.getElementById('deadlineDate').value + 'T00:00:00Z') : null,
         category: document.getElementById('categorySelect').value,
         observations: [],
         resolved: false,
-        resolutionDate: null,
-        archived: false,
-        archivedDate: null,
     };
 
     try {
         await Service.addNewPrayerTarget(state.user.uid, newTarget);
         alert("Alvo adicionado com sucesso!");
         document.getElementById('prayerForm').reset();
-        await loadDataForUser(state.user); // Recarrega todos os dados
-        UI.showPanel('mainPanel'); // Mostra a lista de alvos
+        await loadDataForUser(state.user);
+        UI.showPanel('mainPanel');
     } catch (error) {
         console.error("Erro ao adicionar novo alvo:", error);
         alert("Falha ao adicionar alvo: " + error.message);
@@ -183,8 +173,8 @@ async function handlePray(targetId) {
     try {
         await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
         const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
-
-        // Recarregar dados essenciais para UI
+        
+        // Otimização: Apenas recarrega os dados que mudaram
         const [perseveranceData, weeklyData, dailyTargetsData] = await Promise.all([
             Service.loadPerseveranceData(state.user.uid),
             Service.loadWeeklyPrayerData(state.user.uid),
@@ -195,7 +185,6 @@ async function handlePray(targetId) {
         state.weeklyPrayerData = weeklyData;
         state.dailyTargets = dailyTargetsData;
 
-        // Atualizar UI
         UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
         UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
         UI.updateWeeklyChart(state.weeklyPrayerData);
@@ -207,14 +196,49 @@ async function handlePray(targetId) {
     }
 }
 
-// --- FILTROS, PAGINAÇÃO E RENDERIZAÇÃO ---
-
-function applyFiltersAndRender(panelId) {
-    // ... (código existente)
+async function handleRefreshDaily() {
+    if (!state.user) return;
+    if (confirm("Isso irá gerar uma nova lista de alvos para hoje, substituindo a atual. Deseja continuar?")) {
+        try {
+            await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets);
+            await loadDataForUser(state.user); // Recarrega tudo para refletir a nova lista
+            alert("Nova lista de alvos do dia gerada!");
+        } catch (error) {
+            console.error("Erro ao forçar a geração de alvos diários:", error);
+            alert("Não foi possível gerar uma nova lista.");
+        }
+    }
 }
 
-function handlePageChange(panelId, newPage) {
-    // ... (código existente)
+function handleCopyDaily() {
+    if (state.dailyTargets.pending.length === 0) {
+        return alert("Não há alvos pendentes para copiar.");
+    }
+    const textToCopy = "Alvos de Oração Pendentes:\n\n" + state.dailyTargets.pending
+        .map(t => `- ${t.title}: ${t.details || 'Sem detalhes.'}`)
+        .join("\n");
+    
+    navigator.clipboard.writeText(textToCopy)
+        .then(() => alert("Alvos pendentes copiados para a área de transferência!"))
+        .catch(err => {
+            console.error("Erro ao copiar texto:", err);
+            alert("Não foi possível copiar os alvos.");
+        });
+}
+
+function handleViewDaily() {
+    const allDailyTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed];
+    if (allDailyTargets.length === 0) return alert("Não há alvos para visualizar hoje.");
+    
+    const htmlContent = UI.generateViewHTML(allDailyTargets, "Alvos de Oração do Dia");
+    const newWindow = window.open();
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+}
+
+function handleOpenManualAddModal() {
+    UI.renderManualSearchResults([], state.prayerTargets);
+    UI.toggleManualTargetModal(true);
 }
 
 // --- PONTO DE ENTRADA DA APLICAÇÃO ---
@@ -232,68 +256,55 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Listeners de Eventos Globais ---
-
-    // Autenticação
     document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
     document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
     document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
     document.getElementById('btnLogout').addEventListener('click', () => signOut(auth).catch(err => console.error("Logout error", err)));
-
-    // Adicionar novo alvo
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
-
-    // Navegação entre painéis
     document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
     document.getElementById('addNewTargetButton').addEventListener('click', () => UI.showPanel('appContent'));
     document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
+    
+    // Botões da seção diária
+    document.getElementById('refreshDaily').addEventListener('click', handleRefreshDaily);
+    document.getElementById('copyDaily').addEventListener('click', handleCopyDaily);
+    document.getElementById('viewDaily').addEventListener('click', handleViewDaily);
+    document.getElementById('addManualTargetButton').addEventListener('click', handleOpenManualAddModal);
 
-    // Botões da seção diária (com funcionalidade de placeholder)
-    document.getElementById('refreshDaily').addEventListener('click', () => alert('Funcionalidade "Atualizar Alvos do Dia" ainda não implementada.'));
-    document.getElementById('copyDaily').addEventListener('click', () => alert('Funcionalidade "Copiar Alvos Pendentes" ainda não implementada.'));
-    document.getElementById('viewDaily').addEventListener('click', () => alert('Funcionalidade "Visualizar Detalhes do Dia" ainda não implementada.'));
-    document.getElementById('addManualTargetButton').addEventListener('click', () => alert('Funcionalidade "Adicionar Alvo Manualmente" ainda não implementada.'));
-
-    // Filtros de busca
-    document.getElementById('searchMain').addEventListener('input', e => {
-        state.filters.mainPanel.searchTerm = e.target.value;
-        state.pagination.mainPanel.currentPage = 1;
-        applyFiltersAndRender('mainPanel');
+    // Modal de adição manual
+    document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
+    document.getElementById('manualTargetSearchInput').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filtered = state.prayerTargets.filter(t => 
+            t.title.toLowerCase().includes(searchTerm) || 
+            (t.details && t.details.toLowerCase().includes(searchTerm))
+        );
+        UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm);
     });
-    // Adicionar listeners para outros inputs de busca aqui...
 
-    // Delegação de Eventos para ações dinâmicas
+    // Delegação de Eventos
     document.body.addEventListener('click', async (e) => {
-        const { action, id, panel, page } = e.target.dataset;
+        const { action, id } = e.target.dataset;
+        if (!action || !id || !state.user) return;
 
-        if (panel && page && !e.target.classList.contains('disabled')) {
-            handlePageChange(panel, parseInt(page));
-            return;
-        }
-
-        if (action && id) {
-            const uid = state.user?.uid;
-            if (!uid) return;
-
-            switch(action) {
-                // CORREÇÃO: Adicionando o case para a ação 'pray'
-                case 'pray':
-                    await handlePray(id);
-                    break;
-                case 'resolve':
-                    // Lógica existente...
-                    break;
-                case 'archive':
-                    // Lógica existente...
-                    break;
-                case 'delete-archived':
-                    // Lógica existente...
-                    break;
-                case 'toggle-observation':
-                    UI.toggleAddObservationForm(id);
-                    break;
-            }
+        switch(action) {
+            case 'pray':
+                await handlePray(id);
+                break;
+            case 'select-manual-target':
+                try {
+                    await Service.addManualTargetToDailyList(state.user.uid, id);
+                    UI.toggleManualTargetModal(false);
+                    await loadDataForUser(state.user);
+                    alert("Alvo adicionado à lista do dia!");
+                } catch (error) {
+                    console.error("Erro ao adicionar alvo manualmente:", error);
+                    alert(error.message);
+                }
+                break;
+            // ... outros cases (resolve, archive, etc.)
         }
     });
 });
