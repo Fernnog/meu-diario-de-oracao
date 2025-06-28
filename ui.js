@@ -317,30 +317,47 @@ export function resetWeeklyChart() {
 
 // --- Funções de UI de Painéis, Formulários e Modais ---
 
+/**
+ * **MELHORIA APLICADA:** Lógica de exibição de painéis refatorada para maior robustez.
+ * Garante uma transição limpa entre a tela de autenticação e a interface principal da aplicação,
+ * resolvendo o problema da tela ficar "presa" após o login.
+ * @param {string} panelId - O ID do painel principal a ser exibido.
+ */
 export function showPanel(panelId) {
     const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection'];
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
 
+    // 1. Esconde todos os painéis e elementos de interface para um estado inicial limpo.
     [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
+    
+    // 2. Decide o que mostrar com base no panelId.
+    // Se for a seção de autenticação, mostra APENAS ela.
+    if (panelId === 'authSection') {
+        const authEl = document.getElementById('authSection');
+        if (authEl) authEl.style.display = 'block';
+    } 
+    // Para qualquer outro painel, configura a visualização da aplicação principal.
+    else {
+        const panelEl = document.getElementById(panelId);
+        if (panelEl) panelEl.style.display = 'block';
 
-    const panelEl = document.getElementById(panelId);
-    if (panelEl) panelEl.style.display = 'block';
-
-    if (panelId !== 'authSection') {
+        // Mostra os menus principais.
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
         });
-    }
-    if (panelId === 'dailySection') {
-        dailyRelatedElements.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'block';
-        });
+
+        // Mostra os componentes da página inicial ('dailySection') somente quando ela estiver ativa.
+        if (panelId === 'dailySection') {
+            dailyRelatedElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'block';
+            });
+        }
     }
 }
 
@@ -349,6 +366,7 @@ export function toggleAddObservationForm(targetId) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
+    // Garante que outros formulários inline estejam fechados
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
 
@@ -360,7 +378,7 @@ export function toggleAddObservationForm(targetId) {
             <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
             <input type="date" id="observationDate-${targetId}" style="width: 95%;">
             <button class="btn" data-action="save-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
-            <button class="btn cancel-btn" data-action="toggle-observation" data-id="${targetId}" style="background-color: #f44336;">Cancelar</button>
+            <button class="btn" data-action="toggle-observation" data-id="${targetId}" style="background-color: #f44336;">Cancelar</button>
         `;
         document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
         formDiv.style.display = 'block';
@@ -427,7 +445,10 @@ export function toggleManualTargetModal(show) {
     const modal = document.getElementById('manualTargetModal');
     if (modal) {
         modal.style.display = show ? 'flex' : 'none';
-        if (!show) document.getElementById('manualTargetSearchInput').value = '';
+        if (!show) {
+            document.getElementById('manualTargetSearchInput').value = '';
+            document.getElementById('manualTargetSearchResults').innerHTML = '<p>Digite algo para buscar...</p>';
+        }
     }
 }
 
