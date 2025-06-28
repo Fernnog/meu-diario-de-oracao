@@ -1,51 +1,77 @@
-// --- START OF FILE script.js ---
+// script.js (agora atuando como o orquestrador principal, app.js)
 
-import { auth } from './firebase-config.js';
-import { Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-import * as Utils from './utils.js';
-import * as State from './state.js';
-import * as Auth from './auth.js';
+// --- MÓDULOS ---
+import { auth, onAuthStateChanged, signOut } from './firebase.js';
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
+import * as AuthUI from './auth-ui.js'; // Novo módulo para UI de autenticação
 
-// --- MAIN APPLICATION FLOW ---
+// --- ESTADO DA APLICAÇÃO ---
+// Em um projeto maior, isso iria para seu próprio módulo (state.js)
+let state = {
+    prayerTargets: [],
+    archivedTargets: [],
+    resolvedTargets: [],
+    perseveranceData: {},
+    weeklyPrayerData: {},
+    dailyTargets: {
+        pending: [],
+        completed: []
+    },
+    pagination: {
+        main: { currentPage: 1, targetsPerPage: 10 },
+        archived: { currentPage: 1, targetsPerPage: 10 },
+        resolved: { currentPage: 1, targetsPerPage: 10 },
+    },
+    filters: {
+        main: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false },
+        archived: { searchTerm: '' },
+        resolved: { searchTerm: '' },
+    }
+};
 
+// --- FUNÇÃO PRINCIPAL DE CARREGAMENTO ---
+
+/**
+ * Ponto de entrada principal após a verificação de autenticação.
+ * Carrega todos os dados necessários para o usuário ou limpa a UI se deslogado.
+ * @param {object|null} user - O objeto de usuário do Firebase ou null.
+ */
 async function loadData(user) {
     if (user) {
         console.log(`[App] User ${user.uid} authenticated. Loading data...`);
-        UI.showPanel('dailySection');
-
+        UI.showPanel('dailySection'); // Mostra um painel de carregamento inicial
+        
         try {
-            // Fetch data from Firestore
-            const [prayerTargets, archivedTargets, perseveranceData, weeklyData] = await Promise.all([
+            // Carrega todos os dados em paralelo para mais eficiência
+            const [prayerData, archivedData, perseveranceData, weeklyData, dailyTargetsData] = await Promise.all([
                 Service.fetchPrayerTargets(user.uid),
                 Service.fetchArchivedTargets(user.uid),
                 Service.loadPerseveranceData(user.uid),
-                Service.loadWeeklyPrayerData(user.uid)
+                Service.loadWeeklyPrayerData(user.uid),
+                Service.loadDailyTargets(user.uid) // Assumindo que o serviço pode precisar dos alvos ativos
             ]);
 
-            // Update local state
-            State.setPrayerTargets(prayerTargets);
-            State.setArchivedTargets(archivedTargets);
-            State.setResolvedTargets(archivedTargets.filter(t => t.resolved));
-            State.setPerseveranceData(perseveranceData);
-            State.setPreviousRecordDays(perseveranceData.recordDays);
-            State.setWeeklyPrayerData(weeklyData);
+            // Atualiza o estado global
+            state.prayerTargets = prayerData;
+            state.archivedTargets = archivedData;
+            state.resolvedTargets = archivedData.filter(t => t.resolved);
+            state.perseveranceData = perseveranceData;
+            state.weeklyPrayerData = weeklyData;
+            state.dailyTargets = dailyTargetsData;
 
-            // Initial Render
-            UI.renderTargets();
-            UI.renderArchivedTargets();
-            UI.renderResolvedTargets();
-            UI.updatePerseveranceUI();
-            UI.updateWeeklyChart();
-            
-            // Load daily targets (depends on main targets being loaded first)
-            await loadDailyTargets(user.uid);
+            // Renderiza todas as seções com os dados do estado
+            applyFiltersAndRender('main');
+            applyFiltersAndRender('archived');
+            applyFiltersAndRender('resolved');
+            UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+            UI.updatePerseveranceUI(state.perseveranceData);
+            UI.updateWeeklyChart(state.weeklyPrayerData);
 
         } catch (error) {
             console.error("[App] Error during data loading process:", error);
             alert("Ocorreu um erro ao carregar seus dados. Por favor, recarregue a página.");
-            handleLogoutState();
+            handleLogoutState(); // Reseta a UI em caso de erro grave
         }
     } else {
         console.log("[App] No user authenticated. Clearing UI.");
@@ -53,179 +79,141 @@ async function loadData(user) {
     }
 }
 
+/**
+ * Limpa o estado e a UI para a visão de usuário deslogado.
+ */
 function handleLogoutState() {
-    UI.showPanel('appContent'); // Or hide everything and just show auth form
-    document.getElementById('appContent').style.display = 'none';
-    document.getElementById('dailySection').style.display = 'none';
-    // Clear all state and UI elements
-    State.setPrayerTargets([]);
-    State.setArchivedTargets([]);
-    State.setResolvedTargets([]);
-    UI.renderTargets();
-    UI.renderArchivedTargets();
-    UI.renderResolvedTargets();
-    UI.resetPerseveranceUI();
-    document.getElementById("dailyTargets").innerHTML = "<p>Faça login para ver os alvos diários.</p>";
-}
-
-async function loadDailyTargets(userId) {
-    const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = '<p>Carregando alvos do dia...</p>';
-    try {
-        const todayStr = Utils.formatDateToISO(new Date());
-        const dailyData = await Service.getOrCreateDailyDoc(userId, todayStr);
-        UI.renderDailyTargetsUI(dailyData);
-    } catch (error) {
-        console.error("[App] Error loading daily targets:", error);
-        dailyTargetsDiv.innerHTML = "<p>Erro ao carregar alvos diários.</p>";
-    }
-}
-
-
-// --- EVENT HANDLERS & ACTIONS (Connects UI to Service/State) ---
-
-async function handleAddPrayerTarget(e) {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) { alert("Você precisa estar logado."); return; }
-    
-    // Get form data...
-    const title = document.getElementById("title").value.trim();
-    const details = document.getElementById("details").value.trim();
-    const dateInput = document.getElementById("date").value;
-    const hasDeadline = document.getElementById("hasDeadline").checked;
-    const deadlineDateInput = document.getElementById("deadlineDate").value;
-    const category = document.getElementById("categorySelect").value;
-
-    if (!title || !dateInput) { alert("Título e Data Criação são obrigatórios."); return; }
-
-    const dateLocal = new Date(dateInput + 'T00:00:00');
-    let deadlineDateLocal = null;
-    if (hasDeadline) {
-        if (!deadlineDateInput) { alert("Selecione o Prazo de Validade."); return; }
-        deadlineDateLocal = new Date(deadlineDateInput + 'T00:00:00');
-        // Add more validation as needed...
-    }
-
-    const targetData = {
-        title, details, category: category || null,
-        date: Timestamp.fromDate(dateLocal),
-        hasDeadline,
-        deadlineDate: deadlineDateLocal ? Timestamp.fromDate(deadlineDateLocal) : null,
-        archived: false, resolved: false, resolutionDate: null,
-        observations: [], userId: user.uid, lastPrayedDate: null
+    // Reseta o estado
+    state = {
+        prayerTargets: [],
+        archivedTargets: [],
+        resolvedTargets: [],
+        //... reseta todo o objeto state
+        pagination: { main: { currentPage: 1, targetsPerPage: 10 }, /*...*/ },
+        filters: { main: { searchTerm: '', /*...*/ } },
     };
 
-    try {
-        const docRef = await Service.saveNewPrayerTarget(targetData);
-        const newLocalTarget = Utils.rehydrateTargets([{ ...targetData, id: docRef.id }])[0];
-        State.prayerTargets.unshift(newLocalTarget);
-        
-        document.getElementById("prayerForm").reset();
-        UI.showPanel('mainPanel');
-        State.setCurrentPage(1);
-        UI.renderTargets();
-        alert('Alvo de oração adicionado com sucesso!');
-    } catch (error) {
-        console.error("Error adding prayer target: ", error);
-        alert("Erro ao adicionar alvo: " + error.message);
+    // Limpa a UI passando arrays vazios
+    UI.renderTargets([], 0, 1, 10);
+    UI.renderArchivedTargets([], 0, 1, 10);
+    UI.renderResolvedTargets([], 0, 1, 10);
+    UI.renderDailyTargets([], []);
+    UI.resetPerseveranceUI();
+    UI.resetWeeklyChart();
+    
+    UI.showPanel('authSection'); // Mostra a seção de autenticação
+}
+
+// --- FILTROS E RENDERIZAÇÃO ---
+
+/**
+ * Aplica os filtros e a paginação atuais a uma lista de alvos.
+ * @param {string} panelType - 'main', 'archived', ou 'resolved'.
+ */
+function applyFiltersAndRender(panelType) {
+    const { searchTerm } = state.filters[panelType];
+    const { currentPage, targetsPerPage } = state.pagination[panelType];
+    
+    let sourceData = [];
+    if (panelType === 'main') sourceData = state.prayerTargets;
+    else if (panelType === 'archived') sourceData = state.archivedTargets;
+    else if (panelType === 'resolved') sourceData = state.resolvedTargets;
+
+    // 1. Aplicar filtro de busca
+    let filteredData = sourceData;
+    if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filteredData = sourceData.filter(target => 
+            target.title?.toLowerCase().includes(lowerSearchTerm) ||
+            target.details?.toLowerCase().includes(lowerSearchTerm) ||
+            target.category?.toLowerCase().includes(lowerSearchTerm)
+        );
+    }
+    
+    // 2. Aplicar outros filtros (apenas para o painel principal)
+    if (panelType === 'main') {
+        const { showDeadlineOnly, showExpiredOnly } = state.filters.main;
+        if (showDeadlineOnly) {
+            filteredData = filteredData.filter(t => t.hasDeadline && t.deadlineDate);
+        }
+        if (showExpiredOnly) {
+            filteredData = filteredData.filter(t => t.hasDeadline && t.deadlineDate && new Date() > t.deadlineDate);
+        }
+    }
+    
+    // 3. Ordenar (opcional, pode ser feito no serviço)
+    // ...
+
+    // 4. Paginar
+    const totalFiltered = filteredData.length;
+    const startIndex = (currentPage - 1) * targetsPerPage;
+    const pagedData = filteredData.slice(startIndex, startIndex + targetsPerPage);
+
+    // 5. Renderizar
+    if (panelType === 'main') {
+        UI.renderTargets(pagedData, totalFiltered, currentPage, targetsPerPage);
+    } else if (panelType === 'archived') {
+        UI.renderArchivedTargets(pagedData, totalFiltered, currentPage, targetsPerPage);
+    } else if (panelType === 'resolved') {
+        UI.renderResolvedTargets(pagedData, totalFiltered, currentPage, targetsPerPage);
     }
 }
 
-async function handleOreiClick(targetId) {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-        const { newPerseveranceData, newWeeklyData, newRecordAchieved } = await Service.processOreiClick(user.uid, targetId);
-        
-        // Update local state
-        State.setPerseveranceData(newPerseveranceData);
-        State.setWeeklyPrayerData(newWeeklyData);
-        const targetIndex = State.prayerTargets.findIndex(t => t.id === targetId);
-        if (targetIndex !== -1) {
-            State.prayerTargets[targetIndex].lastPrayedDate = new Date();
-        }
+// --- EVENT LISTENERS ---
 
-        // Update UI
-        UI.updatePerseveranceUI(newRecordAchieved);
-        UI.updateWeeklyChart();
-        await loadDailyTargets(user.uid); // Reload daily list to show completion
-
-    } catch (error) {
-        console.error("Error on 'Orei!' click:", error);
-        alert("Erro ao registrar oração: " + error.message);
-        // Re-enable button if needed
-        const button = document.querySelector(`.pray-button[data-target-id="${targetId}"]`);
-        if (button) {
-            button.disabled = false;
-            button.textContent = "Orei!";
-        }
-    }
-}
-
-// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[App] DOM fully loaded. Initializing...");
 
-    // Initialize Auth and link it to the main data loading function
-    Auth.initializeAuth(loadData);
+    // Listener principal de autenticação
+    onAuthStateChanged(auth, user => {
+        AuthUI.updateAuthUI(user);
+        loadData(user);
+    });
 
-    // Setup Event Listeners
-    document.getElementById('btnEmailSignUp')?.addEventListener('click', Auth.signUpWithEmailPassword);
-    document.getElementById('btnEmailSignIn')?.addEventListener('click', Auth.signInWithEmailPassword);
-    document.getElementById('btnForgotPassword')?.addEventListener('click', Auth.resetPassword);
-    document.getElementById('btnLogout')?.addEventListener('click', Auth.handleSignOut);
+    // --- Listeners de Autenticação ---
+    document.getElementById('btnEmailSignUp').addEventListener('click', AuthUI.handleSignUp);
+    document.getElementById('btnEmailSignIn').addEventListener('click', AuthUI.handleSignIn);
+    document.getElementById('btnForgotPassword').addEventListener('click', AuthUI.handlePasswordReset);
+    document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
 
-    document.getElementById('prayerForm').addEventListener('submit', handleAddPrayerTarget);
-    
-    // Navigation buttons
-    document.getElementById('backToMainButton')?.addEventListener('click', () => UI.showPanel('dailySection'));
-    document.getElementById('addNewTargetButton')?.addEventListener('click', () => UI.showPanel('appContent'));
-    document.getElementById('viewAllTargetsButton')?.addEventListener('click', () => { UI.showPanel('mainPanel'); State.setCurrentPage(1); UI.renderTargets(); });
-    document.getElementById("viewArchivedButton")?.addEventListener("click", () => { UI.showPanel('archivedPanel'); State.setCurrentArchivedPage(1); UI.renderArchivedTargets(); });
-    document.getElementById("viewResolvedButton")?.addEventListener("click", () => { UI.showPanel('resolvedPanel'); State.setCurrentResolvedPage(1); UI.renderResolvedTargets(); });
-    
-    // Search and filter listeners
-    document.getElementById('searchMain')?.addEventListener('input', (e) => { State.setCurrentSearchTermMain(e.target.value); State.setCurrentPage(1); UI.renderTargets(); });
-    document.getElementById('searchArchived')?.addEventListener('input', (e) => { State.setCurrentSearchTermArchived(e.target.value); State.setCurrentArchivedPage(1); UI.renderArchivedTargets(); });
-    document.getElementById('searchResolved')?.addEventListener('input', (e) => { State.setCurrentSearchTermResolved(e.target.value); State.setCurrentResolvedPage(1); UI.renderResolvedTargets(); });
-    document.getElementById('showDeadlineOnly')?.addEventListener('change', (e) => { State.setShowDeadlineOnly(e.target.checked); State.setCurrentPage(1); UI.renderTargets(); });
-    document.getElementById('showExpiredOnlyMain')?.addEventListener('change', () => { State.setCurrentPage(1); UI.renderTargets(); });
-    
-    // Daily section buttons
-    document.getElementById("refreshDaily")?.addEventListener("click", async () => {
-        const user = auth.currentUser;
-        if (user && confirm("Gerar nova lista de alvos para hoje?")) {
-            await Service.refreshDailyTargets(user.uid, Utils.formatDateToISO(new Date()));
-            await loadDailyTargets(user.uid);
+    // --- Listeners de Navegação/Painéis ---
+    document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
+    document.getElementById('addNewTargetButton').addEventListener('click', () => UI.showPanel('appContent'));
+    document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
+    document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
+    document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
+
+    // --- Listeners de Filtros ---
+    document.getElementById('searchMain').addEventListener('input', (e) => {
+        state.filters.main.searchTerm = e.target.value;
+        state.pagination.main.currentPage = 1;
+        applyFiltersAndRender('main');
+    });
+    // Adicionar listeners para os outros inputs de busca e checkboxes de filtro...
+
+    // --- Delegação de Eventos para Ações nos Alvos ---
+    // Em vez de onclick no HTML, usamos um único listener no container
+    document.getElementById('targetList').addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        const targetId = e.target.dataset.id;
+        if (!action || !targetId) return;
+
+        // Lógica para chamar as funções de serviço (Service.archiveTarget, etc.)
+        // e depois recarregar os dados ou atualizar o estado e a UI.
+        switch (action) {
+            case 'resolve':
+                // await Service.markAsResolved(auth.currentUser.uid, targetId);
+                // loadData(auth.currentUser);
+                break;
+            case 'archive':
+                // Lógica de arquivamento...
+                break;
+            case 'toggle-observation':
+                UI.toggleAddObservation(targetId);
+                break;
+            // ... outros casos
         }
     });
 
-    // ... other event listeners for modals, etc.
+    // Adicionar delegação de eventos para 'archivedList', 'resolvedList', 'dailyTargets' etc.
 });
-
-// Expose necessary functions to the global scope for onclick attributes
-// This is a bridge between the old HTML and the new modular JS
-window.App = {
-    handleOreiClick,
-    // Add other functions that are called by `onclick` in dynamically generated HTML
-    toggleAddObservation: UI.toggleAddObservation,
-    editCategory: UI.editCategory,
-    cancelEditCategory: UI.cancelEditCategory,
-    editDeadline: UI.editDeadline,
-    cancelEditDeadline: UI.cancelEditDeadline,
-
-    saveObservation: async (targetId) => { /* logic to get data from form, call service, update state, and re-render */ },
-    saveEditedDeadline: async (targetId) => { /* ... */ },
-    saveEditedCategory: async (targetId) => { /* ... */ },
-    markAsResolved: async (targetId) => { /* ... */ },
-    archiveTarget: async (targetId) => { /* ... */ },
-    deleteArchivedTarget: async (targetId) => { /* ... */ },
-};
-
-// You would need to fully implement the logic for the functions above,
-// similar to how handleAddPrayerTarget is implemented:
-// 1. Get data from UI
-// 2. Call the appropriate Service function
-// 3. Update the local State
-// 4. Call the appropriate UI render function
