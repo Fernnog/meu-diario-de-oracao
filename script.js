@@ -322,11 +322,17 @@ function handleGenerateResolvedViewByPeriod() {
 
 function handleGeneratePerseveranceReport() {
     const { consecutiveDays, recordDays, lastInteractionDate } = state.perseveranceData;
-    const htmlContent = UI.generatePerseveranceReportHTML({
+    // Pega as datas de interação da semana atual, ordena da mais recente para a mais antiga
+    const interactionDates = Object.keys(state.weeklyPrayerData.interactions || {}).sort((a, b) => new Date(b) - new Date(a));
+
+    const reportData = {
         consecutiveDays,
         recordDays,
-        lastInteractionDate: lastInteractionDate ? new Date(lastInteractionDate).toLocaleDateString('pt-BR') : 'Nenhuma interação registrada'
-    });
+        lastInteractionDate: lastInteractionDate ? new Date(lastInteractionDate).toLocaleDateString('pt-BR') : 'Nenhuma interação registrada',
+        interactionDates, // Passa o array de datas para a função de UI
+    };
+
+    const htmlContent = UI.generatePerseveranceReportHTML(reportData);
     const newWindow = window.open();
     newWindow.document.write(htmlContent);
     newWindow.document.close();
