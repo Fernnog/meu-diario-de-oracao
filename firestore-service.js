@@ -99,12 +99,11 @@ export async function addNewPrayerTarget(uid, targetData) {
         ...targetData,
         date: Timestamp.fromDate(targetData.date),
         deadlineDate: targetData.deadlineDate ? Timestamp.fromDate(targetData.deadlineDate) : null,
-        createdAt: Timestamp.now() // Adiciona um campo de data de criação
+        createdAt: Timestamp.now()
     };
     await addDoc(targetsRef, dataToSave);
     console.log('[Service] Novo alvo adicionado com sucesso.');
 }
-
 
 /**
  * Busca todos os alvos de oração ativos de um usuário.
@@ -214,6 +213,53 @@ export async function loadDailyTargets(uid, allActiveTargets) {
 }
 
 /**
+ * Força a geração de uma nova lista de alvos do dia, sobrescrevendo a existente.
+ * @param {string} uid - ID do usuário.
+ * @param {Array} allActiveTargets - Lista de todos os alvos ativos para gerar a lista.
+ */
+export async function forceGenerateDailyTargets(uid, allActiveTargets) {
+    const todayStr = getISODateString(new Date());
+    const dailyDocId = `${uid}_${todayStr}`;
+    const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
+    
+    const dailyData = await generateDailyTargets(uid, todayStr, allActiveTargets);
+    await setDoc(dailyRef, dailyData); // setDoc vai sobrescrever o documento existente
+    console.log(`[Service] Nova lista diária forçada e salva para ${dailyDocId}.`);
+}
+
+/**
+ * Adiciona um alvo ativo manualmente à lista de alvos do dia.
+ * @param {string} uid - ID do usuário.
+ * @param {string} targetId - ID do alvo a ser adicionado.
+ */
+export async function addManualTargetToDailyList(uid, targetId) {
+    const todayStr = getISODateString(new Date());
+    const dailyDocId = `${uid}_${todayStr}`;
+    const dailyRef = doc(db, "dailyPrayerTargets", dailyDocId);
+
+    const dailySnapshot = await getDoc(dailyRef);
+    if (!dailySnapshot.exists()) {
+        throw new Error("Não há uma lista diária para adicionar. Tente gerar uma primeiro.");
+    }
+    
+    const dailyData = dailySnapshot.data();
+    const isAlreadyInList = dailyData.targets.some(t => t.targetId === targetId);
+    
+    if (isAlreadyInList) {
+        throw new Error("Este alvo já está na lista do dia.");
+    }
+
+    dailyData.targets.push({
+        targetId: targetId,
+        completed: false,
+        manuallyAdded: true // Flag para rastreamento
+    });
+    
+    await updateDoc(dailyRef, { targets: dailyData.targets });
+    console.log(`[Service] Alvo ${targetId} adicionado manualmente à lista do dia.`);
+}
+
+/**
  * Atualiza o status de um alvo na lista diária.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo a ser atualizado.
@@ -316,7 +362,7 @@ export async function archiveTarget(uid, target) {
     const newRef = doc(db, "users", uid, "archivedTargets", target.id);
 
     const dataToArchive = { ...target, archived: true, archivedDate: Timestamp.now() };
-    delete dataToArchive.id; // Não armazena o id dentro do documento
+    delete dataToArchive.id;
 
     batch.set(newRef, dataToArchive);
     batch.delete(oldRef);
