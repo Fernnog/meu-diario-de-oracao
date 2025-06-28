@@ -1,216 +1,271 @@
-// ui.js
-// Responsável por toda a manipulação do DOM e renderização da interface.
+// script.js (Orquestrador Principal da Aplicação)
 
-// --- Funções Utilitárias de Formatação ---
+// --- MÓDULOS ---
+// Importa a instância 'auth' do seu arquivo de configuração do Firebase.
+import { auth } from './firebase-config.js'; 
+// Importa as funções específicas de autenticação que vamos usar.
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+// Importa seus módulos personalizados. O '*' importa todas as funções exportadas como um objeto.
+import * as Service from './firestore-service.js';
+import * as UI from './ui.js';
 
-function formatDateForDisplay(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function timeElapsed(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return 'Tempo desconhecido';
-    const seconds = Math.floor((new Date() - date) / 1000);
-    if (seconds < 0) return 'Em breve';
-    if (seconds < 60) return `${seconds} seg`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hr`;
-    const days = Math.floor(hours / 24);
-    return `${days} dias`;
-}
-
-function isDateExpired(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return false;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return date.getTime() < today.getTime();
-}
-
-function createObservationsHTML(observations) {
-    if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
-    const sorted = [...observations].sort((a, b) => b.date.getTime() - a.date.getTime());
-    let html = `<div class="observations">`;
-    sorted.forEach(obs => {
-        const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
-        html += `<p class="observation-item"><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}</p>`;
-    });
-    return html + `</div>`;
-}
-
-// --- Funções de Renderização de Listas ---
-
-export function renderTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos ativos.`);
-    const container = document.getElementById('targetList');
-    container.innerHTML = '';
-    if (targets.length === 0) {
-        container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
-    } else {
-        targets.forEach(target => {
-            const div = document.createElement("div");
-            div.className = "target";
-            div.dataset.targetId = target.id;
-            const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
-            const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
-            div.innerHTML = `
-                <h3>${categoryTag} ${deadlineTag} ${target.title}</h3>
-                <p class="target-details">${target.details}</p>
-                <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
-                <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
-                ${createObservationsHTML(target.observations)}
-                <div class="target-actions">
-                    <button class="resolved btn" data-action="resolve" data-id="${target.id}">Respondido</button>
-                    <button class="archive btn" data-action="archive" data-id="${target.id}">Arquivar</button>
-                    <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                    ${target.hasDeadline ? `<button class="edit-deadline btn" data-action="edit-deadline" data-id="${target.id}">Editar Prazo</button>` : ''}
-                    <button class="edit-category btn" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>
-                </div>
-                <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
-                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-            `;
-            container.appendChild(div);
-        });
+// --- ESTADO DA APLICAÇÃO ---
+// Um objeto central para guardar todos os dados dinâmicos da aplicação.
+let state = {
+    user: null,
+    prayerTargets: [],
+    archivedTargets: [],
+    resolvedTargets: [],
+    perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null },
+    weeklyPrayerData: { weekId: null, interactions: {} },
+    dailyTargets: { pending: [], completed: [], targetIds: [] },
+    pagination: {
+        mainPanel: { currentPage: 1, targetsPerPage: 10 },
+        archivedPanel: { currentPage: 1, targetsPerPage: 10 },
+        resolvedPanel: { currentPage: 1, targetsPerPage: 10 },
+    },
+    filters: {
+        mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false },
+        archivedPanel: { searchTerm: '' },
+        resolvedPanel: { searchTerm: '' },
     }
-    renderPagination('main', page, total, perPage);
-}
+};
 
-export function renderArchivedTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos arquivados.`);
-    const container = document.getElementById('archivedList');
-    container.innerHTML = '';
-    if (targets.length === 0) {
-        container.innerHTML = '<p>Nenhum alvo arquivado encontrado.</p>';
-    } else {
-        targets.forEach(target => {
-            const div = document.createElement("div");
-            div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
-            div.dataset.targetId = target.id;
-            const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
-            const resolvedTag = target.resolved ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
-            div.innerHTML = `
-                <h3>${categoryTag} ${resolvedTag} ${target.title}</h3>
-                <p><strong>Arquivado em:</strong> ${formatDateForDisplay(target.archivedDate)}</p>
-                ${createObservationsHTML(target.observations)}
-                <div class="target-actions">
-                    <button class="delete btn" data-action="delete-archived" data-id="${target.id}">Excluir</button>
-                    <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                </div>
-                <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-            `;
-            container.appendChild(div);
-        });
-    }
-    renderPagination('archived', page, total, perPage);
-}
+// --- LÓGICA DE AUTENTICAÇÃO (Interação do Usuário) ---
 
-export function renderResolvedTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos respondidos.`);
-    const container = document.getElementById('resolvedList');
-    container.innerHTML = '';
-    if (targets.length === 0) {
-        container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
-    } else {
-        // ... Lógica de renderização similar, focada nos detalhes de resolução
-    }
-    renderPagination('resolved', page, total, perPage);
-}
-
-export function renderDailyTargets(pending, completed) {
-    console.log(`[UI] Renderizando alvos do dia: ${pending.length} pendentes, ${completed.length} concluídos.`);
-    const container = document.getElementById("dailyTargets");
-    container.innerHTML = '';
-    // ... Lógica de renderização dos alvos do dia, pendentes e concluídos ...
-}
-
-// --- Funções de Componentes de UI ---
-
-export function renderPagination(panelType, currentPage, totalItems, itemsPerPage) {
-    const paginationDiv = document.getElementById(`pagination-${panelType}Panel`);
-    if (!paginationDiv) {
-        // Correção para o painel principal que não tem 'Panel' no ID
-        const mainPagination = document.getElementById(`pagination-${panelType}`);
-        if(mainPagination) mainPagination.innerHTML = ''; else return;
-    }
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalPages <= 1) {
-        if(paginationDiv) paginationDiv.style.display = 'none';
+async function handleSignUp() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) {
+        alert("Por favor, preencha e-mail e senha.");
         return;
     }
-    if(paginationDiv) paginationDiv.style.display = 'flex';
-    if(paginationDiv) paginationDiv.innerHTML = `
-        <a href="#" class="page-link ${currentPage <= 1 ? 'disabled' : ''}" data-page="${currentPage - 1}" data-panel="${panelType}">« Anterior</a>
-        <span>Página ${currentPage} de ${totalPages}</span>
-        <a href="#" class="page-link ${currentPage >= totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}" data-panel="${panelType}">Próxima »</a>
-    `;
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert("Cadastro realizado com sucesso! Você já está logado.");
+    } catch (error) {
+        console.error("Erro ao cadastrar:", error);
+        alert("Erro ao cadastrar: " + error.message);
+    }
 }
 
-export function updatePerseveranceUI(data) { /* ... */ }
-export function updateWeeklyChart(data) { /* ... */ }
-export function resetPerseveranceUI() { /* ... */ }
-export function resetWeeklyChart() { /* ... */ }
+async function handleSignIn() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) {
+        alert("Por favor, preencha e-mail e senha.");
+        return;
+    }
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // O listener onAuthStateChanged cuidará do resto.
+    } catch (error) {
+        console.error("Erro ao entrar:", error);
+        alert("Erro ao entrar: " + error.message);
+    }
+}
 
-// --- Funções de UI de Painéis, Formulários e Modais ---
+async function handlePasswordReset() {
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+        alert("Por favor, insira seu e-mail para redefinir a senha.");
+        return;
+    }
+    try {
+        await sendPasswordResetEmail(auth, email);
+        UI.updateAuthUI(null, "Um e-mail de redefinição de senha foi enviado para " + email + ".");
+    } catch (error) {
+        console.error("Erro ao redefinir senha:", error);
+        UI.updateAuthUI(null, "Erro ao redefinir senha: " + error.message, true);
+    }
+}
 
-export function showPanel(panelId) {
-    console.log(`[UI] Exibindo painel: ${panelId}`);
-    const panels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection'];
-    const menus = ['mainMenu', 'secondaryMenu'];
-    const dailyElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
+// --- FLUXO DE DADOS PRINCIPAL ---
 
-    [...panels, ...menus, ...dailyElements].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+async function loadDataForUser(user) {
+    console.log(`[App] User ${user.uid} authenticated. Loading data...`);
+    UI.showPanel('dailySection'); // Mostra um painel inicial enquanto carrega
+    
+    try {
+        // Carrega dados essenciais em paralelo
+        const [prayerData, archivedData, perseveranceData, weeklyData] = await Promise.all([
+            Service.fetchPrayerTargets(user.uid),
+            Service.fetchArchivedTargets(user.uid),
+            Service.loadPerseveranceData(user.uid),
+            Service.loadWeeklyPrayerData(user.uid)
+        ]);
+
+        // Atualiza o estado da aplicação
+        state.user = user;
+        state.prayerTargets = prayerData;
+        state.archivedTargets = archivedData;
+        state.resolvedTargets = archivedData.filter(t => t.resolved);
+        state.perseveranceData = perseveranceData;
+        state.weeklyPrayerData = weeklyData;
+
+        // Carrega dados que dependem de outros (alvos do dia dependem dos alvos ativos)
+        const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
+        state.dailyTargets = dailyTargetsData;
+
+        // Renderiza todas as seções da UI com os dados atualizados
+        applyFiltersAndRender('mainPanel');
+        applyFiltersAndRender('archivedPanel');
+        applyFiltersAndRender('resolvedPanel');
+        UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+        UI.updatePerseveranceUI(state.perseveranceData);
+        UI.updateWeeklyChart(state.weeklyPrayerData);
+
+    } catch (error) {
+        console.error("[App] Error during data loading process:", error);
+        alert("Ocorreu um erro crítico ao carregar seus dados. Por favor, recarregue a página.");
+        handleLogoutState(); // Reseta a UI para um estado seguro
+    }
+}
+
+function handleLogoutState() {
+    console.log("[App] No user authenticated or logout occurred. Clearing UI.");
+    // Reseta o objeto de estado para os valores iniciais
+    state = {
+        user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [],
+        perseveranceData: { consecutiveDays: 0, recordDays: 0 },
+        weeklyPrayerData: { weekId: null, interactions: {} },
+        dailyTargets: { pending: [], completed: [], targetIds: [] },
+        pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }},
+        filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false }, archivedPanel: { searchTerm: '' }, resolvedPanel: { searchTerm: '' }}
+    };
+
+    // Limpa todas as seções da UI
+    UI.renderTargets([], 0, 1, 10);
+    UI.renderArchivedTargets([], 0, 1, 10);
+    UI.renderResolvedTargets([], 0, 1, 10);
+    UI.renderDailyTargets([], []);
+    UI.resetPerseveranceUI();
+    UI.resetWeeklyChart();
+    
+    // Mostra o painel de autenticação
+    UI.showPanel('authSection');
+}
+
+// --- LÓGICA DE FILTROS, PAGINAÇÃO E RENDERIZAÇÃO ---
+
+function applyFiltersAndRender(panelId) {
+    const { searchTerm } = state.filters[panelId];
+    const { currentPage, targetsPerPage } = state.pagination[panelId];
+    
+    let sourceData = [];
+    if (panelId === 'mainPanel') sourceData = state.prayerTargets;
+    else if (panelId === 'archivedPanel') sourceData = state.archivedTargets;
+    else if (panelId === 'resolvedPanel') sourceData = state.resolvedTargets;
+
+    // Lógica de filtragem...
+    let filteredData = sourceData;
+    if (searchTerm) {
+        const lowerTerm = searchTerm.toLowerCase();
+        filteredData = sourceData.filter(target =>
+            target.title?.toLowerCase().includes(lowerTerm) ||
+            target.details?.toLowerCase().includes(lowerTerm)
+        );
+    }
+    
+    const totalFiltered = filteredData.length;
+    const startIndex = (currentPage - 1) * targetsPerPage;
+    const pagedData = filteredData.slice(startIndex, startIndex + targetsPerPage);
+
+    const renderFunction = {
+        mainPanel: UI.renderTargets,
+        archivedPanel: UI.renderArchivedTargets,
+        resolvedPanel: UI.renderResolvedTargets,
+    }[panelId];
+    
+    renderFunction(pagedData, totalFiltered, currentPage, targetsPerPage);
+}
+
+function handlePageChange(panelId, newPage) {
+    if (state.pagination[panelId] && newPage > 0) {
+        state.pagination[panelId].currentPage = newPage;
+        applyFiltersAndRender(panelId);
+        document.getElementById(panelId).scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// --- PONTO DE ENTRADA DA APLICAÇÃO ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("[App] DOM fully loaded. Initializing...");
+
+    // O listener de autenticação é o gatilho principal da aplicação
+    onAuthStateChanged(auth, user => {
+        UI.updateAuthUI(user);
+        if (user) {
+            loadDataForUser(user);
+        } else {
+            handleLogoutState();
+        }
     });
 
-    const panelEl = document.getElementById(panelId);
-    if (panelEl) panelEl.style.display = 'block';
+    // --- Listeners de Eventos Globais ---
 
-    if (panelId !== 'authSection') {
-        menus.forEach(id => document.getElementById(id).style.display = 'block');
-    }
-    if (panelId === 'dailySection') {
-        dailyElements.forEach(id => document.getElementById(id).style.display = 'block');
-    }
-}
+    // Autenticação
+    document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
+    document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
+    document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
+    document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
 
-export function toggleAddObservationForm(targetId) {
-    const formDiv = document.getElementById(`observationForm-${targetId}`);
-    if (!formDiv) return;
-    const isVisible = formDiv.style.display === 'block';
+    // Navegação entre painéis
+    document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
+    document.getElementById('addNewTargetButton').addEventListener('click', () => UI.showPanel('appContent'));
+    document.getElementById('viewAllTargetsButton').addEventListener('click', () => UI.showPanel('mainPanel'));
+    document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
+    document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
 
-    // Fecha outros formulários para o mesmo alvo
-    document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
-    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+    // Filtros de busca
+    document.getElementById('searchMain').addEventListener('input', e => {
+        state.filters.mainPanel.searchTerm = e.target.value;
+        handlePageChange('mainPanel', 1);
+    });
+    // Adicionar listeners para os outros inputs de busca aqui...
 
-    if (isVisible) {
-        formDiv.style.display = 'none';
-    } else {
-        formDiv.innerHTML = `
-            <textarea placeholder="Nova observação..." rows="3"></textarea>
-            <input type="date">
-            <button class="btn" data-action="save-observation" data-id="${targetId}">Salvar</button>
-        `;
-        formDiv.style.display = 'block';
-    }
-}
+    // Delegação de Eventos para ações dinâmicas (paginação, ações em alvos)
+    document.body.addEventListener('click', async (e) => {
+        const { action, id, panel, page } = e.target.dataset;
 
-export function updateAuthUI(user) {
-    const authStatus = document.getElementById('authStatus');
-    const btnLogout = document.getElementById('btnLogout');
-    const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
-    const authStatusContainer = document.querySelector('.auth-status-container');
+        // Manipulador para paginação
+        if (panel && page && !e.target.classList.contains('disabled')) {
+            handlePageChange(panel, parseInt(page));
+            return;
+        }
 
-    if (user) {
-        authStatusContainer.style.display = 'flex';
-        btnLogout.style.display = 'inline-block';
-        emailPasswordAuthForm.style.display = 'none';
-        authStatus.textContent = `Autenticado: ${user.email}`;
-    } else {
-        authStatusContainer.style.display = 'none';
-        btnLogout.style.display = 'none';
-        emailPasswordAuthForm.style.display = 'block';
-    }
-}
+        // Manipulador para outras ações
+        if (action && id) {
+            const uid = state.user?.uid;
+            if (!uid) return; // Proteção para garantir que o usuário está logado
+
+            switch(action) {
+                case 'resolve':
+                    if (confirm('Marcar este alvo como respondido?')) {
+                        const targetToResolve = state.prayerTargets.find(t => t.id === id);
+                        await Service.markAsResolved(uid, targetToResolve);
+                        loadDataForUser(state.user); // Recarrega tudo para consistência
+                    }
+                    break;
+                case 'archive':
+                    if (confirm('Arquivar este alvo?')) {
+                        const targetToArchive = state.prayerTargets.find(t => t.id === id);
+                        await Service.archiveTarget(uid, targetToArchive);
+                        loadDataForUser(state.user);
+                    }
+                    break;
+                case 'delete-archived':
+                    if (confirm('Excluir este alvo permanentemente?')) {
+                        await Service.deleteArchivedTarget(uid, id);
+                        loadDataForUser(state.user);
+                    }
+                    break;
+                case 'toggle-observation':
+                    UI.toggleAddObservationForm(id);
+                    break;
+                // Adicionar casos para 'save-observation', 'edit-deadline', etc.
+            }
+        }
+    });
+});
