@@ -1,7 +1,7 @@
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
 
-// --- Funções Utilitárias de Formatação (Internalizadas para simplicidade) ---
+// --- Funções Utilitárias de Formatação ---
 
 function formatDateForDisplay(date) {
     if (!(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
@@ -47,11 +47,10 @@ function isDateExpired(date) {
 }
 
 function createObservationsHTML(observations) {
-    if (!Array.isArray(observations) || observations.length === 0) return ''; // CORREÇÃO: Retorna string vazia para não criar div desnecessária
+    if (!Array.isArray(observations) || observations.length === 0) return '';
     const sorted = [...observations].sort((a, b) => b.date.getTime() - a.date.getTime());
     let html = `<div class="observations">`;
     sorted.forEach(obs => {
-        // Sanitização simples para evitar injeção de HTML
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         html += `<p class="observation-item"><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}</p>`;
     });
@@ -166,7 +165,6 @@ export function renderDailyTargets(pending, completed) {
             const div = document.createElement("div");
             div.className = 'target';
             div.dataset.targetId = target.id;
-            // CORREÇÃO APLICADA AQUI: Adicionado createObservationsHTML
             div.innerHTML = `
                 <h3>${target.title}</h3>
                 <p class="target-details">${target.details || 'Sem detalhes.'}</p>
@@ -176,7 +174,6 @@ export function renderDailyTargets(pending, completed) {
             container.appendChild(div);
         });
     } else {
-        // Se não há pendentes mas há completados, mostra a mensagem de conclusão.
         if (completed.length > 0) {
             container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
             displayCompletionPopup();
@@ -200,7 +197,6 @@ export function renderDailyTargets(pending, completed) {
         });
     }
 }
-
 
 // --- Funções de Componentes de UI ---
 
@@ -232,7 +228,6 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 
     if (!progressBar || !currentDaysEl || !recordDaysEl || !perseveranceSection) return;
 
-    // Garante que a seção esteja visível se houver dados
     perseveranceSection.style.display = 'block';
 
     const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
@@ -245,59 +240,42 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
         setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
     }
     
-    // --- LÓGICA DE ÍCONES RESTAURADA E CORRIGIDA ---
     const MILESTONES = { sun: 1000, diamond: 365, tree: 100, star: 30, flame: 15, seed: 7 };
     const crownIcon = document.getElementById('recordCrown');
     const starContainer = document.getElementById('starContainer');
 
-    // Reseta todos os ícones antes de reavaliar
     document.querySelectorAll('.milestone-icon, .record-crown').forEach(icon => {
         icon.classList.remove('achieved');
     });
     if (starContainer) starContainer.innerHTML = '';
 
-    // 1. Lógica da Coroa de Recorde
     if (recordDays > 0 && consecutiveDays >= recordDays) {
         if (crownIcon) crownIcon.classList.add('achieved');
     }
 
-    // 2. Lógica dos Marcos (Milestones)
-    if (consecutiveDays >= MILESTONES.sun) {
-        document.querySelector('.milestone-icon[data-milestone="sun"]')?.classList.add('achieved');
-    }
-    if (consecutiveDays >= MILESTONES.diamond) {
-        document.querySelector('.milestone-icon[data-milestone="diamond"]')?.classList.add('achieved');
-    }
-    if (consecutiveDays >= MILESTONES.tree) {
-        document.querySelector('.milestone-icon[data-milestone="tree"]')?.classList.add('achieved');
-    }
-    if (consecutiveDays >= MILESTONES.flame) {
-        document.querySelector('.milestone-icon[data-milestone="flame"]')?.classList.add('achieved');
-    }
-    if (consecutiveDays >= MILESTONES.seed) {
-        document.querySelector('.milestone-icon[data-milestone="seed"]')?.classList.add('achieved');
-    }
+    if (consecutiveDays >= MILESTONES.sun) document.querySelector('.milestone-icon[data-milestone="sun"]')?.classList.add('achieved');
+    if (consecutiveDays >= MILESTONES.diamond) document.querySelector('.milestone-icon[data-milestone="diamond"]')?.classList.add('achieved');
+    if (consecutiveDays >= MILESTONES.tree) document.querySelector('.milestone-icon[data-milestone="tree"]')?.classList.add('achieved');
+    if (consecutiveDays >= MILESTONES.flame) document.querySelector('.milestone-icon[data-milestone="flame"]')?.classList.add('achieved');
+    if (consecutiveDays >= MILESTONES.seed) document.querySelector('.milestone-icon[data-milestone="seed"]')?.classList.add('achieved');
 
-    // 3. Lógica para múltiplas estrelas (a cada 30 dias)
     if (starContainer && consecutiveDays >= MILESTONES.star) {
         const numStars = Math.floor(consecutiveDays / MILESTONES.star);
         for (let i = 0; i < numStars; i++) {
             const star = document.createElement('span');
-            // Usamos a classe 'achieved' para que a CSS a exiba
             star.className = 'milestone-icon achieved';
             star.dataset.milestone = 'star';
-            star.innerHTML = '⭐'; // Emoji de estrela
+            star.innerHTML = '⭐';
             starContainer.appendChild(star);
         }
     }
-    // --- FIM DA LÓGICA RESTAURADA ---
 }
 
 export function updateWeeklyChart(data) {
     console.log("[UI] Atualizando gráfico semanal.");
     const { interactions = {} } = data;
     const today = new Date();
-    const todayDayOfWeek = today.getDay(); // Dom = 0, Sab = 6
+    const todayDayOfWeek = today.getDay();
     const firstDayOfWeek = new Date(today);
     firstDayOfWeek.setDate(today.getDate() - todayDayOfWeek);
 
@@ -305,27 +283,19 @@ export function updateWeeklyChart(data) {
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
-        // CORREÇÃO INÍCIO: Alvo no elemento pai para o destaque
         const dayContainer = dayTick.parentElement;
-        if (dayContainer) {
-            dayContainer.classList.remove('current-day-container');
-        }
-        // CORREÇÃO FIM
+        if (dayContainer) dayContainer.classList.remove('current-day-container');
 
         const currentTickDate = new Date(firstDayOfWeek);
         currentTickDate.setDate(firstDayOfWeek.getDate() + i);
         const dateString = `${currentTickDate.getFullYear()}-${String(currentTickDate.getMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getDate()).padStart(2, '0')}`;
         
-        dayTick.className = 'day-tick'; // Reset
+        dayTick.className = 'day-tick';
         
-        // CORREÇÃO INÍCIO: Lógica de destaque movida para o container
         if (i === todayDayOfWeek) {
             dayTick.classList.add('current-day');
-            if (dayContainer) {
-                dayContainer.classList.add('current-day-container');
-            }
+            if (dayContainer) dayContainer.classList.add('current-day-container');
         }
-        // CORREÇÃO FIM
         
         if (interactions[dateString]) {
             dayTick.classList.add('active');
@@ -338,6 +308,8 @@ export function updateWeeklyChart(data) {
 export function resetPerseveranceUI() {
     console.log("[UI] Resetando UI de perseverança.");
     updatePerseveranceUI({ consecutiveDays: 0, recordDays: 0 });
+    const perseveranceSection = document.getElementById('perseveranceSection');
+    if(perseveranceSection) perseveranceSection.style.display = 'none';
 }
 
 export function resetWeeklyChart() {
@@ -399,6 +371,72 @@ export function toggleAddObservationForm(targetId) {
         formDiv.querySelector('textarea')?.focus();
     }
 }
+
+export function toggleManualTargetModal(show) {
+    const modal = document.getElementById('manualTargetModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+        if (!show) {
+            document.getElementById('manualTargetSearchInput').value = '';
+        }
+    }
+}
+
+export function renderManualSearchResults(results, allTargets, searchTerm = '') {
+    const container = document.getElementById('manualTargetSearchResults');
+    container.innerHTML = '';
+
+    if (searchTerm.trim() === '' && allTargets.length > 0) {
+        container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
+        return;
+    }
+    
+    if (results.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
+        return;
+    }
+
+    results.forEach(target => {
+        const item = document.createElement('div');
+        item.className = 'manual-target-item';
+        item.dataset.action = 'select-manual-target'; 
+        item.dataset.id = target.id;
+        item.innerHTML = `
+            <h4 data-action="select-manual-target" data-id="${target.id}">${target.title}</h4>
+            <span data-action="select-manual-target" data-id="${target.id}">${target.details || 'Sem detalhes.'}</span>
+        `;
+        container.appendChild(item);
+    });
+}
+
+export function generateViewHTML(targets, pageTitle) {
+    let bodyContent = targets.map(target => `
+        <div class="target-view-item">
+            <h3>${target.title}</h3>
+            <p><strong>Detalhes:</strong> ${target.details || 'N/A'}</p>
+            <p><strong>Categoria:</strong> ${target.category || 'N/A'}</p>
+            <p><strong>Data de Criação:</strong> ${formatDateForDisplay(target.date)}</p>
+            ${target.observations && target.observations.length > 0 ? '<h4>Observações:</h4>' + createObservationsHTML(target.observations) : ''}
+        </div>
+    `).join('<hr>');
+
+    return `
+        <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title>
+        <style>
+            body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+            .target-view-item { margin-bottom: 15px; padding-bottom: 10px; }
+            h1 { text-align: center; color: #333; }
+            h3 { margin-bottom: 5px; color: #333; }
+            h4 { margin-top: 10px; margin-bottom: 5px; color: #444; }
+            p { margin: 4px 0; color: #555; }
+            .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
+            .observation-item { font-size: 0.9em; }
+            hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; }
+        </style>
+        </head><body><h1>${pageTitle}</h1>${bodyContent}</body></html>
+    `;
+}
+
 
 export function displayCompletionPopup() {
     const popup = document.getElementById('completionPopup');
