@@ -526,30 +526,74 @@ export function generateViewHTML(targets, pageTitle) {
 }
 
 export function generatePerseveranceReportHTML(data) {
+    const MILESTONES = [
+        { name: "Semente da Perseverança", days: 7, icon: "🌱" },
+        { name: "Chama da Devoção", days: 15, icon: "🔥" },
+        { name: "Estrela da Fidelidade", days: 30, icon: "⭐" },
+        { name: "Árvore da Constância", days: 100, icon: "🌳" },
+        { name: "Diamante da Oração", days: 365, icon: "💎" },
+        { name: "Sol da Eternidade", days: 1000, icon: "☀️" },
+    ];
+
+    let milestonesHTML = '';
+    if (data.consecutiveDays > 0) {
+        MILESTONES.forEach(milestone => {
+            if (data.consecutiveDays >= milestone.days) {
+                milestonesHTML += `<li class="achieved">${milestone.icon} ${milestone.name} (${milestone.days} dias) - <strong>Atingido!</strong></li>`;
+            } else {
+                milestonesHTML += `<li class="pending">${milestone.icon} ${milestone.name} (${milestone.days} dias) - Faltam ${milestone.days - data.consecutiveDays} dia(s).</li>`;
+            }
+        });
+    } else {
+        milestonesHTML = '<li>Nenhuma sequência ativa para exibir marcos.</li>';
+    }
+
+    let historyHTML = '';
+    if (data.interactionDates && data.interactionDates.length > 0) {
+        historyHTML = data.interactionDates.map(dateStr => {
+            const date = new Date(dateStr + 'T12:00:00Z'); // Evita problemas de fuso
+            return `<li>${date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</li>`;
+        }).join('');
+    } else {
+        historyHTML = '<li>Nenhuma interação registrada na semana atual.</li>';
+    }
+
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança</title>
         <style>
-            body { font-family: sans-serif; margin: 20px; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            h1 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-            .stat { margin-bottom: 15px; font-size: 1.2em; }
-            .stat-label { font-weight: bold; color: #0056b3; }
-            .stat-value { color: #555; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
+            .container { max-width: 750px; margin: 25px auto; padding: 20px 30px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #e29420; padding-bottom: 15px; margin-bottom: 25px; }
+            h2 { color: #34495e; border-bottom: 1px solid #eaeaea; padding-bottom: 8px; margin-top: 30px; }
+            .section { margin-bottom: 25px; }
+            .stat-item { font-size: 1.1em; margin-bottom: 12px; }
+            .stat-item strong { color: #e29420; min-width: 150px; display: inline-block; }
+            ul { list-style-type: none; padding-left: 0; }
+            li { background-color: #fdfdfd; border-left: 4px solid #ccc; margin-bottom: 8px; padding: 12px 15px; border-radius: 4px; transition: all 0.2s ease; }
+            li:hover { transform: translateX(5px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+            li.achieved { border-left-color: #27ae60; }
+            li.achieved strong { color: #27ae60; }
+            li.pending { border-left-color: #bdc3c7; opacity: 0.8; }
         </style>
         </head><body>
         <div class="container">
             <h1>Relatório de Perseverança</h1>
-            <div class="stat">
-                <span class="stat-label">Sequência Atual:</span>
-                <span class="stat-value">${data.consecutiveDays} dia(s) consecutivos</span>
+            
+            <div class="section">
+                <h2>Resumo Geral</h2>
+                <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s) consecutivos</div>
+                <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
+                <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
             </div>
-            <div class="stat">
-                <span class="stat-label">Recorde Pessoal:</span>
-                <span class="stat-value">${data.recordDays} dia(s)</span>
+
+            <div class="section">
+                <h2>Marcos da Sequência Atual</h2>
+                <ul>${milestonesHTML}</ul>
             </div>
-            <div class="stat">
-                <span class="stat-label">Última Interação:</span>
-                <span class="stat-value">${data.lastInteractionDate}</span>
+            
+            <div class="section">
+                <h2>Interações Recentes (Semana Atual)</h2>
+                <ul>${historyHTML}</ul>
             </div>
         </div>
         </body></html>
