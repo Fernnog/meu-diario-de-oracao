@@ -1,84 +1,67 @@
 // --- START OF FILE auth.js ---
+// Responsabilidade: Conter as funções que interagem diretamente com o serviço Firebase Auth.
+// Este módulo não deve manipular o DOM diretamente.
 
 import { auth } from './firebase-config.js';
-import { signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { 
+    signOut, 
+    onAuthStateChanged, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    sendPasswordResetEmail 
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
+/**
+ * Inicializa o listener de estado de autenticação.
+ * Esta função é o ponto de entrada principal para saber se um usuário está logado ou não.
+ * @param {function} onUserAuthenticated - Callback a ser executado quando o estado de autenticação muda. Recebe o objeto 'user' ou 'null'.
+ */
 export function initializeAuth(onUserAuthenticated) {
     onAuthStateChanged(auth, (user) => {
-        updateAuthUI(user);
         onUserAuthenticated(user);
     });
 }
 
-export function updateAuthUI(user) {
-    const authStatus = document.getElementById('authStatus');
-    const btnLogout = document.getElementById('btnLogout');
-    const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
-    const authStatusContainer = document.querySelector('.auth-status-container');
-
-    if (user) {
-        authStatusContainer.style.display = 'flex';
-        btnLogout.style.display = 'inline-block';
-        emailPasswordAuthForm.style.display = 'none';
-        let providerType = 'desconhecido';
-        if (user.providerData[0]?.providerId === 'password') providerType = 'E-mail/Senha';
-        else if (user.providerData[0]?.providerId === 'google.com') providerType = 'Google';
-        authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
-    } else {
-        authStatusContainer.style.display = 'none'; 
-        btnLogout.style.display = 'none';
-        emailPasswordAuthForm.style.display = 'block'; 
-        document.getElementById('passwordResetMessage').style.display = 'none';
-    }
+/**
+ * Cadastra um novo usuário usando e-mail e senha.
+ * @param {string} email - O e-mail do usuário.
+ * @param {string} password - A senha do usuário.
+ * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
+ * @throws {Error} - Lança um erro em caso de falha no cadastro.
+ */
+export async function signUpWithEmailPassword(email, password) {
+    return await createUserWithEmailAndPassword(auth, email, password);
 }
 
-export async function signUpWithEmailPassword() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    passwordResetMessageDiv.style.display = "none";
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert("Cadastro realizado com sucesso! Você já está logado.");
-    } catch (error) {
-        console.error("Erro ao cadastrar com e-mail/senha:", error);
-        alert("Erro ao cadastrar: " + error.message);
-    }
+/**
+ * Autentica um usuário existente com e-mail e senha.
+ * @param {string} email - O e-mail do usuário.
+ * @param {string} password - A senha do usuário.
+ * @returns {Promise<import("firebase/auth").UserCredential>} - Uma promessa que resolve com as credenciais do usuário em caso de sucesso.
+ * @throws {Error} - Lança um erro em caso de falha na autenticação.
+ */
+export async function signInWithEmailPassword(email, password) {
+    return await signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function signInWithEmailPassword() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    passwordResetMessageDiv.style.display = "none";
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-        console.error("Erro ao entrar com e-mail/senha:", error);
-        alert("Erro ao entrar: " + error.message);
-    }
-}
-
-export async function resetPassword() {
-    const email = document.getElementById('email').value;
+/**
+ * Envia um e-mail para redefinição de senha.
+ * @param {string} email - O e-mail para o qual o link de redefinição será enviado.
+ * @returns {Promise<void>} - Uma promessa que resolve quando o e-mail é enviado.
+ * @throws {Error} - Lança um erro se o e-mail não for válido ou houver outro problema.
+ */
+export async function resetPassword(email) {
     if (!email) {
-        alert("Por favor, insira seu e-mail para redefinir a senha.");
-        return;
+        throw new Error("O e-mail é obrigatório para redefinir a senha.");
     }
-    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-    try {
-        await sendPasswordResetEmail(auth, email);
-        passwordResetMessageDiv.textContent = "Um e-mail de redefinição de senha foi enviado para " + email + ". Verifique sua caixa de entrada e spam.";
-        passwordResetMessageDiv.style.color = "green";
-        passwordResetMessageDiv.style.display = "block";
-    } catch (error) {
-        console.error("Erro ao enviar e-mail de redefinição:", error);
-        passwordResetMessageDiv.textContent = "Erro ao redefinir senha: " + error.message;
-        passwordResetMessageDiv.style.color = "red";
-        passwordResetMessageDiv.style.display = "block";
-    }
+    return await sendPasswordResetEmail(auth, email);
 }
 
-export function handleSignOut() {
-    signOut(auth).catch(error => console.error("Logout error:", error));
+/**
+ * Desconecta o usuário atualmente autenticado.
+ * @returns {Promise<void>} - Uma promessa que resolve quando o logout é concluído.
+ * @throws {Error} - Lança um erro se houver falha no logout.
+ */
+export async function handleSignOut() {
+    return await signOut(auth);
 }
