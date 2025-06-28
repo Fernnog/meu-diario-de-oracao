@@ -4,7 +4,7 @@
 // --- Funções Utilitárias de Formatação ---
 
 function formatDateForDisplay(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
     const day = String(date.getUTCDate()).padStart(2, '0');
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const year = date.getUTCFullYear();
@@ -12,7 +12,7 @@ function formatDateForDisplay(date) {
 }
 
 function formatDateToISO(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
         const today = new Date();
         return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     }
@@ -23,7 +23,7 @@ function formatDateToISO(date) {
 }
 
 function timeElapsed(startDate, endDate = new Date()) {
-    if (!(startDate instanceof Date) || isNaN(startDate.getTime())) return 'Tempo desconhecido';
+    if (!startDate || !(startDate instanceof Date) || isNaN(startDate.getTime())) return 'Tempo desconhecido';
     let diffInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
     if (diffInSeconds < 0) diffInSeconds = 0;
 
@@ -40,7 +40,7 @@ function timeElapsed(startDate, endDate = new Date()) {
 }
 
 function isDateExpired(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return false;
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
     const now = new Date();
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return date.getTime() < todayUTCStart.getTime();
@@ -60,7 +60,6 @@ function createObservationsHTML(observations) {
 // --- Funções de Renderização de Listas de Alvos ---
 
 export function renderTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos ativos.`);
     const container = document.getElementById('targetList');
     container.innerHTML = '';
     if (targets.length === 0) {
@@ -79,11 +78,11 @@ export function renderTargets(targets, total, page, perPage) {
                 <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
                 ${createObservationsHTML(target.observations)}
                 <div class="target-actions">
-                    <button class="resolved btn" data-action="resolve" data-id="${target.id}">Respondido</button>
-                    <button class="archive btn" data-action="archive" data-id="${target.id}">Arquivar</button>
-                    <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                    ${target.hasDeadline ? `<button class="edit-deadline btn" data-action="edit-deadline" data-id="${target.id}">Editar Prazo</button>` : ''}
-                    <button class="edit-category btn" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>
+                    <button class="btn resolved" data-action="resolve" data-id="${target.id}">Respondido</button>
+                    <button class="btn archive" data-action="archive" data-id="${target.id}">Arquivar</button>
+                    <button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>
+                    ${target.hasDeadline ? `<button class="btn edit-deadline" data-action="edit-deadline" data-id="${target.id}">Editar Prazo</button>` : ''}
+                    <button class="btn edit-category" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
                 <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
@@ -96,7 +95,6 @@ export function renderTargets(targets, total, page, perPage) {
 }
 
 export function renderArchivedTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos arquivados.`);
     const container = document.getElementById('archivedList');
     container.innerHTML = '';
     if (targets.length === 0) {
@@ -114,8 +112,8 @@ export function renderArchivedTargets(targets, total, page, perPage) {
                 <p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>
                 ${createObservationsHTML(target.observations)}
                 <div class="target-actions">
-                    <button class="delete btn" data-action="delete-archived" data-id="${target.id}">Excluir</button>
-                    <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
+                    <button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>
+                    <button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
             `;
@@ -126,7 +124,6 @@ export function renderArchivedTargets(targets, total, page, perPage) {
 }
 
 export function renderResolvedTargets(targets, total, page, perPage) {
-    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos respondidos.`);
     const container = document.getElementById('resolvedList');
     container.innerHTML = '';
     if (targets.length === 0) {
@@ -151,7 +148,6 @@ export function renderResolvedTargets(targets, total, page, perPage) {
 }
 
 export function renderDailyTargets(pending, completed) {
-    console.log(`[UI] Renderizando alvos do dia: ${pending.length} pendentes, ${completed.length} concluídos.`);
     const container = document.getElementById("dailyTargets");
     container.innerHTML = '';
 
@@ -173,15 +169,14 @@ export function renderDailyTargets(pending, completed) {
             `;
             container.appendChild(div);
         });
-    } else {
-        if (completed.length > 0) {
-            container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
-            displayCompletionPopup();
-        }
+    } else if (completed.length > 0) {
+        container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
+        displayCompletionPopup();
     }
 
     if (completed.length > 0) {
         const separator = document.createElement('hr');
+        separator.className = 'section-separator';
         const completedTitle = document.createElement('h3');
         completedTitle.textContent = "Concluídos Hoje";
         completedTitle.style.textAlign = 'center';
@@ -220,7 +215,6 @@ export function renderPagination(panelId, currentPage, totalItems, itemsPerPage)
 
 export function updatePerseveranceUI(data, isNewRecord = false) {
     const { consecutiveDays = 0, recordDays = 0 } = data;
-    console.log(`[UI] Atualizando perseverança: ${consecutiveDays} de ${recordDays}`);
     const progressBar = document.getElementById('perseveranceProgressBar');
     const currentDaysEl = document.getElementById('currentDaysText');
     const recordDaysEl = document.getElementById('recordDaysText');
@@ -261,7 +255,7 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 
     if (starContainer && consecutiveDays >= MILESTONES.star) {
         const numStars = Math.floor(consecutiveDays / MILESTONES.star);
-        for (let i = 0; i < numStars; i++) {
+        for (let i = 0; i < numStars && i < 3; i++) { // Limit to 3 stars to avoid clutter
             const star = document.createElement('span');
             star.className = 'milestone-icon achieved';
             star.dataset.milestone = 'star';
@@ -272,10 +266,9 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 }
 
 export function updateWeeklyChart(data) {
-    console.log("[UI] Atualizando gráfico semanal.");
     const { interactions = {} } = data;
     const today = new Date();
-    const todayDayOfWeek = today.getDay();
+    const todayDayOfWeek = today.getDay(); 
     const firstDayOfWeek = new Date(today);
     firstDayOfWeek.setDate(today.getDate() - todayDayOfWeek);
 
@@ -306,21 +299,18 @@ export function updateWeeklyChart(data) {
 }
 
 export function resetPerseveranceUI() {
-    console.log("[UI] Resetando UI de perseverança.");
     updatePerseveranceUI({ consecutiveDays: 0, recordDays: 0 });
     const perseveranceSection = document.getElementById('perseveranceSection');
     if(perseveranceSection) perseveranceSection.style.display = 'none';
 }
 
 export function resetWeeklyChart() {
-    console.log("[UI] Resetando gráfico semanal.");
     updateWeeklyChart({});
 }
 
 // --- Funções de UI de Painéis, Formulários e Modais ---
 
 export function showPanel(panelId) {
-    console.log(`[UI] Exibindo painel: ${panelId}`);
     const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection'];
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
@@ -334,11 +324,13 @@ export function showPanel(panelId) {
     if (panelEl) panelEl.style.display = 'block';
 
     if (panelId !== 'authSection') {
+        // Mostra menus principais se o usuário estiver logado
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
         });
     }
+    // Mostra seções da página inicial apenas quando ela estiver ativa
     if (panelId === 'dailySection') {
         dailyRelatedElements.forEach(id => {
             const el = document.getElementById(id);
@@ -352,10 +344,9 @@ export function toggleAddObservationForm(targetId) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    const editDeadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
-    const editCategoryForm = document.getElementById(`editCategoryForm-${targetId}`);
-    if(editDeadlineForm) editDeadlineForm.style.display = 'none';
-    if(editCategoryForm) editCategoryForm.style.display = 'none';
+    // Fecha outros formulários abertos no mesmo alvo
+    document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
+    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
 
     if (isVisible) {
         formDiv.style.display = 'none';
@@ -371,6 +362,64 @@ export function toggleAddObservationForm(targetId) {
         formDiv.querySelector('textarea')?.focus();
     }
 }
+
+export function toggleEditDeadlineForm(targetId, currentDeadline) {
+    const formDiv = document.getElementById(`editDeadlineForm-${targetId}`);
+    if (!formDiv) return;
+    const isVisible = formDiv.style.display === 'block';
+
+    // Fecha outros formulários abertos no mesmo alvo
+    document.getElementById(`observationForm-${targetId}`).style.display = 'none';
+    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+
+    if (isVisible) {
+        formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
+    } else {
+        const currentDateValue = formatDateToISO(currentDeadline);
+        formDiv.innerHTML = `
+            <label for="deadlineInput-${targetId}">Novo Prazo:</label>
+            <input type="date" id="deadlineInput-${targetId}" value="${currentDateValue}" style="width: 95%;">
+            <button class="btn save-deadline-btn" data-action="save-deadline" data-id="${targetId}">Salvar Prazo</button>
+            <button class="btn cancel-deadline-btn" data-action="edit-deadline" data-id="${targetId}">Cancelar</button>
+        `;
+        formDiv.style.display = 'block';
+        formDiv.querySelector('input')?.focus();
+    }
+}
+
+export function toggleEditCategoryForm(targetId, currentCategory) {
+    const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
+    if (!formDiv) return;
+    const isVisible = formDiv.style.display === 'block';
+
+    // Fecha outros formulários abertos no mesmo alvo
+    document.getElementById(`observationForm-${targetId}`).style.display = 'none';
+    document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
+    
+    if (isVisible) {
+        formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
+    } else {
+        const categories = ["Família", "Pessoal", "Igreja", "Trabalho", "Sonho", "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"];
+        const optionsHTML = categories.map(cat => 
+            `<option value="${cat}" ${cat === currentCategory ? 'selected' : ''}>${cat}</option>`
+        ).join('');
+
+        formDiv.innerHTML = `
+            <label for="categorySelect-${targetId}">Nova Categoria:</label>
+            <select id="categorySelect-${targetId}" style="width: 95%;">
+                <option value="">-- Nenhuma --</option>
+                ${optionsHTML}
+            </select>
+            <button class="btn save-category-btn" data-action="save-category" data-id="${targetId}">Salvar Categoria</button>
+            <button class="btn cancel-category-btn" data-action="edit-category" data-id="${targetId}">Cancelar</button>
+        `;
+        formDiv.style.display = 'block';
+        formDiv.querySelector('select')?.focus();
+    }
+}
+
 
 export function toggleManualTargetModal(show) {
     const modal = document.getElementById('manualTargetModal');
@@ -418,20 +467,20 @@ export function generateViewHTML(targets, pageTitle) {
             <p><strong>Data de Criação:</strong> ${formatDateForDisplay(target.date)}</p>
             ${target.observations && target.observations.length > 0 ? '<h4>Observações:</h4>' + createObservationsHTML(target.observations) : ''}
         </div>
-    `).join('<hr>');
+    `).join('<hr class="view-separator">');
 
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title>
         <style>
-            body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
-            .target-view-item { margin-bottom: 15px; padding-bottom: 10px; }
-            h1 { text-align: center; color: #333; }
-            h3 { margin-bottom: 5px; color: #333; }
-            h4 { margin-top: 10px; margin-bottom: 5px; color: #444; }
+            body { font-family: sans-serif; margin: 20px; line-height: 1.6; color: #333; }
+            h1 { text-align: center; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            h3 { margin-bottom: 5px; color: #0056b3; }
+            h4 { margin-top: 15px; margin-bottom: 5px; color: #444; }
             p { margin: 4px 0; color: #555; }
+            .target-view-item { margin-bottom: 15px; padding-bottom: 10px; }
             .observations { margin-top: 10px; padding-left: 15px; border-left: 2px solid #eee; }
             .observation-item { font-size: 0.9em; }
-            hr { border: 0; border-top: 1px solid #ccc; margin: 20px 0; }
+            .view-separator { border: 0; border-top: 1px solid #ccc; margin: 20px 0; }
         </style>
         </head><body><h1>${pageTitle}</h1>${bodyContent}</body></html>
     `;
@@ -442,7 +491,8 @@ export function displayCompletionPopup() {
     const popup = document.getElementById('completionPopup');
     const verses = [
         "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5",
-        "“Orai sem cessar.” - 1 Tessalonicenses 5:17"
+        "“Orai sem cessar.” - 1 Tessalonicenses 5:17",
+        "“Pedi, e dar-se-vos-á; buscai, e encontrareis; batei, e abrir-se-vos-á.” - Mateus 7:7"
     ];
     if (popup) {
         popup.style.display = 'flex';
@@ -465,7 +515,7 @@ export function updateAuthUI(user, message = '', isError = false) {
         btnLogout.style.display = 'inline-block';
         emailPasswordAuthForm.style.display = 'none';
         const providerType = user.providerData[0]?.providerId === 'password' ? 'E-mail/Senha' : 'Google';
-        authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
+        authStatus.textContent = `Autenticado: ${user.email}`;
         passwordResetMessageDiv.style.display = 'none';
     } else {
         authStatusContainer.style.display = 'none';
