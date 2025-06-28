@@ -289,37 +289,49 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
-    const today = new Date(); // Usa o horário local para definir o "hoje" visual
-    const todayDayOfWeek = today.getDay(); 
+    const now = new Date();
+
+    // --- LÓGICA PARA A BORDA VERDE (HORÁRIO LOCAL) ---
+    const localDayOfWeek = now.getDay(); // 0=Dom, 1=Seg, ... (baseado no fuso do navegador)
+
+    // --- LÓGICA PARA OS TICKS (UTC) ---
+    const utcDayOfWeek = now.getUTCDay(); // 0=Dom, 1=Seg, ... (baseado em UTC)
     
-    const firstDayOfWeek = new Date(today);
-    firstDayOfWeek.setDate(today.getDate() - todayDayOfWeek);
+    // Calcula o primeiro dia da semana (Domingo) com base no horário local para montar o quadro visual
+    const firstDayOfWeek = new Date(now);
+    firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
     firstDayOfWeek.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 7; i++) { // i representa o dia da semana (0=Dom, 1=Seg...)
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
         const dayContainer = dayTick.parentElement;
         if (dayContainer) dayContainer.classList.remove('current-day-container');
+        dayTick.className = 'day-tick'; // Reseta as classes do tick
 
-        const currentTickDate = new Date(firstDayOfWeek);
-        currentTickDate.setDate(firstDayOfWeek.getDate() + i);
-        
-        // Converte a data do tick para string UTC para procurar no banco de dados
-        const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
-        
-        dayTick.className = 'day-tick';
-        
-        if (i === todayDayOfWeek) {
+        // 1. APLICA A BORDA VERDE (LÓGICA LOCAL)
+        // A borda verde sempre reflete o dia da semana do usuário
+        if (i === localDayOfWeek) {
             dayTick.classList.add('current-day');
             if (dayContainer) dayContainer.classList.add('current-day-container');
         }
+
+        // 2. CALCULA OS TICKS (LÓGICA UTC)
+        // Monta a data de cada tick para buscar no banco de dados
+        const currentTickDate = new Date(firstDayOfWeek);
+        currentTickDate.setDate(firstDayOfWeek.getDate() + i);
         
+        // Converte a data do tick para string UTC para a chave do banco de dados
+        const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
+
+        // Verifica se houve interação para esta data UTC
         if (interactions[dateStringUTC]) {
-            dayTick.classList.add('active');
-        } else if (i < todayDayOfWeek) {
-            dayTick.classList.add('inactive');
+            dayTick.classList.add('active'); // Marca '✓'
+        } 
+        // A decisão de marcar como "falha" (×) agora usa o dia da semana UTC
+        else if (i < utcDayOfWeek) { 
+            dayTick.classList.add('inactive'); // Marca '×'
         }
     }
 }
