@@ -47,10 +47,11 @@ function isDateExpired(date) {
 }
 
 function createObservationsHTML(observations) {
-    if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
+    if (!Array.isArray(observations) || observations.length === 0) return ''; // CORREÇÃO: Retorna string vazia para não criar div desnecessária
     const sorted = [...observations].sort((a, b) => b.date.getTime() - a.date.getTime());
     let html = `<div class="observations">`;
     sorted.forEach(obs => {
+        // Sanitização simples para evitar injeção de HTML
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         html += `<p class="observation-item"><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}</p>`;
     });
@@ -165,16 +166,21 @@ export function renderDailyTargets(pending, completed) {
             const div = document.createElement("div");
             div.className = 'target';
             div.dataset.targetId = target.id;
+            // CORREÇÃO APLICADA AQUI: Adicionado createObservationsHTML
             div.innerHTML = `
                 <h3>${target.title}</h3>
-                <p class="target-details">${target.details}</p>
+                <p class="target-details">${target.details || 'Sem detalhes.'}</p>
+                ${createObservationsHTML(target.observations)}
                 <button class="pray-button btn" data-action="pray" data-id="${target.id}">Orei!</button>
             `;
             container.appendChild(div);
         });
     } else {
-        container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
-        displayCompletionPopup();
+        // Se não há pendentes mas há completados, mostra a mensagem de conclusão.
+        if (completed.length > 0) {
+            container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
+            displayCompletionPopup();
+        }
     }
 
     if (completed.length > 0) {
@@ -194,6 +200,7 @@ export function renderDailyTargets(pending, completed) {
         });
     }
 }
+
 
 // --- Funções de Componentes de UI ---
 
@@ -221,16 +228,69 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     const progressBar = document.getElementById('perseveranceProgressBar');
     const currentDaysEl = document.getElementById('currentDaysText');
     const recordDaysEl = document.getElementById('recordDaysText');
-    if (progressBar && currentDaysEl && recordDaysEl) {
-        const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
-        progressBar.style.width = `${percentage}%`;
-        currentDaysEl.textContent = consecutiveDays;
-        recordDaysEl.textContent = recordDays;
-        if (isNewRecord) {
-            progressBar.classList.add('new-record-animation');
-            setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
+    const perseveranceSection = document.getElementById('perseveranceSection');
+
+    if (!progressBar || !currentDaysEl || !recordDaysEl || !perseveranceSection) return;
+
+    // Garante que a seção esteja visível se houver dados
+    perseveranceSection.style.display = 'block';
+
+    const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
+    progressBar.style.width = `${percentage}%`;
+    currentDaysEl.textContent = consecutiveDays;
+    recordDaysEl.textContent = recordDays;
+
+    if (isNewRecord) {
+        progressBar.classList.add('new-record-animation');
+        setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
+    }
+    
+    // --- LÓGICA DE ÍCONES RESTAURADA E CORRIGIDA ---
+    const MILESTONES = { sun: 1000, diamond: 365, tree: 100, star: 30, flame: 15, seed: 7 };
+    const crownIcon = document.getElementById('recordCrown');
+    const starContainer = document.getElementById('starContainer');
+
+    // Reseta todos os ícones antes de reavaliar
+    document.querySelectorAll('.milestone-icon, .record-crown').forEach(icon => {
+        icon.classList.remove('achieved');
+    });
+    if (starContainer) starContainer.innerHTML = '';
+
+    // 1. Lógica da Coroa de Recorde
+    if (recordDays > 0 && consecutiveDays >= recordDays) {
+        if (crownIcon) crownIcon.classList.add('achieved');
+    }
+
+    // 2. Lógica dos Marcos (Milestones)
+    if (consecutiveDays >= MILESTONES.sun) {
+        document.querySelector('.milestone-icon[data-milestone="sun"]')?.classList.add('achieved');
+    }
+    if (consecutiveDays >= MILESTONES.diamond) {
+        document.querySelector('.milestone-icon[data-milestone="diamond"]')?.classList.add('achieved');
+    }
+    if (consecutiveDays >= MILESTONES.tree) {
+        document.querySelector('.milestone-icon[data-milestone="tree"]')?.classList.add('achieved');
+    }
+    if (consecutiveDays >= MILESTONES.flame) {
+        document.querySelector('.milestone-icon[data-milestone="flame"]')?.classList.add('achieved');
+    }
+    if (consecutiveDays >= MILESTONES.seed) {
+        document.querySelector('.milestone-icon[data-milestone="seed"]')?.classList.add('achieved');
+    }
+
+    // 3. Lógica para múltiplas estrelas (a cada 30 dias)
+    if (starContainer && consecutiveDays >= MILESTONES.star) {
+        const numStars = Math.floor(consecutiveDays / MILESTONES.star);
+        for (let i = 0; i < numStars; i++) {
+            const star = document.createElement('span');
+            // Usamos a classe 'achieved' para que a CSS a exiba
+            star.className = 'milestone-icon achieved';
+            star.dataset.milestone = 'star';
+            star.innerHTML = '⭐'; // Emoji de estrela
+            starContainer.appendChild(star);
         }
     }
+    // --- FIM DA LÓGICA RESTAURADA ---
 }
 
 export function updateWeeklyChart(data) {
@@ -245,12 +305,28 @@ export function updateWeeklyChart(data) {
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
+        // CORREÇÃO INÍCIO: Alvo no elemento pai para o destaque
+        const dayContainer = dayTick.parentElement;
+        if (dayContainer) {
+            dayContainer.classList.remove('current-day-container');
+        }
+        // CORREÇÃO FIM
+
         const currentTickDate = new Date(firstDayOfWeek);
         currentTickDate.setDate(firstDayOfWeek.getDate() + i);
         const dateString = `${currentTickDate.getFullYear()}-${String(currentTickDate.getMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getDate()).padStart(2, '0')}`;
         
         dayTick.className = 'day-tick'; // Reset
-        if (i === todayDayOfWeek) dayTick.classList.add('current-day');
+        
+        // CORREÇÃO INÍCIO: Lógica de destaque movida para o container
+        if (i === todayDayOfWeek) {
+            dayTick.classList.add('current-day');
+            if (dayContainer) {
+                dayContainer.classList.add('current-day-container');
+            }
+        }
+        // CORREÇÃO FIM
+        
         if (interactions[dateString]) {
             dayTick.classList.add('active');
         } else if (i < todayDayOfWeek) {
@@ -304,8 +380,10 @@ export function toggleAddObservationForm(targetId) {
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
-    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+    const editDeadlineForm = document.getElementById(`editDeadlineForm-${targetId}`);
+    const editCategoryForm = document.getElementById(`editCategoryForm-${targetId}`);
+    if(editDeadlineForm) editDeadlineForm.style.display = 'none';
+    if(editCategoryForm) editCategoryForm.style.display = 'none';
 
     if (isVisible) {
         formDiv.style.display = 'none';
@@ -337,11 +415,12 @@ export function displayCompletionPopup() {
     }
 }
 
-export function updateAuthUI(user) {
+export function updateAuthUI(user, message = '', isError = false) {
     const authStatus = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
     const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
     const authStatusContainer = document.querySelector('.auth-status-container');
+    const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
 
     if (user) {
         authStatusContainer.style.display = 'flex';
@@ -349,10 +428,18 @@ export function updateAuthUI(user) {
         emailPasswordAuthForm.style.display = 'none';
         const providerType = user.providerData[0]?.providerId === 'password' ? 'E-mail/Senha' : 'Google';
         authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
+        passwordResetMessageDiv.style.display = 'none';
     } else {
         authStatusContainer.style.display = 'none';
         btnLogout.style.display = 'none';
         emailPasswordAuthForm.style.display = 'block';
-        document.getElementById('passwordResetMessage').style.display = 'none';
+        
+        if (message) {
+            passwordResetMessageDiv.textContent = message;
+            passwordResetMessageDiv.style.color = isError ? "red" : "green";
+            passwordResetMessageDiv.style.display = "block";
+        } else {
+            passwordResetMessageDiv.style.display = 'none';
+        }
     }
 }
