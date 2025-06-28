@@ -1,4 +1,4 @@
-// script.js (Orquestrador Principal da Aplicação - CORRIGIDO)
+// script.js (Orquestrador Principal da Aplicação - Completo)
 
 // --- MÓDULOS ---
 import { auth } from './firebase-config.js'; 
@@ -28,7 +28,6 @@ let state = {
 };
 
 // --- LÓGICA DE AUTENTICAÇÃO (Interação do Usuário) ---
-
 async function handleSignUp() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -75,10 +74,9 @@ async function handlePasswordReset() {
     }
 }
 
-// --- FLUXO DE DADOS E RENDERIZAÇÃO ---
 
+// --- FLUXO DE DADOS E RENDERIZAÇÃO ---
 function applyFiltersAndRender(panelId) {
-    console.log(`[App] Aplicando filtros e renderizando para o painel: ${panelId}`);
     const panelState = state.pagination[panelId];
     const panelFilters = state.filters[panelId];
 
@@ -91,17 +89,16 @@ function applyFiltersAndRender(panelId) {
     let filteredData = sourceData.filter(target => {
         const searchTerm = panelFilters.searchTerm.toLowerCase();
         const matchesSearch = searchTerm === '' ||
-            target.title.toLowerCase().includes(searchTerm) ||
+            (target.title && target.title.toLowerCase().includes(searchTerm)) ||
             (target.details && target.details.toLowerCase().includes(searchTerm)) ||
             (target.category && target.category.toLowerCase().includes(searchTerm)) ||
-            (target.observations && target.observations.some(obs => obs.text.toLowerCase().includes(searchTerm)));
+            (target.observations && target.observations.some(obs => obs.text && obs.text.toLowerCase().includes(searchTerm)));
         
         if (!matchesSearch) return false;
 
         if (panelId === 'mainPanel') {
             const now = new Date();
             const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-
             if (panelFilters.showDeadlineOnly && !target.hasDeadline) return false;
             if (panelFilters.showExpiredOnly) {
                  if (!target.hasDeadline || !target.deadlineDate || target.deadlineDate.getTime() >= todayUTCStart.getTime()) {
@@ -160,7 +157,6 @@ async function loadDataForUser(user) {
         UI.updatePerseveranceUI(state.perseveranceData);
         UI.updateWeeklyChart(state.weeklyPrayerData);
         
-        // Only show main content after all data is loaded and ready
         UI.showPanel('dailySection');
 
     } catch (error) {
@@ -191,8 +187,8 @@ function handleLogoutState() {
     UI.showPanel('authSection');
 }
 
-// --- MANIPULADORES DE AÇÕES ---
 
+// --- MANIPULADORES DE AÇÕES ---
 async function handleAddNewTarget(event) {
     event.preventDefault();
     if (!state.user) return alert("Você precisa estar logado para adicionar um alvo.");
@@ -305,8 +301,39 @@ function handleOpenManualAddModal() {
     UI.toggleManualTargetModal(true);
 }
 
-// --- PONTO DE ENTRADA DA APLICAÇÃO ---
+// --- MANIPULADORES DAS AÇÕES DE VISUALIZAÇÃO/RELATÓRIO ---
+function handleGenerateCurrentView() {
+    const allTargets = [...state.prayerTargets, ...state.archivedTargets];
+    if (allTargets.length === 0) return alert("Não há alvos para visualizar.");
+    const htmlContent = UI.generateViewHTML(allTargets, "Visualização Completa dos Alvos de Oração");
+    const newWindow = window.open();
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+}
 
+function handleGenerateCategoryView() {
+    const allTargets = [...state.prayerTargets, ...state.archivedTargets];
+    UI.toggleCategoryModal(true, allTargets);
+}
+
+function handleGenerateResolvedViewByPeriod() {
+    UI.toggleDateRangeModal(true);
+}
+
+function handleGeneratePerseveranceReport() {
+    const { consecutiveDays, recordDays, lastInteractionDate } = state.perseveranceData;
+    const htmlContent = UI.generatePerseveranceReportHTML({
+        consecutiveDays,
+        recordDays,
+        lastInteractionDate: lastInteractionDate ? new Date(lastInteractionDate).toLocaleDateString('pt-BR') : 'Nenhuma interação registrada'
+    });
+    const newWindow = window.open();
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+}
+
+
+// --- PONTO DE ENTRADA DA APLICAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[App] DOM fully loaded. Initializing...");
 
@@ -319,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Listeners de Eventos Globais ---
+    // --- Listeners de Eventos Globais Estáticos ---
     document.getElementById('btnEmailSignUp').addEventListener('click', handleSignUp);
     document.getElementById('btnEmailSignIn').addEventListener('click', handleSignIn);
     document.getElementById('btnForgotPassword').addEventListener('click', handlePasswordReset);
@@ -336,10 +363,46 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewDaily').addEventListener('click', handleViewDaily);
     document.getElementById('addManualTargetButton').addEventListener('click', handleOpenManualAddModal);
 
+    document.getElementById('generateViewButton').addEventListener('click', handleGenerateCurrentView);
+    document.getElementById('generateCategoryViewButton').addEventListener('click', handleGenerateCategoryView);
+    document.getElementById('viewResolvedViewButton').addEventListener('click', handleGenerateResolvedViewByPeriod);
+    document.getElementById('viewReportButton').addEventListener('click', handleGeneratePerseveranceReport);
+
+    document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
+    document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
+    document.getElementById('generateResolvedView').addEventListener('click', () => {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (!startDate || !endDate) return alert("Por favor, selecione as datas de início e fim.");
+        
+        const start = new Date(startDate + "T00:00:00Z");
+        const end = new Date(endDate + "T23:59:59Z");
+
+        const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= start && t.resolutionDate <= end);
+        const htmlContent = UI.generateViewHTML(filtered, `Alvos Respondidos de ${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}`);
+        const newWindow = window.open();
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        UI.toggleDateRangeModal(false);
+    });
+
+    document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
+    document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
+    document.getElementById('confirmCategoryView').addEventListener('click', () => {
+        const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value);
+        if (selectedCategories.length === 0) return alert("Selecione ao menos uma categoria.");
+
+        const filtered = [...state.prayerTargets, ...state.archivedTargets].filter(t => selectedCategories.includes(t.category));
+        const htmlContent = UI.generateViewHTML(filtered, `Visualização para Categoria(s): ${selectedCategories.join(', ')}`);
+        const newWindow = window.open();
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        UI.toggleCategoryModal(false);
+    });
+
     document.getElementById('hasDeadline').addEventListener('change', (e) => {
         document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none';
     });
-
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => {
         document.getElementById(id).addEventListener('input', (e) => {
             const panelId = id === 'searchMain' ? 'mainPanel' : (id === 'searchArchived' ? 'archivedPanel' : 'resolvedPanel');
@@ -348,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFiltersAndRender(panelId);
         });
     });
-
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => {
         document.getElementById(id).addEventListener('change', (e) => {
             const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly';
@@ -357,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFiltersAndRender('mainPanel');
         });
     });
-
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
@@ -368,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm);
     });
 
-    // --- DELEGAÇÃO DE EVENTOS PARA AÇÕES DINÂMICAS (CORRIGIDO E EXPANDIDO) ---
+    // --- DELEGAÇÃO DE EVENTOS PARA AÇÕES DINÂMICAS ---
     document.body.addEventListener('click', async (e) => {
         const { action, id, page, panel } = e.target.dataset;
         if (!action && !page) return;
@@ -381,92 +442,65 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        if (!id && action) { // Ações que não precisam de ID mas são delegadas
+             if (e.target.closest('.cancel-deadline-btn')) UI.toggleEditDeadlineForm(e.target.dataset.id, null);
+             if (e.target.closest('.cancel-category-btn')) UI.toggleEditCategoryForm(e.target.dataset.id, null);
+             if (e.target.closest('.cancel-btn')) UI.toggleAddObservationForm(e.target.dataset.id);
+             return;
+        }
+        
         if (!id || !state.user) return;
 
         const target = state.prayerTargets.find(t => t.id === id) || state.archivedTargets.find(t => t.id === id);
 
         switch(action) {
-            case 'pray':
-                await handlePray(id);
-                break;
+            case 'pray': await handlePray(id); break;
             case 'select-manual-target':
                 try {
                     await Service.addManualTargetToDailyList(state.user.uid, id);
-                    UI.toggleManualTargetModal(false);
-                    await loadDataForUser(state.user);
-                    alert("Alvo adicionado à lista do dia!");
-                } catch (error) {
-                    console.error("Erro ao adicionar alvo manualmente:", error);
-                    alert(error.message);
-                }
+                    UI.toggleManualTargetModal(false); await loadDataForUser(state.user); alert("Alvo adicionado à lista do dia!");
+                } catch (error) { console.error(error); alert(error.message); }
                 break;
-            
-            // --- Ações dos alvos individuais ---
             case 'resolve':
                 if (confirm("Marcar este alvo como respondido? Ele será movido para os arquivados.")) {
-                    if (target) {
-                        await Service.markAsResolved(state.user.uid, target);
-                        await loadDataForUser(state.user);
-                    }
+                    if (target) { await Service.markAsResolved(state.user.uid, target); await loadDataForUser(state.user); }
                 }
                 break;
             case 'archive':
                 if (confirm("Tem certeza que deseja arquivar este alvo?")) {
-                    if (target) {
-                        await Service.archiveTarget(state.user.uid, target);
-                        await loadDataForUser(state.user);
-                    }
+                    if (target) { await Service.archiveTarget(state.user.uid, target); await loadDataForUser(state.user); }
                 }
                 break;
             case 'delete-archived':
                  if (confirm("EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.")) {
-                    if (target) {
-                        await Service.deleteArchivedTarget(state.user.uid, id);
-                        await loadDataForUser(state.user);
-                    }
+                    if (target) { await Service.deleteArchivedTarget(state.user.uid, id); await loadDataForUser(state.user); }
                 }
                 break;
-            case 'toggle-observation':
-                UI.toggleAddObservationForm(id);
+            case 'toggle-observation': UI.toggleAddObservationForm(id); break;
+            case 'save-observation': {
+                const text = document.getElementById(`observationText-${id}`).value.trim();
+                const dateStr = document.getElementById(`observationDate-${id}`).value;
+                if (!text || !dateStr) return alert("Por favor, preencha o texto e a data da observação.");
+                const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z') };
+                if (target) { await Service.addObservationToTarget(state.user.uid, id, !!target.archived, newObservation); await loadDataForUser(state.user); }
                 break;
-            case 'save-observation':
-                {
-                    const text = document.getElementById(`observationText-${id}`).value.trim();
-                    const dateStr = document.getElementById(`observationDate-${id}`).value;
-                    if (!text || !dateStr) return alert("Por favor, preencha o texto e a data da observação.");
-                    
-                    const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z') };
-                    if (target) {
-                        await Service.addObservationToTarget(state.user.uid, id, !!target.archived, newObservation);
-                        await loadDataForUser(state.user);
-                    }
-                }
+            }
+            case 'edit-deadline': UI.toggleEditDeadlineForm(id, target?.deadlineDate); break;
+            case 'save-deadline': {
+                const newDeadlineStr = document.getElementById(`deadlineInput-${id}`).value;
+                if (!newDeadlineStr) return alert("Por favor, selecione a nova data do prazo.");
+                const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z');
+                await Service.updateTargetField(state.user.uid, id, !!target.archived, { deadlineDate: newDeadlineDate });
+                await loadDataForUser(state.user);
                 break;
-
-            // Lógica para editar prazo e categoria será similar
-            // Para manter simples, vamos focar no que já está no HTML
-            case 'edit-deadline':
-                 UI.toggleEditDeadlineForm(id, target.deadlineDate);
-                 break;
-            case 'save-deadline':
-                 {
-                    const newDeadlineStr = document.getElementById(`deadlineInput-${id}`).value;
-                    if (!newDeadlineStr) return alert("Por favor, selecione a nova data do prazo.");
-                    const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z');
-                    await Service.updateTargetField(state.user.uid, id, false, { deadlineDate: newDeadlineDate });
-                    await loadDataForUser(state.user);
-                 }
-                 break;
-             case 'edit-category':
-                 UI.toggleEditCategoryForm(id, target.category);
-                 break;
-             case 'save-category':
-                 {
-                    const newCategory = document.getElementById(`categorySelect-${id}`).value;
-                    await Service.updateTargetField(state.user.uid, id, false, { category: newCategory });
-                    await loadDataForUser(state.user);
-                 }
-                 break;
+            }
+            case 'edit-category': UI.toggleEditCategoryForm(id, target?.category); break;
+            case 'save-category': {
+                const newCategory = document.getElementById(`categorySelect-${id}`).value;
+                await Service.updateTargetField(state.user.uid, id, !!target.archived, { category: newCategory });
+                await loadDataForUser(state.user);
+                break;
+            }
         }
     });
 });
