@@ -2,13 +2,12 @@
 // Responsável por toda a manipulação do DOM e renderização da interface.
 
 // --- Funções Utilitárias de Formatação (Internalizadas para simplicidade) ---
-// Em um projeto maior, estas estariam em 'utils.js' e seriam importadas.
 
 function formatDateForDisplay(date) {
     if (!(date instanceof Date) || isNaN(date.getTime())) return 'Data Inválida';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
     return `${day}/${month}/${year}`;
 }
 
@@ -17,15 +16,17 @@ function formatDateToISO(date) {
         const today = new Date();
         return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
 
-function timeElapsed(date) {
-    if (!(date instanceof Date) || isNaN(date.getTime())) return 'Tempo desconhecido';
-    const diffInSeconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+function timeElapsed(startDate, endDate = new Date()) {
+    if (!(startDate instanceof Date) || isNaN(startDate.getTime())) return 'Tempo desconhecido';
+    let diffInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+    if (diffInSeconds < 0) diffInSeconds = 0;
+
     if (diffInSeconds < 60) return `${diffInSeconds} seg`;
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     if (diffInMinutes < 60) return `${diffInMinutes} min`;
@@ -41,54 +42,37 @@ function timeElapsed(date) {
 function isDateExpired(date) {
     if (!(date instanceof Date) || isNaN(date.getTime())) return false;
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return date.getTime() < today.getTime();
+    const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return date.getTime() < todayUTCStart.getTime();
 }
 
-/**
- * Cria o HTML para a lista de observações de um alvo.
- * @param {Array} observations - Array de objetos de observação.
- * @returns {string} - O bloco HTML das observações.
- */
 function createObservationsHTML(observations) {
-    if (!Array.isArray(observations) || observations.length === 0) {
-        return '<div class="observations"></div>';
-    }
+    if (!Array.isArray(observations) || observations.length === 0) return '<div class="observations"></div>';
     const sorted = [...observations].sort((a, b) => b.date.getTime() - a.date.getTime());
     let html = `<div class="observations">`;
     sorted.forEach(obs => {
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         html += `<p class="observation-item"><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}</p>`;
     });
-    html += `</div>`;
-    return html;
+    return html + `</div>`;
 }
 
 // --- Funções de Renderização de Listas de Alvos ---
 
-/**
- * Renderiza a lista de alvos de oração ativos no painel principal.
- */
-export function renderTargets(targetsToDisplay, totalFiltered, currentPage, targetsPerPage) {
-    console.log(`[UI] Renderizando ${targetsToDisplay.length} de ${totalFiltered} alvos ativos.`);
-    const targetListDiv = document.getElementById('targetList');
-    targetListDiv.innerHTML = '';
-
-    if (targetsToDisplay.length === 0) {
-        targetListDiv.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
+export function renderTargets(targets, total, page, perPage) {
+    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos ativos.`);
+    const container = document.getElementById('targetList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        targetsToDisplay.forEach((target) => {
-            const targetDiv = document.createElement("div");
-            targetDiv.className = "target";
-            targetDiv.dataset.targetId = target.id;
-
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = "target";
+            div.dataset.targetId = target.id;
             const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
-            let deadlineTag = '';
-            if (target.hasDeadline && target.deadlineDate) {
-                deadlineTag = `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>`;
-            }
-
-            targetDiv.innerHTML = `
+            const deadlineTag = target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+            div.innerHTML = `
                 <h3>${categoryTag} ${deadlineTag} ${target.title || 'Sem Título'}</h3>
                 <p class="target-details">${target.details || 'Sem Detalhes'}</p>
                 <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
@@ -105,136 +89,124 @@ export function renderTargets(targetsToDisplay, totalFiltered, currentPage, targ
                 <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
             `;
-            targetListDiv.appendChild(targetDiv);
+            container.appendChild(div);
         });
     }
-    renderPagination('mainPanel', currentPage, totalFiltered, targetsPerPage);
+    renderPagination('mainPanel', page, total, perPage);
 }
 
-/**
- * Renderiza a lista de alvos arquivados.
- */
-export function renderArchivedTargets(targetsToDisplay, totalFiltered, currentPage, targetsPerPage) {
-    console.log(`[UI] Renderizando ${targetsToDisplay.length} de ${totalFiltered} alvos arquivados.`);
-    const archivedListDiv = document.getElementById('archivedList');
-    archivedListDiv.innerHTML = '';
-    
-    if (targetsToDisplay.length === 0) {
-        archivedListDiv.innerHTML = '<p>Nenhum alvo arquivado encontrado.</p>';
+export function renderArchivedTargets(targets, total, page, perPage) {
+    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos arquivados.`);
+    const container = document.getElementById('archivedList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo arquivado encontrado.</p>';
     } else {
-        targetsToDisplay.forEach((target) => {
-            const archivedDiv = document.createElement("div");
-            archivedDiv.className = `target archived ${target.resolved ? 'resolved' : ''}`;
-            archivedDiv.dataset.targetId = target.id;
-            
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
+            div.dataset.targetId = target.id;
             const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
-            const resolvedTag = target.resolved ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
-
-            archivedDiv.innerHTML = `
+            const resolvedTag = target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
+            div.innerHTML = `
                 <h3>${categoryTag} ${resolvedTag} ${target.title || 'Sem Título'}</h3>
                 <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-                <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
                 <p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>
                 ${createObservationsHTML(target.observations)}
                 <div class="target-actions">
-                    <button class="delete btn" data-action="delete-archived" data-id="${target.id}">Excluir Permanentemente</button>
+                    <button class="delete btn" data-action="delete-archived" data-id="${target.id}">Excluir</button>
                     <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                    <button class="edit-category btn" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
             `;
-            archivedListDiv.appendChild(archivedDiv);
+            container.appendChild(div);
         });
     }
-    renderPagination('archivedPanel', currentPage, totalFiltered, targetsPerPage);
+    renderPagination('archivedPanel', page, total, perPage);
 }
 
-/**
- * Renderiza a lista de alvos respondidos.
- */
-export function renderResolvedTargets(targetsToDisplay, totalFiltered, currentPage, targetsPerPage) {
-    console.log(`[UI] Renderizando ${targetsToDisplay.length} de ${totalFiltered} alvos respondidos.`);
-    const resolvedListDiv = document.getElementById('resolvedList');
-    resolvedListDiv.innerHTML = '';
-    
-    if (targetsToDisplay.length === 0) {
-        resolvedListDiv.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
+export function renderResolvedTargets(targets, total, page, perPage) {
+    console.log(`[UI] Renderizando ${targets.length} de ${total} alvos respondidos.`);
+    const container = document.getElementById('resolvedList');
+    container.innerHTML = '';
+    if (targets.length === 0) {
+        container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
-        targetsToDisplay.forEach((target) => {
-            const resolvedDiv = document.createElement("div");
-            resolvedDiv.className = 'target resolved';
-            resolvedDiv.dataset.targetId = target.id;
-            
+        targets.forEach(target => {
+            const div = document.createElement("div");
+            div.className = 'target resolved';
+            div.dataset.targetId = target.id;
             const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
             const timeToResolution = target.date && target.resolutionDate ? timeElapsed(target.date, target.resolutionDate) : 'N/A';
-            
-            resolvedDiv.innerHTML = `
-                <h3>${categoryTag} ${target.title || 'Sem Título'} (Respondido)</h3>
-                <p class="target-details">${target.details || 'Sem Detalhes'}</p>
-                <p><strong>Data Criação:</strong> ${formatDateForDisplay(target.date)}</p>
+            div.innerHTML = `
+                <h3>${categoryTag} ${target.title || 'Sem Título'}</h3>
                 <p><strong>Data Respondido:</strong> ${formatDateForDisplay(target.resolutionDate)}</p>
-                <p><strong>Tempo Total:</strong> ${timeToResolution}</p>
+                <p><strong>Tempo para Resposta:</strong> ${timeToResolution}</p>
                 ${createObservationsHTML(target.observations)}
-                 <div class="target-actions">
-                    <button class="add-observation btn" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                    <button class="edit-category btn" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>
-                </div>
-                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-                 <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
             `;
-            resolvedListDiv.appendChild(resolvedDiv);
+            container.appendChild(div);
         });
     }
-    renderPagination('resolvedPanel', currentPage, totalFiltered, targetsPerPage);
+    renderPagination('resolvedPanel', page, total, perPage);
 }
 
-/**
- * Renderiza a lista de alvos do dia.
- */
-export function renderDailyTargets(pendingTargets, completedTargets) {
-    console.log(`[UI] Renderizando alvos do dia: ${pendingTargets.length} pendentes, ${completedTargets.length} concluídos.`);
-    const dailyTargetsDiv = document.getElementById("dailyTargets");
-    dailyTargetsDiv.innerHTML = '';
+export function renderDailyTargets(pending, completed) {
+    console.log(`[UI] Renderizando alvos do dia: ${pending.length} pendentes, ${completed.length} concluídos.`);
+    const container = document.getElementById("dailyTargets");
+    container.innerHTML = '';
 
-    if (pendingTargets.length === 0 && completedTargets.length === 0) {
-        dailyTargetsDiv.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
+    if (pending.length === 0 && completed.length === 0) {
+        container.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
         return;
     }
-    
-    // Renderiza pendentes
-    if (pendingTargets.length > 0) {
-        pendingTargets.forEach(target => {
-            // ... cria o elemento do alvo pendente com o botão "Orei!"
+
+    if (pending.length > 0) {
+        pending.forEach(target => {
+            const div = document.createElement("div");
+            div.className = 'target';
+            div.dataset.targetId = target.id;
+            div.innerHTML = `
+                <h3>${target.title}</h3>
+                <p class="target-details">${target.details}</p>
+                <button class="pray-button btn" data-action="pray" data-id="${target.id}">Orei!</button>
+            `;
+            container.appendChild(div);
         });
     } else {
-        dailyTargetsDiv.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
-    }
-
-    // Renderiza concluídos
-    if (completedTargets.length > 0) {
-        // ... cria a seção de concluídos e renderiza os alvos
-    }
-
-    if (pendingTargets.length === 0 && completedTargets.length > 0) {
+        container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
         displayCompletionPopup();
+    }
+
+    if (completed.length > 0) {
+        const separator = document.createElement('hr');
+        const completedTitle = document.createElement('h3');
+        completedTitle.textContent = "Concluídos Hoje";
+        completedTitle.style.textAlign = 'center';
+        container.appendChild(separator);
+        container.appendChild(completedTitle);
+
+        completed.forEach(target => {
+            const div = document.createElement("div");
+            div.className = 'target completed-target';
+            div.dataset.targetId = target.id;
+            div.innerHTML = `<h3>${target.title}</h3>`;
+            container.appendChild(div);
+        });
     }
 }
 
-// --- Funções de Componentes de UI (Paginação, Perseverança, etc.) ---
+// --- Funções de Componentes de UI ---
 
-/**
- * Renderiza os controles de paginação para um painel.
- */
 export function renderPagination(panelId, currentPage, totalItems, itemsPerPage) {
     const paginationDiv = document.getElementById(`pagination-${panelId}`);
     if (!paginationDiv) return;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
     if (totalPages <= 1) {
         paginationDiv.style.display = 'none';
         return;
     }
+
     paginationDiv.style.display = 'flex';
     paginationDiv.innerHTML = `
         <a href="#" class="page-link ${currentPage <= 1 ? 'disabled' : ''}" data-page="${currentPage - 1}" data-panel="${panelId}">« Anterior</a>
@@ -243,72 +215,83 @@ export function renderPagination(panelId, currentPage, totalItems, itemsPerPage)
     `;
 }
 
-export function updatePerseveranceUI(perseveranceData, isNewRecord = false) {
-    const { consecutiveDays = 0, recordDays = 0 } = perseveranceData;
-    console.log(`[UI] Atualizando barra de perseverança: ${consecutiveDays} dias, recorde ${recordDays}.`);
-    const progressBarFill = document.getElementById('perseveranceProgressBar');
-    const currentDaysTextEl = document.getElementById('currentDaysText');
-    const recordDaysTextEl = document.getElementById('recordDaysText');
-    
-    if (progressBarFill && currentDaysTextEl && recordDaysTextEl) {
+export function updatePerseveranceUI(data, isNewRecord = false) {
+    const { consecutiveDays = 0, recordDays = 0 } = data;
+    console.log(`[UI] Atualizando perseverança: ${consecutiveDays} de ${recordDays}`);
+    const progressBar = document.getElementById('perseveranceProgressBar');
+    const currentDaysEl = document.getElementById('currentDaysText');
+    const recordDaysEl = document.getElementById('recordDaysText');
+    if (progressBar && currentDaysEl && recordDaysEl) {
         const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
-        progressBarFill.style.width = `${percentage}%`;
-        currentDaysTextEl.textContent = consecutiveDays;
-        recordDaysTextEl.textContent = recordDays;
-
+        progressBar.style.width = `${percentage}%`;
+        currentDaysEl.textContent = consecutiveDays;
+        recordDaysEl.textContent = recordDays;
         if (isNewRecord) {
-            progressBarFill.classList.add('new-record-animation');
-            setTimeout(() => progressBarFill.classList.remove('new-record-animation'), 2000);
+            progressBar.classList.add('new-record-animation');
+            setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
         }
     }
 }
 
-export function updateWeeklyChart(weeklyData) {
+export function updateWeeklyChart(data) {
     console.log("[UI] Atualizando gráfico semanal.");
-    // ... Lógica para percorrer os dias da semana e adicionar as classes 'active', 'inactive', 'current-day' ...
+    const { interactions = {} } = data;
+    const today = new Date();
+    const todayDayOfWeek = today.getDay(); // Dom = 0, Sab = 6
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - todayDayOfWeek);
+
+    for (let i = 0; i < 7; i++) {
+        const dayTick = document.getElementById(`day-${i}`);
+        if (!dayTick) continue;
+
+        const currentTickDate = new Date(firstDayOfWeek);
+        currentTickDate.setDate(firstDayOfWeek.getDate() + i);
+        const dateString = `${currentTickDate.getFullYear()}-${String(currentTickDate.getMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getDate()).padStart(2, '0')}`;
+        
+        dayTick.className = 'day-tick'; // Reset
+        if (i === todayDayOfWeek) dayTick.classList.add('current-day');
+        if (interactions[dateString]) {
+            dayTick.classList.add('active');
+        } else if (i < todayDayOfWeek) {
+            dayTick.classList.add('inactive');
+        }
+    }
 }
 
 export function resetPerseveranceUI() {
     console.log("[UI] Resetando UI de perseverança.");
-    document.getElementById('perseveranceProgressBar').style.width = '0%';
-    document.getElementById('currentDaysText').textContent = '0';
-    document.getElementById('recordDaysText').textContent = '0';
+    updatePerseveranceUI({ consecutiveDays: 0, recordDays: 0 });
 }
 
 export function resetWeeklyChart() {
     console.log("[UI] Resetando gráfico semanal.");
-    for (let i = 0; i < 7; i++) {
-        const dayTick = document.getElementById(`day-${i}`);
-        if (dayTick) {
-            dayTick.className = 'day-tick'; // Reseta para a classe base
-        }
-    }
+    updateWeeklyChart({});
 }
 
 // --- Funções de UI de Painéis, Formulários e Modais ---
 
-/**
- * Exibe um painel específico e esconde os outros.
- */
-export function showPanel(panelIdToShow) {
-    console.log(`[UI] Exibindo painel: ${panelIdToShow}`);
+export function showPanel(panelId) {
+    console.log(`[UI] Exibindo painel: ${panelId}`);
     const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection'];
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
 
-    allPanels.forEach(id => document.getElementById(id)?.style.setProperty('display', 'none', 'important'));
-    mainMenuElements.forEach(id => document.getElementById(id)?.style.setProperty('display', 'none', 'important'));
-    dailyRelatedElements.forEach(id => document.getElementById(id)?.style.setProperty('display', 'none', 'important'));
+    [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
 
-    const panelToShowElement = document.getElementById(panelIdToShow);
-    if (panelToShowElement) {
-        panelToShowElement.style.display = 'block';
-    }
+    const panelEl = document.getElementById(panelId);
+    if (panelEl) panelEl.style.display = 'block';
 
-    if (panelIdToShow !== 'authSection') {
-        mainMenuElements.forEach(id => document.getElementById(id).style.display = 'block');
+    if (panelId !== 'authSection') {
+        mainMenuElements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'block';
+        });
     }
-    if (panelIdToShow === 'dailySection') {
+    if (panelId === 'dailySection') {
         dailyRelatedElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
@@ -316,12 +299,7 @@ export function showPanel(panelIdToShow) {
     }
 }
 
-
-/**
- * Alterna a visibilidade do formulário de adicionar observação.
- */
-export function toggleAddObservation(targetId) {
-    console.log(`[UI] Alternando formulário de observação para o alvo: ${targetId}`);
+export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
@@ -331,10 +309,11 @@ export function toggleAddObservation(targetId) {
 
     if (isVisible) {
         formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
     } else {
         formDiv.innerHTML = `
-            <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3"></textarea>
-            <input type="date" id="observationDate-${targetId}">
+            <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
+            <input type="date" id="observationDate-${targetId}" style="width: 95%;">
             <button class="btn" data-action="save-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
         `;
         document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
@@ -343,41 +322,37 @@ export function toggleAddObservation(targetId) {
     }
 }
 
-/**
- * Exibe o popup de conclusão de alvos do dia.
- */
 export function displayCompletionPopup() {
-    console.log('[UI] Exibindo popup de conclusão.');
     const popup = document.getElementById('completionPopup');
-    const verses = [ // Idealmente viria de um config.js
+    const verses = [
         "“Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.” - Salmos 37:5",
         "“Orai sem cessar.” - 1 Tessalonicenses 5:17"
     ];
     if (popup) {
         popup.style.display = 'flex';
-        const popupVerseElement = popup.querySelector('#popupVerse');
-        if (popupVerseElement) {
-            const randomIndex = Math.floor(Math.random() * verses.length);
-            popupVerseElement.textContent = verses[randomIndex];
+        const popupVerseEl = popup.querySelector('#popupVerse');
+        if (popupVerseEl) {
+            popupVerseEl.textContent = verses[Math.floor(Math.random() * verses.length)];
         }
     }
 }
 
-/**
- * Fecha todos os modais abertos.
- */
-export function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
-}
+export function updateAuthUI(user) {
+    const authStatus = document.getElementById('authStatus');
+    const btnLogout = document.getElementById('btnLogout');
+    const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
+    const authStatusContainer = document.querySelector('.auth-status-container');
 
-/**
- * Abre um modal específico.
- * @param {string} modalId - O ID do modal a ser aberto.
- */
-export function openModal(modalId) {
-    closeAllModals(); // Garante que apenas um esteja aberto
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
+    if (user) {
+        authStatusContainer.style.display = 'flex';
+        btnLogout.style.display = 'inline-block';
+        emailPasswordAuthForm.style.display = 'none';
+        const providerType = user.providerData[0]?.providerId === 'password' ? 'E-mail/Senha' : 'Google';
+        authStatus.textContent = `Autenticado: ${user.email} (via ${providerType})`;
+    } else {
+        authStatusContainer.style.display = 'none';
+        btnLogout.style.display = 'none';
+        emailPasswordAuthForm.style.display = 'block';
+        document.getElementById('passwordResetMessage').style.display = 'none';
     }
 }
