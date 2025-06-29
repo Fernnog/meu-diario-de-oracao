@@ -1,0 +1,63 @@
+# Nome do Workflow que aparecerá na aba "Actions" do seu repositório
+name: Criar Release com a Versão Mais Recente
+
+# Define os gatilhos (triggers) que iniciarão o workflow
+on:
+  # Permite que você execute este workflow manualmente a partir da aba Actions
+  workflow_dispatch:
+
+# Define os jobs
+jobs:
+  # Nome do job
+  build-and-release:
+    # O tipo de máquina virtual para executar o job
+    runs-on: ubuntu-latest
+    
+    # Permissões necessárias para que a Action possa criar/modificar releases
+    permissions:
+      contents: write
+
+    # Sequência de passos a serem executados
+    steps:
+      # Passo 1: Clona o seu repositório para a máquina virtual do workflow
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      # Passo 2: Cria a pasta de destino e copia todos os arquivos sem a estrutura de pastas
+      - name: Criar pasta de destino e copiar arquivos
+        run: |
+          mkdir flat-files
+          # Usamos 'find' para localizar todos os arquivos (-type f)
+          # Excluímos as pastas .git e .github
+          # Usamos `cp --backup=numbered` para evitar que arquivos com o mesmo nome se sobrescrevam.
+          find . -type f -not -path './.git/*' -not -path './.github/*' -exec cp --backup=numbered {} flat-files/ \;
+
+      # Passo 3: Compacta a pasta com os arquivos em um único arquivo .zip
+      - name: Compactar arquivos em um ZIP
+        run: zip -r arquivos-achatados.zip ./flat-files
+
+      # Passo 4: Usa a action 'softprops/action-gh-release' para criar ou atualizar a release
+      # Esta é a parte principal da lógica de atualização.
+      - name: Criar ou Atualizar a Release e fazer upload do ZIP
+        uses: softprops/action-gh-release@v2
+        with:
+          # Lista de arquivos a serem anexados à release.
+          files: arquivos-achatados.zip
+          
+          # IMPORTANTE: Usamos uma tag fixa. Se a tag já existir, a action
+          # irá atualizar a release existente em vez de criar uma nova.
+          tag_name: latest-flat-files
+          
+          # Nome que aparecerá na página de Releases.
+          name: "Últimos Arquivos (Versão Achatada)"
+          
+          # Texto do corpo da release. Útil para saber quando foi a última atualização.
+          body: |
+            Contém a versão mais recente de todos os arquivos do repositório, sem a estrutura de pastas.
+            
+            Este artefato foi gerado automaticamente.
+            Última atualização acionada pela execução: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          # Garante que a release seja publicada e não fique como rascunho.
+          draft: false
+          prerelease: false
