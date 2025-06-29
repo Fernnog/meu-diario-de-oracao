@@ -2,28 +2,27 @@
   "name": "Meu Diário de Oração",
   "short_name": "Diário de Oração",
   "description": " Diário de oração inteligente.",
-  "start_url": ".", // Ou apenas "/" se o index.html está na raiz
-  "display": "standalone", // Faz parecer um app sem a barra de endereço do Chrome
-  "background_color": "#f8f9fa", // Cor de fundo da tela de splash (opcional)
-  "theme_color": "#006400", // Cor da barra de status/header do app (verde escuro do seu header)
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#006400",
   "icons": [
     {
-      "src": "imagens/logo.png", // Caminho para o seu logo ATUAL
-      "sizes": "80x80",         // Tamanho APROXIMADO do seu logo atual (AJUSTE SE NECESSÁRIO)
+      "src": "logo.png",
+      "sizes": "80x80",
       "type": "image/png"
     },
     {
-      "src": "imagens/logo_192.png", // RECOMENDADO: Crie uma versão 192x192px do seu logo
+      "src": "logo_192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable" // Ajuda o Android a adaptar o ícone
+      "purpose": "any maskable"
     },
     {
-      "src": "imagens/logo_512.png", // RECOMENDADO: Crie uma versão 512x512px do seu logo
+      "src": "logo_512.png",
       "sizes": "512x512",
       "type": "image/png",
-       "purpose": "any maskable"
+      "purpose": "any maskable"
     }
-    // Você pode adicionar mais tamanhos se quiser (ex: 144x144, 256x256)
   ]
 }
