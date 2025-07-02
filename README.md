@@ -8,10 +8,15 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 -   **Gerenciamento de Alvos de Oração**:
     -   Adicione novos alvos com título, detalhes, data de criação, categoria (opcional) e prazo (opcional).
+    -   **Marque alvos como prioritários** para que eles apareçam em um painel de destaque.
     -   Arquive alvos concluídos ou não mais relevantes, com a opção de marcá-los como "Respondido".
     -   Exclua permanentemente alvos arquivados.
     -   Visualize alvos ativos, arquivados ou respondidos em painéis separados com busca e paginação.
-    -   Adicione observações datadas, edite a categoria ou o prazo de qualquer alvo ativo.
+    -   Adicione observações datadas, edite a categoria, o prazo ou o **status de prioridade** de qualquer alvo ativo.
+
+-   **Painel de Prioridades**:
+    -   Um painel especial na página inicial que exibe de forma fixa todos os alvos ativos marcados como prioritários.
+    -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis, sem depender da seleção aleatória do dia.
 
 -   **Alvos de Oração do Dia**:
     -   Um painel que exibe até 10 alvos de oração ativos por dia.
@@ -97,7 +102,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 4.  **Estrutura do Firestore**:
     O projeto utiliza as seguintes coleções principais no Firestore:
-    -   `users/{userId}/prayerTargets`: Armazena os alvos de oração ativos do usuário.
+    -   `users/{userId}/prayerTargets`: Armazena os alvos de oração ativos do usuário. (Um documento aqui agora pode incluir o campo booleano `isPriority`).
     -   `users/{userId}/archivedTargets`: Armazena os alvos arquivados/respondidos.
     -   `dailyPrayerTargets/{userId_YYYY-MM-DD}`: Armazena a lista de alvos para um usuário em um dia específico.
     -   `perseveranceData/{userId}`: Armazena os dados da barra de progresso de dias consecutivos.
@@ -113,6 +118,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Abra o navegador e acesse a URL local.
     -   Crie uma conta ou faça login.
     -   Adicione, edite e arquive alvos de oração.
+    -   Marque um alvo como prioritário e veja-o aparecer no novo painel.
     -   Verifique o painel "Alvos de Oração do Dia", clique em "Orei!".
     -   Observe a barra de progresso e o quadro semanal se atualizarem.
 
@@ -123,19 +129,22 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 2.  **Navegue pelos Painéis**:
     -   Use os botões do menu principal para alternar entre:
-        -   **Página Inicial**: Exibe os "Alvos de Oração do Dia", o quadro semanal e a barra de perseverança.
+        -   **Página Inicial**: Exibe o painel de "Alvos Prioritários", os "Alvos de Oração do Dia", o quadro semanal e a barra de perseverança.
         -   **Novo Alvo**: Exibe o formulário para adicionar um novo alvo.
         -   **Ver Todos os Alvos**: Mostra a lista de alvos ativos.
         -   **Ver Arquivados**: Mostra a lista de alvos arquivados.
         -   **Ver Respondidos**: Mostra apenas os alvos marcados como respondidos.
 
 3.  **Adicione e Gerencie Alvos**:
-    -   No painel "Novo Alvo", preencha os detalhes e salve.
-    -   Nos painéis de listagem, use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, adicionar observação, etc.
+    -   No painel "Novo Alvo", preencha os detalhes e salve. Você pode marcar o alvo como prioritário no formulário.
+    -   Nos painéis de listagem ("Ver Todos os Alvos"), use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, **alternar a prioridade de um alvo**, adicionar observação, etc.
 
-4.  **Use o Painel "Alvos de Oração do Dia"**:
+4.  **Use o Painel "Alvos Prioritários"**:
+    -   Na Página Inicial, este painel aparecerá no topo, exibindo todos os alvos que você marcou como prioritários para fácil acesso e visualização.
+
+5.  **Use o Painel "Alvos de Oração do Dia"**:
     -   Veja os alvos selecionados para o dia.
     -   Clique em **"Orei!"** para marcar um alvo como concluído no dia e atualizar suas estatísticas.
 
-5.  **Acompanhe o Progresso**:
+6.  **Acompanhe o Progresso**:
     -   Observe a **barra de dias consecutivos** e o **quadro semanal** na Página Inicial.
