@@ -16,13 +16,14 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 -   **Painel de Prioridades**:
     -   Um painel especial na página inicial que exibe de forma fixa todos os alvos ativos marcados como prioritários.
-    -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis, sem depender da seleção aleatória do dia.
+    -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis e **prontos para a interação diária**.
+    -   **Interação Diária**: Cada alvo no painel possui um botão **"Orei!"**, que registra a oração do dia e atualiza as estatísticas de perseverança.
 
 -   **Alvos de Oração do Dia**:
     -   Um painel que exibe até 10 alvos de oração ativos por dia.
     -   **Seleção Inteligente**: O sistema seleciona alvos aleatoriamente para compor a lista diária.
     -   **Persistência Diária**: A lista do dia (incluindo o estado "Orado") é salva no Firebase, garantindo consistência mesmo após recarregar a página.
-    -   **Botão "Orei!"**: Marca um alvo como concluído *para aquele dia*. A interação atualiza as estatísticas de perseverança.
+    -   **Botão "Orei!"**: Marca um alvo como concluído *para aquele dia*. A interação atualiza as estatísticas de perseverança. Esta mesma funcionalidade foi estendida aos itens do "Painel de Prioridades", permitindo que o usuário registre sua oração diária por esses alvos importantes a qualquer momento.
     -   Adicione alvos manualmente à lista do dia a partir dos seus alvos ativos.
 
 -   **Acompanhamento de Perseverança**:
@@ -140,7 +141,8 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Nos painéis de listagem ("Ver Todos os Alvos"), use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, **alternar a prioridade de um alvo**, adicionar observação, etc.
 
 4.  **Use o Painel "Alvos Prioritários"**:
-    -   Na Página Inicial, este painel aparecerá no topo, exibindo todos os alvos que você marcou como prioritários para fácil acesso e visualização.
+    -   Na Página Inicial, este painel aparecerá no topo, exibindo todos os alvos que você marcou como prioritários.
+    -   Clique no botão **"Orei!"** que aparece em cada alvo para registrar sua interação do dia. O alvo permanecerá na lista de prioridades para os dias seguintes.
 
 5.  **Use o Painel "Alvos de Oração do Dia"**:
     -   Veja os alvos selecionados para o dia.
