@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alvos de Oração</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<div class="top-bar">
+    <!-- Conteúdo opcional para a barra superior, como data do último backup -->
+    <!-- <span class="ultimo-backup">Último Backup: DD/MM/AAAA HH:MM</span> -->
+</div>
+
+<div class="logo-container">
+    <img src="logo.png" alt="Logo Meu Diário de Oração" class="logo">
+</div>
+
+<div class="main-title">
+    <h1>Meus Alvos de Oração</h1>
+</div>
+
+    <div id="authSection" class="auth-section">
+        <div class="auth-form" id="emailPasswordAuthForm" style="display: block;">
+            <input type="email" id="email" placeholder="Seu e-mail" required>
+            <input type="password" id="password" placeholder="Sua senha" required>
+            <div class="auth-buttons">
+                <button id="btnEmailSignUp" class="btn auth-btn">Cadastrar</button>
+                <button id="btnEmailSignIn" class="btn auth-btn">Entrar</button>
+            </div>
+            <div class="forgot-password-container">
+                <button id="btnForgotPassword" class="forgot-password-btn">Esqueci minha senha</button>
+            </div>
+        </div>
+
+        <div class="auth-status-container" style="display: none;">
+            <p id="authStatus" class="auth-status">Nenhum usuário autenticado</p>
+            <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
+        </div>
+        <div id="passwordResetMessage" class="password-reset-message" style="display:none; margin-top: 10px;"></div>
+    </div>
+
+    <hr class="menu-separator">
+
+    <div class="main-menu" id="mainMenu">
+       <button id="backToMainButton" class="btn">Página Inicial</button>
+       <button id="addNewTargetButton" class="btn">Novo Alvo</button>
+       <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
+       <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
+       <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
+    </div>
+
+    <hr class="menu-separator dark">
+
+    <div class="main-menu" id="secondaryMenu">
+     <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Atual</button>
+     <button id="generateCategoryViewButton" class="btn generate-view action-btn">Gerar Visualização por Categoria</button>
+     <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos (Período)</button>
+     <button id="viewPerseveranceReportButton" class="btn action-btn">Relatório Pessoal</button>
+     <button id="viewInteractionReportButton" class="btn action-btn">Relatório por Alvo</button>
+    </div>
+
+    <hr class="menu-separator">
+
+    <div class="weekly-perseverance-chart" id="weeklyPerseveranceChart" style="display: none;">
+        <div class="weekly-header">
+            <h3>Sua Semana de Oração</h3>
+        </div>
+        <div class="days-container">
+            <div class="day">
+                <span class="day-name">Dom</span>
+                <span class="day-tick" id="day-0"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Seg</span>
+                <span class="day-tick" id="day-1"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Ter</span>
+                <span class="day-tick" id="day-2"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Qua</span>
+                <span class="day-tick" id="day-3"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Qui</span>
+                <span class="day-tick" id="day-4"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Sex</span>
+                <span class="day-tick" id="day-5"></span>
+            </div>
+            <div class="day">
+                <span class="day-name">Sáb</span>
+                <span class="day-tick" id="day-6"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="perseverance-section" id="perseveranceSection" style="display: none;">
+    <div class="perseverance-header">
+        <h2>Perseverança na Intercessão</h2>
+    </div>
+    <div class="milestone-icons-area" id="milestoneIconsArea">
+        <span id="recordCrown" class="record-crown">👑</span>
+        <span class="milestone-icon" data-milestone="sun">☀️</span>
+        <span class="milestone-icon" data-milestone="diamond">💎</span>
+        <span class="milestone-icon" data-milestone="tree">🌳</span>
+        <span id="starContainer"></span>
+        <span class="milestone-icon" data-milestone="flame">🔥</span>
+        <span class="milestone-icon" data-milestone="seed">🌱</span>
+    </div>
+
+    <div class="perseverance-bar-container" title="Confirme sua perseverança diária aqui">
+        <div class="progress-bar" id="progressBarElement">
+            <span class="progress-percentage-left" id="perseverancePercentage">
+                <span id="currentDaysText">0</span> / <span id="recordDaysText">0</span> dias
+            </span>
+            <div class="progress" id="perseveranceProgressBar" style="width: 0%;">
+                <div class="progress-shine-overlay"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="milestone-legend">
+        <span>🌱 7d</span> | <span>🔥 15d</span> | <span>⭐ 30d</span> | <span>🌳 100d</span> | <span>💎 365d</span> | <span>☀️ 1000d</span>
+    </div>
+</div>
+
+    <div class="form-section" id="appContent" style="display: none;">
+        <h2>Cadastrar Novo Alvo de Oração</h2>
+        <form id="prayerForm">
+            <label for="title">Título:</label>
+            <input type="text" id="title" placeholder="Ex.: Saúde da Família" required>
+
+            <label for="details">Observações:</label>
+            <textarea id="details" placeholder="Escreva aqui os detalhes do pedido..."></textarea>
+
+            <label for="date">Data Criação:</label>
+            <input type="date" id="date" required>
+
+            <div class="checkbox-container">
+                <input type="checkbox" id="hasDeadline" name="hasDeadline">
+                <label for="hasDeadline">Este alvo tem prazo de validade?</label>
+            </div>
+
+            <div id="deadlineContainer" style="display: none;">
+                <label for="deadlineDate">Prazo de Validade:</label>
+                <input type="date" id="deadlineDate">
+            </div>
+
+            <!-- NOVO: Checkbox de Prioridade adicionado aqui -->
+            <div class="checkbox-container">
+                <input type="checkbox" id="isPriority" name="isPriority">
+                <label for="isPriority">Marcar como alvo prioritário?</label>
+            </div>
+
+            <label for="categorySelect">Categoria:</label>
+            <select id="categorySelect">
+                <option value="" selected>-- Selecione uma Categoria --</option>
+                <option value="Família">Família</option>
+                <option value="Pessoal">Pessoal</option>
+                <option value="Igreja">Igreja</option>
+                <option value="Trabalho">Trabalho</option>
+                <option value="Sonho">Sonho</option>
+                <option value="Profético">Profético</option>
+                <option value="Promessas">Promessas</option>
+                <option value="Esposa">Esposa</option>
+                <option value="Filhas">Filhas</option>
+                <option value="Ministério de Intercessão">Ministério de Intercessão</option>
+                <option value="Outros">Outros</option>
+            </select>
+
+            <button type="submit" class="btn submit-btn">Adicionar Alvo</button>
+        </form>
+    </div>
+
+    <hr class="section-separator" id="sectionSeparator" style="display: none;">
+
+    <!-- NOVO: Painel de Prioridades adicionado aqui -->
+    <div class="priority-section" id="prioritySection" style="display: none;">
+        <h2>Alvos Prioritários</h2>
+        <div id="priorityTargetsList">
+            <p>Carregando alvos prioritários...</p>
+        </div>
+    </div>
+
+    <div class="daily-section" id="dailySection" style="display: none;">
+        <h2>
+            Alvos de Oração do Dia
+            <div class="daily-buttons-container">
+                <button id="refreshDaily" class="btn daily-action-btn">Atualizar Alvos do Dia</button>
+                <button id="copyDaily" class="btn daily-action-btn">Copiar Alvos Pendentes</button>
+                <button id="viewDaily" class="btn daily-view">Visualizar Detalhes do Dia</button>
+                <button id="addManualTargetButton" class="btn daily-action-btn">Adicionar Alvo Manualmente</button>
+            </div>
+        </h2>
+        <div id="dailyVerses" class="daily-verses"></div>
+        <div id="dailyTargets">
+            <p>Carregando alvos do dia...</p>
+        </div>
+        <div id="completionPopup" class="popup" style="display: none;">
+            <div class="popup-content">
+                <h3>Parabéns!</h3>
+                <p>Você orou por todos os alvos selecionados para hoje!</p>
+                <p id="popupVerse" class="popup-verse">“Versículo inspirador aqui.”</p>
+                <button id="closePopup" class="btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+   <div class="targets-section" id="mainPanel" style="display: none;">
+    <h2>Alvos de Oração Ativos</h2>
+    <hr class="title-separator">
+    <input type="text" id="searchMain" placeholder="Pesquisar por título, detalhe, categoria ou observação..." class="search-input">
+    <hr class="search-separator">
+    <div class="filter-controls">
+        <div class="filter-container">
+            <input type="checkbox" id="showDeadlineOnly" name="showDeadlineOnly">
+            <label for="showDeadlineOnly">Mostrar apenas com prazo</label>
+        </div>
+        <div class="filter-container">
+            <input type="checkbox" id="showExpiredOnlyMain" name="showExpiredOnlyMain">
+            <label for="showExpiredOnlyMain">Mostrar apenas com prazo vencido</label>
+        </div>
+    </div>
+    <hr class="filter-separator">
+    <div id="targetList">
+        <p>Carregando alvos...</p>
+    </div>
+    <div id="pagination-mainPanel" class="pagination"></div>
+</div>
+
+<div class="targets-section" id="archivedPanel" style="display: none;">
+    <h2>Alvos Arquivados</h2>
+    <hr class="title-separator">
+    <input type="text" id="searchArchived" placeholder="Pesquisar nos arquivados (título, detalhe, categoria...)" class="search-input">
+    <hr class="search-separator">
+    <div id="archivedList">
+         <p>Carregando arquivados...</p>
+    </div>
+    <div id="pagination-archivedPanel" class="pagination"></div>
+</div>
+
+<div class="targets-section" id="resolvedPanel" style="display: none;">
+    <h2>Alvos Respondidos</h2>
+    <hr class="title-separator">
+    <input type="text" id="searchResolved" placeholder="Pesquisar nos respondidos (título, detalhe, categoria...)" class="search-input">
+    <hr class="search-separator">
+    <div id="resolvedList">
+         <p>Carregando respondidos...</p>
+    </div>
+    <div id="pagination-resolvedPanel" class="pagination"></div>
+</div>
+
+    <!-- Modal para Seleção de Datas (Visualizar Respondidos) -->
+    <div id="dateRangeModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeDateRangeModal">×</span>
+            <h2>Visualizar Respondidos por Período</h2>
+            <label for="startDate">Data de Início:</label>
+            <input type="date" id="startDate" required>
+            <label for="endDate">Data de Fim:</label>
+            <input type="date" id="endDate" required>
+            <div class="modal-buttons">
+                 <button id="generateResolvedView" class="btn modal-action-btn">Gerar Visualização</button>
+                 <button id="cancelDateRange" class="btn modal-cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar Alvo Manualmente ao Dia -->
+    <div id="manualTargetModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeManualTargetModal">×</span>
+            <h2>Adicionar Alvo Manualmente ao Dia</h2>
+            <label for="manualTargetSearchInput">Pesquisar Alvo Ativo:</label>
+            <input type="text" id="manualTargetSearchInput" placeholder="Digite título, detalhe ou categoria...">
+            <div id="manualTargetSearchResults" class="manual-search-results">
+                <p>Digite algo para buscar...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Seleção de Categorias (Visualização por Categoria) -->
+    <div id="categorySelectionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeCategoryModal">×</span>
+            <h2>Seleção de Categorias para Visualização</h2>
+            <p>Marque as categorias que deseja incluir na visualização:</p>
+            <div id="categoryCheckboxesContainer" class="category-checkboxes-container">
+                <!-- Checkboxes serão populados pelo script.js -->
+            </div>
+            <div class="modal-buttons">
+                <button id="confirmCategoryView" class="btn modal-action-btn">Gerar Visualização</button>
+                <button id="cancelCategoryView" class="btn modal-cancel-btn">Cancelar</button>
+           </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
