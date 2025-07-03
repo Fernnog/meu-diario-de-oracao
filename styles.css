@@ -438,6 +438,13 @@ input[type="date"] {
     background-color: rgba(249, 168, 37, 0.05); /* Very light orange tint */
 }
 
+#dailyTargets .target h3::before {
+    content: '☀️';
+    margin-right: 8px;
+    font-size: 1.1em;
+    vertical-align: middle;
+}
+
 /* Add/Edit Form Styles (within targets) */
 .add-observation-form,
 .edit-deadline-form,
