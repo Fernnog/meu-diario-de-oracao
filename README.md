@@ -8,15 +8,15 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 -   **Gerenciamento de Alvos de Oração**:
     -   Adicione novos alvos com título, detalhes, data de criação, categoria (opcional) e prazo (opcional).
-    -   **Marque alvos como prioritários** para que eles apareçam em um painel de destaque.
+    -   Marque alvos como prioritários para que eles apareçam em um painel de destaque.
     -   Arquive alvos concluídos ou não mais relevantes, com a opção de marcá-los como "Respondido".
     -   Exclua permanentemente alvos arquivados.
     -   Visualize alvos ativos, arquivados ou respondidos em painéis separados com busca e paginação.
-    -   Adicione observações datadas, edite a categoria, o prazo ou o **status de prioridade** de qualquer alvo ativo.
+    -   Adicione observações datadas, edite a categoria, o prazo ou o status de prioridade de qualquer alvo ativo.
 
 -   **Painel de Prioridades**:
     -   Um painel especial na página inicial que exibe de forma fixa todos os alvos ativos marcados como prioritários.
-    -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis e **prontos para a interação diária**.
+    -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis e prontos para a interação diária.
     -   **Interação Diária**: Cada alvo no painel possui um botão **"Orei!"**, que registra a oração do dia e atualiza as estatísticas de perseverança.
 
 -   **Alvos de Oração do Dia**:
@@ -30,6 +30,11 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   **Barra de Dias Consecutivos**: Uma barra de progresso visualiza a sequência atual de dias em que o usuário interagiu com pelo menos um alvo, comparado ao seu recorde pessoal.
     -   **Quadro Semanal**: Exibe visualmente os dias da semana atual (Dom-Sáb) em que houve pelo menos uma interação.
     -   Atualização automática ao clicar em "Orei!".
+
+-   **Navegador Flutuante de Acesso Rápido**:
+    -   Facilita a navegação em páginas longas, especialmente em dispositivos móveis.
+    -   O navegador aparece durante a rolagem e se oculta automaticamente ao chegar no final da página.
+    -   Possui atalhos para rolar suavemente para as seções principais: Topo da Página (🏠), Alvos Prioritários (⭐) e Alvos do Dia (☀️).
 
 -   **Autenticação**:
     -   Login e cadastro seguros via Firebase Authentication (e-mail/senha).
@@ -138,7 +143,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 
 3.  **Adicione e Gerencie Alvos**:
     -   No painel "Novo Alvo", preencha os detalhes e salve. Você pode marcar o alvo como prioritário no formulário.
-    -   Nos painéis de listagem ("Ver Todos os Alvos"), use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, **alternar a prioridade de um alvo**, adicionar observação, etc.
+    -   Nos painéis de listagem ("Ver Todos os Alvos"), use os botões em cada alvo para realizar ações como arquivar, marcar como respondido, alternar a prioridade de um alvo, adicionar observação, etc.
 
 4.  **Use o Painel "Alvos Prioritários"**:
     -   Na Página Inicial, este painel aparecerá no topo, exibindo todos os alvos que você marcou como prioritários.
@@ -148,5 +153,8 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Veja os alvos selecionados para o dia.
     -   Clique em **"Orei!"** para marcar um alvo como concluído no dia e atualizar suas estatísticas.
 
-6.  **Acompanhe o Progresso**:
+6.  **Use o Navegador Flutuante**:
+    -   Em telas com muito conteúdo, um menu flutuante aparecerá na parte inferior. Use os ícones (🏠, ⭐, ☀️) para pular rapidamente para o topo da página, para seus alvos prioritários ou para a lista diária.
+
+7.  **Acompanhe o Progresso**:
     -   Observe a **barra de dias consecutivos** e o **quadro semanal** na Página Inicial.
