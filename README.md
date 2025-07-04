@@ -18,6 +18,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Um painel especial na página inicial que exibe de forma fixa todos os alvos ativos marcados como prioritários.
     -   Garante que seus pedidos mais importantes e urgentes estejam sempre visíveis e prontos para a interação diária.
     -   **Interação Diária**: Cada alvo no painel possui um botão **"Orei!"**, que registra a oração do dia e atualiza as estatísticas de perseverança.
+    -   **Destaque Visual Consistente**: Assim como no painel diário, os alvos prioritários agora exibem tags visuais para **Categoria** e **Prazo de Validade**, garantindo que informações críticas estejam sempre à vista.
 
 -   **Alvos de Oração do Dia**:
     -   Um painel que exibe até 10 alvos de oração ativos por dia.
@@ -30,6 +31,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   **Barra de Dias Consecutivos**: Uma barra de progresso visualiza a sequência atual de dias em que o usuário interagiu com pelo menos um alvo, comparado ao seu recorde pessoal.
     -   **Quadro Semanal**: Exibe visualmente os dias da semana atual (Dom-Sáb) em que houve pelo menos uma interação.
     -   Atualização automática ao clicar em "Orei!".
+    -   **Alerta Proativo de Prazos Vencidos**: Ao carregar a aplicação, o sistema verifica automaticamente se existem alvos com prazo de validade vencido e exibe uma notificação não intrusiva, permitindo que o usuário tome uma ação imediata.
 
 -   **Navegador Flutuante de Acesso Rápido**:
     -   Facilita a navegação em páginas longas, especialmente em dispositivos móveis.
@@ -67,11 +69,11 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 ### Passos para Configuração
 
 1.  **Clone o Repositório** (ou baixe os arquivos):
-    Obtenha todos os arquivos do projeto. A estrutura modularizada do JavaScript inclui os seguintes arquivos principais:
-    -   `script.js`: O orquestrador principal da aplicação. Gerencia o estado, o fluxo de dados e os eventos do usuário.
-    -   `ui.js`: Responsável por toda a manipulação do DOM e renderização da interface.
-    -   `firestore-service.js`: A camada de acesso a dados, contendo todas as funções que interagem com o Firestore.
-    -   `auth.js`: Contém as funções que interagem com o Firebase Authentication.
+    Obtenha todos os arquivos do projeto. A arquitetura do código foi modularizada para garantir a separação de responsabilidades e facilitar a manutenção:
+    -   `script.js`: O **orquestrador principal** da aplicação. Gerencia o estado, o fluxo de dados e os eventos do usuário, conectando a UI com os serviços de backend.
+    -   `ui.js`: A **camada de visualização**. Responsável por toda a manipulação do DOM e renderização da interface, recebendo os dados do `script.js`.
+    -   `firestore-service.js`: A **camada de acesso a dados**. Contém todas as funções que interagem com o banco de dados Firestore.
+    -   `auth.js`: O **módulo de autenticação**. Contém as funções que interagem diretamente com o Firebase Authentication.
     -   `firebase-config.js`: Onde as credenciais do seu projeto Firebase são configuradas.
 
 2.  **Configure o Firebase**:
@@ -157,4 +159,4 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Em telas com muito conteúdo, um menu flutuante aparecerá na parte inferior. Use os ícones (🏠, ⭐, ☀️) para pular rapidamente para o topo da página, para seus alvos prioritários ou para a lista diária.
 
 7.  **Acompanhe o Progresso**:
-    -   Observe a **barra de dias consecutivos** e o **quadro semanal** na Página Inicial.
+    -   Observe a **barra de dias consecutivos** e o **quadro semanal** na Página Inicial. Se tiver alvos com prazo vencido, um alerta aparecerá na parte inferior da tela.
