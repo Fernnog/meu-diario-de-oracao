@@ -1321,7 +1321,7 @@ input[type="date"] {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 950;
     display: flex;
-    gap: 15px;
+    gap: 16px;
     transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
     opacity: 1;
     visibility: visible;
