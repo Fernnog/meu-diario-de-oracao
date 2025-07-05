@@ -1337,13 +1337,13 @@ input[type="date"] {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 72px;
-    height: 72px;
+    width: 62px;
+    height: 62px;
     border: none;
     border-radius: 50%;
     text-decoration: none;
     color: white;
-    font-size: 2.2rem;
+    font-size: 2rem;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
@@ -1376,9 +1376,9 @@ input[type="date"] {
         padding: 8px 10px;
     }
     .floating-nav .nav-btn {
-        width: 64px;
-        height: 64px;
-        font-size: 2rem;
+        width: 55px;
+        height: 55px;
+        font-size: 1.7rem;
     }
 }
 /* MODIFICAÇÃO TERMINADA */
