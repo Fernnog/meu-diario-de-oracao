@@ -1358,26 +1358,26 @@ input[type="date"] {
     transform: scale(0.95);
 }
 
-/* Cores e Ordem específicas para cada botão */
+/* Cores específicas para cada botão */
 .floating-nav .top-btn {
     background-color: #7f8c8d; /* Cinza */
-    order: 5; /* Fica no final */
+    order: 1; /* Posição 1: Casinha */
 }
 .floating-nav .priority-btn {
-    background-color: #2c3e50; /* Preto / Azul Escuro */
-    order: 2;
+    background-color: #2c3e50; /* Preto/Azul escuro */
+    order: 2; /* Posição 2: Estrela */
 }
 .floating-nav .daily-btn {
     background-color: #3498db; /* Azul Céu */
-    order: 3;
+    order: 3; /* Posição 3: Sol */
 }
 .floating-nav .up-btn {
-    background-color: #95a5a6; /* Cinza Suave */
-    order: 1; /* Fica no início */
+    background-color: #95a5a6; /* Cinza suave */
+    order: 4; /* Posição 4: Seta para Cima */
 }
 .floating-nav .down-btn {
-    background-color: #95a5a6; /* Cinza Suave */
-    order: 4;
+    background-color: #95a5a6; /* Cinza suave */
+    order: 5; /* Posição 5: Seta para Baixo */
 }
 
 /* Estilo para os ícones SVG dentro dos botões */
