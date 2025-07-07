@@ -185,7 +185,8 @@ export function renderArchivedTargets(targets, total, page, perPage) {
                 <div class="target-actions">
                     <button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>
                     <button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>
-                    <button class="btn download" data-action="download-archived" data-id="${target.id}">Download (.txt)</button>
+                    
+                    <button class="btn download" data-action="download-archived" data-id="${target.id}">Download (.doc)</button>
                 </div>
                 <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
                 <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
