@@ -349,11 +349,12 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
-    const now = new Date();
+    const now = new Date(); // A classe Date() com 'D' maiúsculo
 
     const localDayOfWeek = now.getDay(); 
     const utcDayOfWeek = now.getUTCDay(); 
     
+    // A correção principal está aqui. Usando 'new Date(now)' em vez de 'new date(now)'.
     const firstDayOfWeek = new Date(now);
     firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
     firstDayOfWeek.setHours(0, 0, 0, 0);
@@ -371,7 +372,7 @@ export function updateWeeklyChart(data) {
             if (dayContainer) dayContainer.classList.add('current-day-container');
         }
 
-        const currentTickDate = new date(firstDayOfWeek);
+        const currentTickDate = new Date(firstDayOfWeek);
         currentTickDate.setDate(firstDayOfWeek.getDate() + i);
         
         const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
