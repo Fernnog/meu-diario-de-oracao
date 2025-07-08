@@ -1,4 +1,3 @@
---- START OF FILE utils.js ---
 // utils.js
 // Responsabilidade: Conter funções utilitárias puras e reutilizáveis em toda a aplicação.
 
@@ -62,4 +61,3 @@ export function timeElapsed(startDate, endDate = new Date()) {
     if (diffInMonths < 12) return `${diffInMonths} meses`;
     return `${Math.floor(diffInDays / 365.25)} anos`;
 }
---- END OF FILE utils.js ---
