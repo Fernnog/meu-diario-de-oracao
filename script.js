@@ -361,8 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('generateCategoryViewButton').addEventListener('click', handleGenerateCategoryView);
     document.getElementById('viewResolvedViewButton').addEventListener('click', handleGenerateResolvedViewByPeriod);
     document.getElementById('viewPerseveranceReportButton').addEventListener('click', handleGeneratePerseveranceReport);
-    document.getElementById('viewInteractionReportButton').addEventListener('click', handleGenerateInteractionReport);
-
+    document.getElementById('viewInteractionReportButton').addEventListener('click', () => {
+    window.location.href = 'orei.html';
+});
     // Listeners dos Modais e Filtros
     document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
     document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
