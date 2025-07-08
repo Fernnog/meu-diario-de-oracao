@@ -85,7 +85,7 @@ function applyFiltersAndRender(panelId) {
     if (panelId === 'resolvedPanel') sourceData = state.resolvedTargets;
 
     let filteredData = sourceData.filter(target => {
-        // Filtro de Texto
+        // Filtro de Texto (MELHORADO para incluir subalvos)
         const searchTerm = panelFilters.searchTerm.toLowerCase();
         const matchesSearch = searchTerm === '' ||
             (target.title && target.title.toLowerCase().includes(searchTerm)) ||
@@ -109,7 +109,7 @@ function applyFiltersAndRender(panelId) {
             }
         }
         
-        // NOVO: Filtro por Período de Criação
+        // Filtro por Período de Criação
         if (panelFilters.startDate) {
             const startDate = new Date(panelFilters.startDate + 'T00:00:00Z');
             if (target.date < startDate) return false;
@@ -222,25 +222,21 @@ async function handlePray(targetId) {
     if (!targetToPray) return;
     if (state.dailyTargets.completed.some(t => t.id === targetId)) return;
 
-    // --- MELHORIA: UI Otimista ---
-    // 1. Atualiza o estado e a UI imediatamente.
+    // --- UI Otimista ---
     const targetIndex = state.dailyTargets.pending.findIndex(t => t.id === targetId);
     if (targetIndex > -1) {
         const [movedTarget] = state.dailyTargets.pending.splice(targetIndex, 1);
         state.dailyTargets.completed.push(movedTarget);
     } else {
-        // Se não estava no 'pending', é um alvo prioritário orado pela primeira vez no dia.
         state.dailyTargets.completed.push(targetToPray);
     }
     UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
 
-    // 2. Tenta sincronizar com o backend.
     try {
         await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
         const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
 
-        // 3. Em caso de sucesso, atualiza os dados secundários (perseverança, semana).
         const [perseveranceData, weeklyData] = await Promise.all([
             Service.loadPerseveranceData(state.user.uid),
             Service.loadWeeklyPrayerData(state.user.uid)
@@ -253,19 +249,16 @@ async function handlePray(targetId) {
         UI.updateWeeklyChart(state.weeklyPrayerData);
 
     } catch (error) {
-        // 4. Em caso de falha, reverte a UI e o estado.
         console.error("Erro ao processar 'Orei!':", error);
         alert("Ocorreu um erro ao registrar sua oração. A ação será desfeita.");
 
         const completedIndex = state.dailyTargets.completed.findIndex(t => t.id === targetId);
         if (completedIndex > -1) {
             const [revertedTarget] = state.dailyTargets.completed.splice(completedIndex, 1);
-            // Se o alvo pertencia à lista diária original, devolve para 'pending'.
             if (state.dailyTargets.targetIds.includes(targetId)) {
                  state.dailyTargets.pending.unshift(revertedTarget);
             }
         }
-        // Re-renderiza para mostrar o estado revertido.
         UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
@@ -439,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return { target: null, isArchived: null, panelId: null };
         };
 
-        // --- LÓGICA CORRIGIDA E ROBUSTA PARA SUB-ALVOS ---
+        // --- LÓGICA DE SUB-ALVOS (IMPLEMENTAÇÃO DA PRIORIDADE 1) ---
         const subTargetActions = ['promote-observation', 'resolve-sub-target', 'edit-sub-target-title', 'demote-sub-target'];
         if (subTargetActions.includes(action)) {
             const observationIndex = parseInt(obsIndex);
@@ -448,38 +441,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const { target, isArchived, panelId } = findTargetInState(id);
             if (!target || !target.observations || !target.observations[observationIndex]) return;
 
-            // 1. Guarda a referência original INTACTA para o caso de reversão.
-            const originalObservation = target.observations[observationIndex]; 
-            // 2. Cria uma cópia profunda para manipulação na UI otimista.
-            const observationCopy = JSON.parse(JSON.stringify(originalObservation));
-
+            const originalObservation = JSON.parse(JSON.stringify(target.observations[observationIndex]));
             let updatedObservationData; // Conterá apenas os campos que mudam
 
             if (action === 'promote-observation') {
-                const subTargetTitle = prompt("Digite um título para este novo sub-alvo:", observationCopy.text.substring(0, 50));
+                const subTargetTitle = prompt("Digite um título para este novo sub-alvo:", originalObservation.text.substring(0, 50));
                 if (!subTargetTitle) return; // Usuário cancelou
                 updatedObservationData = { isSubTarget: true, subTargetTitle: subTargetTitle, subTargetStatus: 'pending' };
             } else if (action === 'resolve-sub-target') {
                 updatedObservationData = { subTargetStatus: 'resolved' };
             } else if (action === 'edit-sub-target-title') {
-                const newTitle = prompt("Editar título do sub-alvo:", observationCopy.subTargetTitle);
+                const newTitle = prompt("Editar título do sub-alvo:", originalObservation.subTargetTitle);
                 if (!newTitle) return;
                 updatedObservationData = { subTargetTitle: newTitle };
             } else if (action === 'demote-sub-target') {
                 if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) return;
-                // Para reverter, preparamos os dados para apagar as chaves no Firestore.
-                // Na UI, simplesmente removemos os campos da cópia.
-                delete observationCopy.isSubTarget;
-                delete observationCopy.subTargetTitle;
-                delete observationCopy.subTargetStatus;
-                updatedObservationData = observationCopy; // A cópia inteira (sem os campos) é a atualização
+                updatedObservationData = { isSubTarget: false, subTargetTitle: undefined, subTargetStatus: undefined };
             }
             
-            // 3. Monta o objeto final para a UI, garantindo que a data seja um objeto Date.
-            const finalUpdatedObject = { ...observationCopy, ...updatedObservationData, date: new Date(observationCopy.date) };
-            
-            // 4. UI Otimista: Atualiza o estado local e re-renderiza imediatamente com o objeto corrigido.
-            target.observations[observationIndex] = finalUpdatedObject;
+            // UI Otimista: Atualiza o estado local e re-renderiza imediatamente
+            Object.assign(target.observations[observationIndex], updatedObservationData);
             applyFiltersAndRender(panelId);
 
             try {
@@ -488,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error(`Falha ao executar a ação '${action}':`, error);
                 alert("Ocorreu um erro ao sincronizar com o servidor. A alteração será desfeita.");
-                // 5. Reverte a alteração no estado local usando a referência ORIGINAL e INTACTA.
+                // Reverte a alteração no estado local usando a cópia original
                 target.observations[observationIndex] = originalObservation;
                 applyFiltersAndRender(panelId);
             }
@@ -595,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const text = document.getElementById(`observationText-${id}`).value.trim(); 
                 const dateStr = document.getElementById(`observationDate-${id}`).value; 
                 if (!text || !dateStr) return alert("Preencha o texto e a data."); 
-                const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z') }; 
+                const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false }; 
                 if (target) { 
                     if (!target.observations) target.observations = [];
                     target.observations.push(newObservation);
