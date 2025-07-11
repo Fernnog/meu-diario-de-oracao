@@ -583,11 +583,18 @@ input[type="date"] {
 
 /* Estilo para um sub-alvo que foi marcado como respondido */
 .observation-item.sub-target.resolved {
-    background-color: #e8f5e9; /* Verde claro para resolvido */
-    border-color: #c8e6c9;
-    border-left-color: #66bb6a;
-    text-decoration: line-through; /* Risca o texto para indicar conclusão */
-    opacity: 0.8; /* Suaviza a aparência */
+    background-color: #f1f8e9; /* Um verde ainda mais claro e dessaturado */
+    border-color: #e0e0e0;      /* Borda geral cinza e neutra */
+    border-left-color: #a5d6a7; /* Borda esquerda verde-claro, mas suave */
+    opacity: 0.6; /* Responde diretamente ao seu pedido de "transparência" */
+    text-decoration: none; /* REMOVE o efeito de tachado (line-through) */
+    transition: all 0.4s ease-in-out; /* Adiciona uma transição suave para a mudança de estado */
+}
+
+.observation-item.sub-target.resolved .sub-target-title,
+.observation-item.sub-target.resolved p,
+.observation-item.sub-target.resolved .sub-observation-item {
+    color: #757575; /* Altera a cor de todo o texto para um cinza suave */
 }
 
 /* Container para o título e botões de ação do sub-alvo */
