@@ -581,42 +581,33 @@ input[type="date"] {
     border-radius: 4px;
 }
 
-/* Estilo para um sub-alvo que foi marcado como respondido */
+/* Estilo para um sub-alvo que foi marcado como respondido 
 
 .observation-item.sub-target.resolved {
-    /* Mantemos um fundo e borda sutis para indicar o estado, mas sem opacidade no bloco. */
     background-color: #fafafa;
     border-color: #eee;
     border-left-color: #dcedc1;
-
-    /* A mágica acontece aqui: definimos um contexto de posicionamento para o nosso "falso" tachado. */
-    position: relative; 
-    
-    /* Removemos o tachado padrão para podermos criar o nosso. */
-    text-decoration: none; 
+    transition: all 0.4s ease; /* Transição suave para a mudança de estado */
 }
 
-/* Agora, criamos o nosso tachado customizado usando o pseudo-elemento ::after. */
-.observation-item.sub-target.resolved::after {
-    content: ''; /* Essencial para que o pseudo-elemento seja gerado. */
-    position: absolute; /* Permite posicionar a linha em relação ao elemento pai. */
+/* 2. Estilo para OS ELEMENTOS DE TEXTO dentro do container resolvido. */
+.observation-item.sub-target.resolved .sub-target-title,
+.observation-item.sub-target.resolved p {
+    /* Cor da FONTE: sólida e legível, mas suavizada para um cinza. */
+    color: #757575 !important; 
+
+    /* Aplica o efeito de tachado. */
+    text-decoration: line-through;
     
-    /* Faz a linha ocupar toda a largura do container. */
-    left: 0;
-    width: 100%;
+    /* A MÁGICA: Define a cor e a opacidade APENAS DA LINHA. */
+    /* Formato: rgba(Vermelho, Verde, Azul, Opacidade). 0.5 = 50% transparente. */
+    /* Altere o último valor (0.5) para ajustar a translucidez como preferir. */
+    text-decoration-color: rgba(158, 158, 158, 0.5);
     
-    /* Posiciona a linha verticalmente no meio do texto. Ajuste se necessário. */
-    top: 55%; 
-    
-    /* Define a espessura da linha. */
-    height: 1px; 
-    
-    /* ESTA É A PARTE MAIS IMPORTANTE: 
-       Define a cor da linha como um cinza (189, 189, 189) 
-       com 50% de opacidade (0.5). Altere o último valor para ajustar a transparência.
-    */
-    background-color: rgba(189, 189, 189, 0.5);
+    /* Opcional: Define a espessura da linha para um visual mais delicado. */
+    text-decoration-thickness: 1px;
 }
+
 
 /* Container para o título e botões de ação do sub-alvo */
 .sub-target-header {
