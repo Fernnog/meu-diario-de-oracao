@@ -1,6 +1,5 @@
 // script.js (Orquestrador Principal da Aplicação - Versão Aprimorada)
-// ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados,
-// interação com sub-alvos e mapa de acesso rápido para alvos (allTargetsMap).
+// ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados e notificação para promover observações.
 
 // --- MÓDULOS ---
 import { auth } from './firebase-config.js'; 
@@ -15,7 +14,6 @@ let state = {
     prayerTargets: [],
     archivedTargets: [],
     resolvedTargets: [],
-    allTargetsMap: new Map(), // MELHORIA DE ARQUITETURA: Acesso O(1) aos alvos.
     perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null },
     weeklyPrayerData: { weekId: null, interactions: {} },
     dailyTargets: { pending: [], completed: [], targetIds: [] },
@@ -195,25 +193,14 @@ async function loadDataForUser(user) {
             Service.loadPerseveranceData(user.uid),
             Service.loadWeeklyPrayerData(user.uid)
         ]);
-        
-        // --- ATUALIZAÇÃO DO ESTADO ---
         state.user = user;
         state.prayerTargets = prayerData;
         state.archivedTargets = archivedData.filter(t => !t.resolved);
         state.resolvedTargets = archivedData.filter(t => t.resolved);
         state.perseveranceData = perseveranceData;
         state.weeklyPrayerData = weeklyData;
-
-        // MELHORIA DE ARQUITETURA: Popula o mapa de acesso rápido.
-        state.allTargetsMap.clear();
-        state.prayerTargets.forEach(t => state.allTargetsMap.set(t.id, t));
-        state.archivedTargets.forEach(t => state.allTargetsMap.set(t.id, t));
-        state.resolvedTargets.forEach(t => state.allTargetsMap.set(t.id, t));
-
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
-        
-        // --- RENDERIZAÇÃO DA UI ---
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('archivedPanel');
         applyFiltersAndRender('resolvedPanel');
@@ -242,8 +229,7 @@ async function loadDataForUser(user) {
     }
 }
 function handleLogoutState() {
-    // Reseta o estado para o valor inicial, limpando todos os dados do usuário.
-    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], allTargetsMap: new Map(), perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }} };
+    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }} };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
     updateFloatingNavVisibility(state);
 }
@@ -284,11 +270,11 @@ async function handleAddNewTarget(event) {
 
 
 // =================================================================
-// === MELHORIA DE ARQUITETURA: Handlers de Ação Dedicados ===
+// === Handlers de Ação Dedicados ===
 // =================================================================
 
 async function handlePray(targetId) {
-    const targetToPray = state.allTargetsMap.get(targetId);
+    const targetToPray = state.prayerTargets.find(t => t.id === targetId);
     if (!targetToPray || state.dailyTargets.completed.some(t => t.id === targetId)) return;
 
     // UI Otimista
@@ -534,29 +520,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
-    document.getElementById('refreshDaily').addEventListener('click', async () => { /* ...código original... */ });
-    document.getElementById('copyDaily').addEventListener('click', () => { /* ...código original... */ });
-    document.getElementById('viewDaily').addEventListener('click', () => { /* ...código original... */ });
-    document.getElementById('addManualTargetButton').addEventListener('click', () => {UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true);});
-    document.getElementById('generateViewButton').addEventListener('click', () => { /* ...código original... */ });
-    document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets);});
-    document.getElementById('viewResolvedViewButton').addEventListener('click', () => {UI.toggleDateRangeModal(true);});
-    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { /* ...código original... */ });
+    document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
+    document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
+    document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
+    document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true); });
+    document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
+    document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
+    document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
+    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { const reportData = { ...state.perseveranceData, lastInteractionDate: state.perseveranceData.lastInteractionDate ? UI.formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma", interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) }; const html = UI.generatePerseveranceReportHTML(reportData); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('viewInteractionReportButton').addEventListener('click', () => { window.location.href = 'orei.html'; });
     document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
     document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
-    document.getElementById('generateResolvedView').addEventListener('click', () => { /* ...código original... */ });
+    document.getElementById('generateResolvedView').addEventListener('click', () => { const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${UI.formatDateForDisplay(startDate)} a ${UI.formatDateForDisplay(endDate)}`); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleDateRangeModal(false); });
     document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
     document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
-    document.getElementById('confirmCategoryView').addEventListener('click', () => { /* ...código original... */ });
+    document.getElementById('confirmCategoryView').addEventListener('click', () => { const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value); const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; const filtered = allTargets.filter(t => selectedCategories.includes(t.category)); const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleCategoryModal(false); });
     document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
-
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA (REATORADA) ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
     document.body.addEventListener('click', async e => {
         const { action, id, page, panel, obsIndex } = e.target.dataset;
         if (!state.user && action) return;
@@ -570,25 +555,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Função auxiliar para encontrar o alvo (Refatorada com a melhoria de arquitetura)
+        // Função auxiliar para encontrar o alvo
         const findTargetInState = (targetId) => {
-            const target = state.allTargetsMap.get(targetId);
-            if (!target) {
-                return { target: null, isArchived: null, panelId: null };
-            }
-
-            let isArchived = false;
-            let panelId = 'mainPanel';
-
-            if (target.resolved) {
-                isArchived = true;
-                panelId = 'resolvedPanel';
-            } else if (target.archived) {
-                isArchived = true;
-                panelId = 'archivedPanel';
-            }
-
-            return { target, isArchived, panelId };
+            let target = state.prayerTargets.find(t => t.id === targetId);
+            if (target) return { target, isArchived: false, panelId: 'mainPanel' };
+            target = state.archivedTargets.find(t => t.id === targetId);
+            if (target) return { target, isArchived: true, panelId: 'archivedPanel' };
+            target = state.resolvedTargets.find(t => t.id === targetId);
+            if (target) return { target, isArchived: true, panelId: 'resolvedPanel' };
+            return { target: null, isArchived: null, panelId: null };
         };
         
         if (!action || !id) return;
@@ -596,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { target, isArchived, panelId } = findTargetInState(id);
         if (!target && !['select-manual-target'].includes(action)) return;
 
-        // --- ARQUITETURA REVISADA: Switch chama os handlers dedicados ---
+        // --- Switch de Ações ---
         switch(action) {
             case 'pray':
             case 'pray-priority':
@@ -622,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'save-observation':
                 await handleAddObservation(target, isArchived, panelId);
                 break;
-            
+
             case 'edit-deadline': 
                 UI.toggleEditDeadlineForm(id, target?.deadlineDate); 
                 break;
@@ -658,37 +633,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(error.message, "error");
                 }
                 break;
+
+            case 'promote-observation': {
+                if (!confirm("Deseja promover esta observação a um sub-alvo?")) return;
+
+                const obs = target.observations[parseInt(obsIndex)];
+                const newTitle = prompt("Qual será o título deste novo sub-alvo?", obs.text.substring(0, 50));
+                if (!newTitle || newTitle.trim() === '') {
+                    showToast("A promoção foi cancelada pois o título é inválido.", "info");
+                    return;
+                }
+
+                const updatedObservationData = {
+                    isSubTarget: true,
+                    subTargetTitle: newTitle.trim(),
+                    subTargetStatus: 'active',
+                    interactionCount: 0,
+                    subObservations: []
+                };
+
+                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
+                Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
+                    showToast("Observação promovida a sub-alvo com sucesso!", "success");
+                } catch (error) {
+                    console.error("Erro ao promover observação:", error);
+                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
+                    target.observations[parseInt(obsIndex)] = originalObservation;
+                    applyFiltersAndRender(panelId);
+                }
+                break;
+            }
             
-            // ===== NOVO CASE PARA INTERAÇÃO COM SUB-ALVO =====
             case 'pray-sub-target':
                 try {
-                    // Impede cliques múltiplos enquanto a operação está em andamento
                     e.target.disabled = true;
                     e.target.textContent = 'Registrando...';
-
-                    // Chama o novo serviço
                     const newCount = await Service.recordSubTargetInteraction(state.user.uid, id, isArchived, parseInt(obsIndex));
-                    
-                    // Atualiza o estado local para consistência
-                    target.observations[obsIndex].interactionCount = newCount;
-                    
-                    // Atualiza o texto do botão para refletir a nova contagem
                     showToast("Interação com sub-alvo registrada!", "success");
+                    target.observations[parseInt(obsIndex)].interactionCount = newCount;
                     e.target.textContent = `Orei (${newCount})`;
-                    
+                    e.target.disabled = false;
                 } catch (error) {
                     console.error("Erro ao registrar interação com sub-alvo:", error);
                     showToast("Falha ao registrar interação.", "error");
-                    // Reverte o texto do botão em caso de erro
-                    e.target.textContent = `Orei (${target.observations[obsIndex].interactionCount || 0})`;
-                } finally {
-                     // Garante que o botão seja reabilitado
+                    e.target.textContent = `Orei (${target.observations[parseInt(obsIndex)].interactionCount || 0})`;
                     e.target.disabled = false;
                 }
                 break;
-
-            // Ações futuras de Sub-alvo (promover, reverter, etc.) viriam aqui
-            // Ex: case 'promote-observation': await handlePromoteObservation(...); break;
         }
     });
 
