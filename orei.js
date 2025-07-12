@@ -1,4 +1,3 @@
---- START OF FILE orei.js ---
 // orei.js (VERSÃO COMPLETA E REATORADA)
 // Responsabilidade: Renderizar o relatório de perseverança, consumindo
 // os serviços centralizados de autenticação e dados.
@@ -13,11 +12,6 @@ let currentReportPage = 1;
 const itemsPerPage = 10;
 let allTargetsForReport = [];
 let filteredTargetsForReport = [];
-
-// =============================================
-// === Funções Utilitárias da Página ===
-// REMOVIDO: Bloco de funções duplicadas foi removido e importado do utils.js
-// =============================================
 
 // =============================================
 // === Lógica de Autenticação (Consumindo auth.js) ===
@@ -226,4 +220,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listener para o botão de voltar
     document.getElementById('backToMainButton')?.addEventListener('click', () => window.location.href = 'index.html');
 });
---- END OF FILE orei.js ---
