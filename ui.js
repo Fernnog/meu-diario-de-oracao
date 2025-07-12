@@ -1,6 +1,6 @@
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
-// ARQUITETURA REVISADA: Inclui a lógica para renderizar observações, sub-alvos e o novo formulário flexível de edição de prazo.
+// ARQUITETURA REVISADA: Inclui formulários inline para todas as observações e sub-observações.
 
 // --- MÓDULOS ---
 import { formatDateForDisplay, formatDateToISO, timeElapsed } from './utils.js';
@@ -21,7 +21,7 @@ function isDateExpired(date) {
 }
 
 /**
- * (VERSÃO COM REGRA DE REVERSÃO E FORMULÁRIO INLINE)
+ * (VERSÃO FINAL COM FORMULÁRIO INLINE)
  * Gera o HTML para a lista de observações de um alvo,
  * diferenciando entre observações, sub-alvos e suas próprias sub-observações.
  * @param {Array<object>} observations - O array de observações.
@@ -49,24 +49,27 @@ function createObservationsHTML(observations, parentTargetId) {
             const subTargetPrayButton = `<button class="btn pray-button" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${index}">${prayButtonText}</button>`;
 
             const subTargetActions = !isResolved ? `
-                <button class="btn-small" data-action="toggle-add-sub-observation" data-id="${parentTargetId}" data-obs-index="${index}">+ Observação</button>
+                <button class="btn-small" data-action="add-sub-observation" data-id="${parentTargetId}" data-obs-index="${index}">+ Observação</button>
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${index}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
             let subObservationsHTML = '';
             if (hasSubObservations) {
                 subObservationsHTML += '<div class="sub-observations-list">';
-                const sortedSubObs = [...obs.subObservations].sort((a, b) => (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0));
+                const sortedSubObs = [...obs.subObservations].sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
                 
                 sortedSubObs.forEach(subObs => {
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
                     subObservationsHTML += `
                         <div class="sub-observation-item">
-                            <strong>${formatDateForDisplay(new Date(subObs.date))}:</strong> ${sanitizedSubText}
+                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}
                         </div>`;
                 });
                 subObservationsHTML += '</div>';
             }
+
+            // Placeholder para o formulário de adição de sub-observação
+            const subObsFormPlaceholder = `<div id="subObservationForm-${parentTargetId}-${index}" class="add-observation-form" style="display:none; margin-left: 20px; margin-top: 10px;"></div>`;
 
             html += `
                 <div class="observation-item sub-target ${isResolved ? 'resolved' : ''}">
@@ -82,7 +85,7 @@ function createObservationsHTML(observations, parentTargetId) {
                         ${!isResolved ? subTargetPrayButton : ''}
                     </div>
                     ${subObservationsHTML}
-                    <div id="subObservationForm-${parentTargetId}-${index}" class="add-observation-form" style="display:none;"></div>
+                    ${subObsFormPlaceholder}
                 </div>`;
         } else {
             // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL -----
@@ -539,7 +542,6 @@ export function toggleEditDeadlineForm(targetId, currentDeadline) {
     }
 }
 
-
 export function toggleEditCategoryForm(targetId, currentCategory) {
     const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
     if (!formDiv) return;
@@ -572,13 +574,14 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
 }
 
 /**
- * (NOVO) Exibe ou oculta um formulário inline para adicionar uma observação a um SUB-ALVO.
- * @param {string} parentTargetId - O ID do alvo principal.
- * @param {number} obsIndex - O índice do sub-alvo (observação promovida) no array de observações.
+ * (NOVA FUNÇÃO - MELHORIA DE UX)
+ * Exibe ou oculta o formulário para adicionar uma observação a um sub-alvo.
+ * @param {string} targetId - O ID do alvo principal.
+ * @param {boolean} isArchived - Se o alvo principal está arquivado.
+ * @param {number} obsIndex - O índice do sub-alvo (a observação promovida).
  */
-export function toggleAddSubObservationForm(parentTargetId, obsIndex) {
-    const formId = `subObservationForm-${parentTargetId}-${obsIndex}`;
-    const formDiv = document.getElementById(formId);
+export function toggleSubObservationForm(targetId, isArchived, obsIndex) {
+    const formDiv = document.getElementById(`subObservationForm-${targetId}-${obsIndex}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
@@ -587,9 +590,9 @@ export function toggleAddSubObservationForm(parentTargetId, obsIndex) {
         formDiv.innerHTML = '';
     } else {
         formDiv.innerHTML = `
-            <textarea id="subObservationText-${parentTargetId}-${obsIndex}" placeholder="Nova observação para este sub-alvo..." rows="2" style="width: 95%; margin-top: 5px;"></textarea>
-            <button class="btn" data-action="save-sub-observation" data-id="${parentTargetId}" data-obs-index="${obsIndex}" style="background-color: #7cb17c; margin-top: 5px;">Salvar</button>
-            <button class="btn" onclick="document.getElementById('${formId}').style.display='none';" style="background-color: #f44336; margin-top: 5px;">Cancelar</button>
+            <textarea id="subObsText-${targetId}-${obsIndex}" placeholder="Nova observação para o sub-alvo..." rows="2" style="width: 95%;"></textarea>
+            <button class="btn" data-action="save-sub-observation" data-id="${targetId}" data-obs-index="${obsIndex}" style="background-color: #7cb17c;">Salvar</button>
+            <button class="btn cancel-btn" onclick="document.getElementById('subObservationForm-${targetId}-${obsIndex}').style.display='none';" style="background-color: #f44336;">Cancelar</button>
         `;
         formDiv.style.display = 'block';
         formDiv.querySelector('textarea')?.focus();
