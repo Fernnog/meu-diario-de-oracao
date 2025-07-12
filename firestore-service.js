@@ -476,7 +476,8 @@ export async function addSubObservationToTarget(uid, targetId, isArchived, subTa
 }
 
 /**
- * (NOVO) Registra uma interação de oração diretamente em um sub-alvo.
+ * (NOVO - ADICIONADO CONFORME SUGESTÃO) 
+ * Registra uma interação de oração diretamente em um sub-alvo.
  * Incrementa um contador de interações dentro do próprio objeto do sub-alvo.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
