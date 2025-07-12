@@ -394,7 +394,7 @@ export async function addObservationToTarget(uid, targetId, isArchived, observat
 }
 
 /**
- * (NOVO) Atualiza uma observação específica dentro do array de observações de um alvo.
+ * (NOVO E CORRIGIDO) Atualiza uma observação específica dentro do array de observações de um alvo.
  * Esta função é crucial para "promover" uma observação ou alterar seu status.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
@@ -432,7 +432,7 @@ export async function updateObservationInTarget(uid, targetId, isArchived, obser
 }
 
 /**
- * (NOVO) Adiciona uma sub-observação a um sub-alvo específico.
+ * (NOVO E CORRIGIDO) Adiciona uma sub-observação a um sub-alvo específico.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
  * @param {boolean} isArchived - Se o alvo principal está arquivado.
