@@ -21,7 +21,7 @@ function isDateExpired(date) {
 }
 
 /**
- * (VERSÃO COM REGRA DE REVERSÃO E BOTÃO DE ORAÇÃO)
+ * (VERSÃO COM REGRA DE REVERSÃO E FORMULÁRIO INLINE)
  * Gera o HTML para a lista de observações de um alvo,
  * diferenciando entre observações, sub-alvos e suas próprias sub-observações.
  * @param {Array<object>} observations - O array de observações.
@@ -36,33 +36,30 @@ function createObservationsHTML(observations, parentTargetId) {
     let html = `<div class="observations">`;
 
     sorted.forEach((obs, index) => {
-        const sanitizedText = (obs.text || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
         if (obs.isSubTarget) {
             // ----- RENDERIZA COMO UM SUB-ALVO -----
             const isResolved = obs.subTargetStatus === 'resolved';
-            
-            // **NOVA LÓGICA APLICADA**
             const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
             const demoteButtonDisabled = hasSubObservations ? 'disabled' : '';
             const demoteButtonTitle = hasSubObservations ? 'Não é possível reverter um sub-alvo que já possui observações.' : 'Reverter para observação comum';
 
-            // Botão de oração independente
             const prayButtonText = `Orei (${obs.interactionCount || 0})`;
             const subTargetPrayButton = `<button class="btn pray-button" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${index}">${prayButtonText}</button>`;
 
             const subTargetActions = !isResolved ? `
-                <button class="btn-small" data-action="add-sub-observation" data-id="${parentTargetId}" data-obs-index="${index}">+ Observação</button>
+                <button class="btn-small" data-action="toggle-add-sub-observation" data-id="${parentTargetId}" data-obs-index="${index}">+ Observação</button>
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${index}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
             let subObservationsHTML = '';
-            if (hasSubObservations) { // Apenas re-renderiza se houver
+            if (hasSubObservations) {
                 subObservationsHTML += '<div class="sub-observations-list">';
                 const sortedSubObs = [...obs.subObservations].sort((a, b) => (new Date(a.date).getTime() || 0) - (new Date(b.date).getTime() || 0));
                 
                 sortedSubObs.forEach(subObs => {
-                    const sanitizedSubText = (subObs.text || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
                     subObservationsHTML += `
                         <div class="sub-observation-item">
                             <strong>${formatDateForDisplay(new Date(subObs.date))}:</strong> ${sanitizedSubText}
@@ -85,6 +82,7 @@ function createObservationsHTML(observations, parentTargetId) {
                         ${!isResolved ? subTargetPrayButton : ''}
                     </div>
                     ${subObservationsHTML}
+                    <div id="subObservationForm-${parentTargetId}-${index}" class="add-observation-form" style="display:none;"></div>
                 </div>`;
         } else {
             // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL -----
@@ -144,7 +142,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         const togglePriorityButton = config.showTogglePriorityButton ? `<button class="${priorityButtonClass}" data-action="toggle-priority" data-id="${target.id}">${priorityButtonText}</button>` : '';
         const addObservationButton = config.showAddObservationButton ? `<button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>` : '';
         
-        // **MELHORIA APLICADA: Botão de editar prazo**
         const editDeadlineButton = config.showEditDeadlineButton ? `<button class="btn edit-deadline" data-action="edit-deadline" data-id="${target.id}">Editar Prazo</button>` : '';
         
         const editCategoryButton = config.showEditCategoryButton ? `<button class="btn edit-category" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>` : '';
@@ -159,7 +156,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
 
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id) : '';
     
-    // **MELHORIA APLICADA: Div para o formulário de edição de prazo**
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
@@ -516,18 +512,11 @@ export function toggleAddObservationForm(targetId) {
     }
 }
 
-/**
- * **NOVA FUNÇÃO**
- * Exibe ou oculta o formulário para editar o prazo de um alvo.
- * @param {string} targetId - O ID do alvo.
- * @param {Date | null} currentDeadline - A data de prazo atual do alvo.
- */
 export function toggleEditDeadlineForm(targetId, currentDeadline) {
     const formDiv = document.getElementById(`editDeadlineForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
 
-    // Garante que outros formulários de edição estejam fechados para uma UI limpa
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
 
@@ -579,6 +568,31 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
         `;
         formDiv.style.display = 'block';
         formDiv.querySelector('select')?.focus();
+    }
+}
+
+/**
+ * (NOVO) Exibe ou oculta um formulário inline para adicionar uma observação a um SUB-ALVO.
+ * @param {string} parentTargetId - O ID do alvo principal.
+ * @param {number} obsIndex - O índice do sub-alvo (observação promovida) no array de observações.
+ */
+export function toggleAddSubObservationForm(parentTargetId, obsIndex) {
+    const formId = `subObservationForm-${parentTargetId}-${obsIndex}`;
+    const formDiv = document.getElementById(formId);
+    if (!formDiv) return;
+    const isVisible = formDiv.style.display === 'block';
+
+    if (isVisible) {
+        formDiv.style.display = 'none';
+        formDiv.innerHTML = '';
+    } else {
+        formDiv.innerHTML = `
+            <textarea id="subObservationText-${parentTargetId}-${obsIndex}" placeholder="Nova observação para este sub-alvo..." rows="2" style="width: 95%; margin-top: 5px;"></textarea>
+            <button class="btn" data-action="save-sub-observation" data-id="${parentTargetId}" data-obs-index="${obsIndex}" style="background-color: #7cb17c; margin-top: 5px;">Salvar</button>
+            <button class="btn" onclick="document.getElementById('${formId}').style.display='none';" style="background-color: #f44336; margin-top: 5px;">Cancelar</button>
+        `;
+        formDiv.style.display = 'block';
+        formDiv.querySelector('textarea')?.focus();
     }
 }
 
