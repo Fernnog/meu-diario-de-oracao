@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWith
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
 import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
+import { formatDateForDisplay } from './utils.js'; // <-- ADICIONADO: Importação correta
 
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
@@ -527,11 +528,36 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
     document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
-    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { const reportData = { ...state.perseveranceData, lastInteractionDate: state.perseveranceData.lastInteractionDate ? UI.formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma", interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) }; const html = UI.generatePerseveranceReportHTML(reportData); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
+    
+    // CORRIGIDO: Chamada direta para a função importada
+    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { 
+        const reportData = { 
+            ...state.perseveranceData, 
+            lastInteractionDate: state.perseveranceData.lastInteractionDate ? formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma",
+            interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) 
+        }; 
+        const html = UI.generatePerseveranceReportHTML(reportData); 
+        const newWindow = window.open(); 
+        newWindow.document.write(html); 
+        newWindow.document.close(); 
+    });
+
     document.getElementById('viewInteractionReportButton').addEventListener('click', () => { window.location.href = 'orei.html'; });
     document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
     document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
-    document.getElementById('generateResolvedView').addEventListener('click', () => { const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${UI.formatDateForDisplay(startDate)} a ${UI.formatDateForDisplay(endDate)}`); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleDateRangeModal(false); });
+
+    // CORRIGIDO: Chamada direta para a função importada
+    document.getElementById('generateResolvedView').addEventListener('click', () => { 
+        const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); 
+        const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); 
+        const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); 
+        const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}`);
+        const newWindow = window.open(); 
+        newWindow.document.write(html); 
+        newWindow.document.close(); 
+        UI.toggleDateRangeModal(false); 
+    });
+    
     document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
     document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
     document.getElementById('confirmCategoryView').addEventListener('click', () => { const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value); const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; const filtered = allTargets.filter(t => selectedCategories.includes(t.category)); const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleCategoryModal(false); });
@@ -684,6 +710,75 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.target.disabled = false;
                 }
                 break;
+
+            // ADICIONADO: Handlers para as novas ações de sub-alvo
+            case 'demote-sub-target': {
+                if (e.target.disabled) return;
+                if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) return;
+
+                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
+                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
+                delete updatedObservation.subTargetTitle;
+                delete updatedObservation.subTargetStatus;
+                delete updatedObservation.interactionCount;
+                delete updatedObservation.subObservations;
+                
+                target.observations[parseInt(obsIndex)] = updatedObservation;
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
+                    showToast("Sub-alvo revertido para observação.", "info");
+                } catch (error) {
+                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
+                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    applyFiltersAndRender(panelId);
+                }
+                break;
+            }
+
+            case 'resolve-sub-target': {
+                if (!confirm("Marcar este sub-alvo como respondido?")) return;
+                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
+                const updatedObservation = { subTargetStatus: 'resolved' };
+
+                Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
+                    showToast("Sub-alvo marcado como respondido!", "success");
+                } catch (error) {
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    applyFiltersAndRender(panelId);
+                }
+                break;
+            }
+
+            case 'add-sub-observation': {
+                const text = prompt("Digite a nova observação para este sub-alvo:");
+                if (!text || text.trim() === '') return;
+
+                const newSubObservation = { text: text.trim(), date: new Date() };
+
+                const subTarget = target.observations[parseInt(obsIndex)];
+                if (!Array.isArray(subTarget.subObservations)) {
+                    subTarget.subObservations = [];
+                }
+                subTarget.subObservations.push(newSubObservation);
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
+                    showToast("Observação adicionada ao sub-alvo.", "success");
+                } catch (error) {
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                    subTarget.subObservations.pop();
+                    applyFiltersAndRender(panelId);
+                }
+                break;
+            }
         }
     });
 
