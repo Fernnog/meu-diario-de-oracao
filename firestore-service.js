@@ -25,7 +25,7 @@ import {
 // ===============================================
 
 /**
- * (VERSÃO CORRIGIDA E ROBUSTA)
+ * (VERSÃO FINAL E CORRIGIDA)
  * Converte dados brutos do Firestore para um formato utilizável no front-end,
  * convertendo Timestamps para Dates e "migrando" o formato de observações antigas.
  * @param {Array} rawData - Um array de documentos do Firestore.
@@ -41,25 +41,20 @@ function rehydrateTargets(rawData) {
             }
         }
         
-        // (*** INÍCIO DA CORREÇÃO DEFINITIVA PARA DADOS LEGADOS ***)
         // Converte Timestamps dentro do array de observações E lida com o formato antigo.
         if (Array.isArray(rehydrated.observations)) {
             rehydrated.observations = rehydrated.observations.map(obs => {
                 // CASO 1: A 'obs' é apenas um Timestamp (FORMATO ANTIGO).
-                // Esta é a causa principal do erro com dados legados.
                 if (obs instanceof Timestamp) {
-                    // Nós a "traduzimos" para o novo formato de objeto na hora.
                     return {
                         date: obs.toDate(),
                         text: 'Observação antiga (texto não disponível)',
-                        isSubTarget: false // Garante que a propriedade exista para a lógica da UI
+                        isSubTarget: false 
                     };
                 }
 
                 // CASO 2: A 'obs' já é um objeto (FORMATO NOVO), vindo do Firestore.
-                // Apenas convertemos a data que está dentro do objeto.
                 if (obs && obs.date instanceof Timestamp) {
-                    // (MELHORIA) Converte recursivamente as sub-observações, se existirem
                     if (Array.isArray(obs.subObservations)) {
                          obs.subObservations = obs.subObservations.map(subObs => {
                             if (subObs && subObs.date instanceof Timestamp) {
@@ -68,15 +63,14 @@ function rehydrateTargets(rawData) {
                             return subObs;
                          });
                     }
-                    return { ...obs, date: obs.toDate() };
+                    // *** ESTA É A LINHA QUE FOI CORRIGIDA ***
+                    return { ...obs, date: obs.date.toDate() };
                 }
 
-                // CASO 3: A 'obs' é um objeto que já foi hidratado (contém um JS Date)
-                // ou um formato inesperado. Retornamos como está para não quebrar.
+                // CASO 3: A 'obs' é um objeto que já foi hidratado (contém um JS Date) ou formato inesperado.
                 return obs;
             });
         }
-        // (*** FIM DA CORREÇÃO DEFINITIVA ***)
 
         return rehydrated;
     });
@@ -85,7 +79,6 @@ function rehydrateTargets(rawData) {
 
 /**
  * Obtém a data atual no formato string YYYY-MM-DD, utilizando o padrão UTC.
- * Usa métodos UTC para evitar problemas de fuso horário na lógica.
  * @param {Date} date - O objeto de data a ser formatado.
  * @returns {string} - A data formatada.
  */
@@ -476,9 +469,7 @@ export async function addSubObservationToTarget(uid, targetId, isArchived, subTa
 }
 
 /**
- * (NOVO - ADICIONADO CONFORME SUGESTÃO) 
  * Registra uma interação de oração diretamente em um sub-alvo.
- * Incrementa um contador de interações dentro do próprio objeto do sub-alvo.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
  * @param {boolean} isArchived - Se o alvo principal está arquivado.
@@ -502,22 +493,15 @@ export async function recordSubTargetInteraction(uid, targetId, isArchived, subT
 
     const subTarget = observations[subTargetIndex];
     
-    // Garante que o sub-alvo é realmente um sub-alvo
     if (!subTarget.isSubTarget) {
         throw new Error("Esta observação não é um sub-alvo.");
     }
 
-    // Incrementa o contador de interações. Se não existir, começa em 1.
     const currentInteractions = subTarget.interactionCount || 0;
     subTarget.interactionCount = currentInteractions + 1;
-    
-    // Adiciona a data da última interação para rastreamento futuro
     subTarget.lastInteractionDate = Timestamp.now();
 
-    // Reescreve o array de observações no documento com os dados atualizados
     await updateDoc(docRef, { observations: observations });
-    
-    // Retorna a contagem atualizada para a UI, se necessário
     return subTarget.interactionCount;
 }
 
@@ -558,13 +542,11 @@ export async function fetchInteractionCounts(uid) {
 
 /**
  * Busca TODOS os alvos de um usuário (ativos e arquivados) para o relatório.
- * Converte Timestamps para Datas e adiciona um campo 'status' para fácil filtragem no front-end.
  * @param {string} uid - ID do usuário.
  * @returns {Promise<Array<object>>} - Uma promessa que resolve para um array com todos os alvos.
  */
 export async function fetchAllTargetsForReport(uid) {
     try {
-        // Busca os dois tipos de alvos em paralelo para otimizar o tempo
         const [activeSnapshot, archivedSnapshot] = await Promise.all([
             getDocs(query(collection(db, "users", uid, "prayerTargets"))),
             getDocs(query(collection(db, "users", uid, "archivedTargets")))
@@ -579,14 +561,11 @@ export async function fetchAllTargetsForReport(uid) {
 
         const allTargetsRaw = [...activeRaw, ...archivedRaw];
         
-        // Reutiliza a função de hidratação para converter todos os Timestamps
         const allTargetsRehydrated = rehydrateTargets(allTargetsRaw);
 
-        // Ordena pela data mais relevante (a mais recente primeiro)
         allTargetsRehydrated.sort((a, b) => {
             const dateA = a.resolutionDate || a.archivedDate || a.date || 0;
             const dateB = b.resolutionDate || b.archivedDate || b.date || 0;
-            // Garante que estamos comparando timestamps de objetos Date
             const timeA = (dateA instanceof Date) ? dateA.getTime() : 0;
             const timeB = (dateB instanceof Date) ? dateB.getTime() : 0;
             return timeB - timeA;
@@ -597,6 +576,6 @@ export async function fetchAllTargetsForReport(uid) {
 
     } catch (error) {
         console.error("[Service] Erro ao buscar todos os alvos para o relatório:", error);
-        throw error; // Propaga o erro para a camada de UI tratar
+        throw error; 
     }
 }
