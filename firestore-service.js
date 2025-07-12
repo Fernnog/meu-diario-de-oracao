@@ -1,4 +1,4 @@
-// firestore-service.js
+// firestore-service.js (VERSÃO COMPLETA E REATORADA)
 // Responsabilidade: Conter todas as funções que interagem com o banco de dados Firestore.
 // Este módulo é a "Camada de Acesso a Dados" da aplicação.
 
@@ -25,54 +25,60 @@ import {
 // ===============================================
 
 /**
- * (VERSÃO FINAL E CORRIGIDA)
+ * (MELHORIA DE ARQUITETURA)
+ * Percorre recursivamente um objeto ou array e converte todas as instâncias
+ * de Timestamp do Firestore em objetos Date do JavaScript.
+ * @param {*} data - O dado a ser processado (pode ser qualquer tipo).
+ * @returns {*} - O dado com todas as datas devidamente convertidas.
+ */
+function deepRehydrate(data) {
+    if (data instanceof Timestamp) {
+        return data.toDate();
+    }
+    if (Array.isArray(data)) {
+        return data.map(item => deepRehydrate(item));
+    }
+    if (data !== null && typeof data === 'object' && !(data instanceof Date)) {
+        const rehydratedObject = {};
+        for (const key in data) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                rehydratedObject[key] = deepRehydrate(data[key]);
+            }
+        }
+        return rehydratedObject;
+    }
+    return data;
+}
+
+
+/**
+ * (VERSÃO REATORADA)
  * Converte dados brutos do Firestore para um formato utilizável no front-end,
- * convertendo Timestamps para Dates e "migrando" o formato de observações antigas.
+ * utilizando o helper `deepRehydrate` e migrando o formato de observações antigas.
  * @param {Array} rawData - Um array de documentos do Firestore.
  * @returns {Array} - Um array de objetos com as datas e observações devidamente formatadas.
  */
 function rehydrateTargets(rawData) {
-    return rawData.map(targetData => {
-        const rehydrated = { ...targetData };
-        // Converte todos os campos de primeiro nível que são Timestamps
-        for (const key in rehydrated) {
-            if (rehydrated[key] instanceof Timestamp) {
-                rehydrated[key] = rehydrated[key].toDate();
-            }
-        }
-        
-        // Converte Timestamps dentro do array de observações E lida com o formato antigo.
-        if (Array.isArray(rehydrated.observations)) {
-            rehydrated.observations = rehydrated.observations.map(obs => {
-                // CASO 1: A 'obs' é apenas um Timestamp (FORMATO ANTIGO).
-                if (obs instanceof Timestamp) {
+    // 1. Converte TODAS as datas aninhadas primeiro
+    const fullyRehydratedData = deepRehydrate(rawData);
+
+    // 2. Lida com a migração de formatos de dados legados
+    return fullyRehydratedData.map(targetData => {
+        if (Array.isArray(targetData.observations)) {
+            targetData.observations = targetData.observations.map(obs => {
+                // Se a 'obs' for um objeto Date, significa que era um Timestamp legado.
+                if (obs instanceof Date) {
                     return {
-                        date: obs.toDate(),
+                        date: obs,
                         text: 'Observação antiga (texto não disponível)',
-                        isSubTarget: false 
+                        isSubTarget: false
                     };
                 }
-
-                // CASO 2: A 'obs' já é um objeto (FORMATO NOVO), vindo do Firestore.
-                if (obs && obs.date instanceof Timestamp) {
-                    if (Array.isArray(obs.subObservations)) {
-                         obs.subObservations = obs.subObservations.map(subObs => {
-                            if (subObs && subObs.date instanceof Timestamp) {
-                                return { ...subObs, date: subObs.date.toDate() };
-                            }
-                            return subObs;
-                         });
-                    }
-                    // *** ESTA É A LINHA QUE FOI CORRIGIDA ***
-                    return { ...obs, date: obs.date.toDate() };
-                }
-
-                // CASO 3: A 'obs' é um objeto que já foi hidratado (contém um JS Date) ou formato inesperado.
+                // Se for um objeto, já está no formato correto.
                 return obs;
             });
         }
-
-        return rehydrated;
+        return targetData;
     });
 }
 
@@ -394,7 +400,7 @@ export async function addObservationToTarget(uid, targetId, isArchived, observat
 }
 
 /**
- * (NOVO E CORRIGIDO) Atualiza uma observação específica dentro do array de observações de um alvo.
+ * Atualiza uma observação específica dentro do array de observações de um alvo.
  * Esta função é crucial para "promover" uma observação ou alterar seu status.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
@@ -432,7 +438,7 @@ export async function updateObservationInTarget(uid, targetId, isArchived, obser
 }
 
 /**
- * (NOVO E CORRIGIDO) Adiciona uma sub-observação a um sub-alvo específico.
+ * Adiciona uma sub-observação a um sub-alvo específico.
  * @param {string} uid - ID do usuário.
  * @param {string} targetId - ID do alvo principal.
  * @param {boolean} isArchived - Se o alvo principal está arquivado.
