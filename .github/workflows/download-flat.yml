@@ -27,37 +27,51 @@ jobs:
       - name: Criar pasta de destino e copiar arquivos
         run: |
           mkdir flat-files
-          # Usamos 'find' para localizar todos os arquivos (-type f)
-          # Excluímos as pastas .git e .github
-          # Usamos `cp --backup=numbered` para evitar que arquivos com o mesmo nome se sobrescrevam.
           find . -type f -not -path './.git/*' -not -path './.github/*' -exec cp --backup=numbered {} flat-files/ \;
 
-      # Passo 3: Compacta a pasta com os arquivos em um único arquivo .zip
-      - name: Compactar arquivos em um ZIP
-        run: zip -r arquivos-achatados.zip ./flat-files
+      # Passo 3: Compacta a pasta com um nome de arquivo personalizado (data + nome do repo)
+      - name: Compactar arquivos em um ZIP com nome personalizado
+        id: custom_zip_name
+        run: |
+          CURRENT_DATE=$(date +'%Y%m%d')
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          FINAL_ZIP_NAME="${CURRENT_DATE}_${REPO_NAME}.zip"
+          echo "Nome do arquivo ZIP será: ${FINAL_ZIP_NAME}"
+          zip -r "${FINAL_ZIP_NAME}" ./flat-files
+          echo "zip_name=${FINAL_ZIP_NAME}" >> $GITHUB_OUTPUT
 
-      # Passo 4: Usa a action 'softprops/action-gh-release' para criar ou atualizar a release
-      # Esta é a parte principal da lógica de atualização.
+      # Passo 4: (NOVO) Apaga os arquivos antigos da release antes de fazer o novo upload
+      - name: Apagar assets antigos da release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Verificando e apagando assets antigos da release 'latest-flat-files'..."
+          # Lista todos os nomes de assets da release e os apaga um por um.
+          # O '|| true' no final garante que o workflow não falhe se a release ainda não existir (na primeira execução).
+          gh release view latest-flat-files --json assets --jq '.assets[].name' | while read -r asset; do
+            echo "Apagando asset: $asset"
+            gh release delete-asset latest-flat-files "$asset" --yes
+          done || true
+
+      # Passo 5: Usa a action 'softprops/action-gh-release' para criar ou atualizar a release
       - name: Criar ou Atualizar a Release e fazer upload do ZIP
         uses: softprops/action-gh-release@v2
         with:
-          # Lista de arquivos a serem anexados à release.
-          files: arquivos-achatados.zip
+          # Usa o nome do arquivo dinâmico gerado no passo de compactação.
+          files: ${{ steps.custom_zip_name.outputs.zip_name }}
           
-          # IMPORTANTE: Usamos uma tag fixa. Se a tag já existir, a action
-          # irá atualizar a release existente em vez de criar uma nova.
+          # A tag fixa continua sendo a chave para atualizar sempre a mesma release.
           tag_name: latest-flat-files
           
           # Nome que aparecerá na página de Releases.
           name: "Últimos Arquivos (Versão Achatada)"
           
-          # Texto do corpo da release. Útil para saber quando foi a última atualização.
+          # Corpo da release.
           body: |
             Contém a versão mais recente de todos os arquivos do repositório, sem a estrutura de pastas.
-            
-            Este artefato foi gerado automaticamente.
+            Este artefato foi gerado automaticamente e o anexo anterior foi removido.
             Última atualização acionada pela execução: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           
-          # Garante que a release seja publicada e não fique como rascunho.
+          # Garante que a release seja publicada.
           draft: false
           prerelease: false
