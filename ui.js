@@ -3,8 +3,8 @@
 // ARQUITETURA REVISADA: Inclui formulários inline para todas as observações e sub-observações.
 
 // --- MÓDULOS ---
-import { formatDateForDisplay, formatDateToISO, timeElapsed } from './utils.js';
-import { MILESTONES } from './config.js'; // <-- MELHORIA DE ARQUITETURA: Importa as regras de marcos.
+import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js'; // <-- MELHORIA DE ARQUITETURA: Importa a nova função de cálculo
+import { MILESTONES } from './config.js';
 
 // --- Funções Utilitárias Específicas da UI ---
 
@@ -42,7 +42,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
     sorted.forEach((obs) => {
         // Encontra o índice original para manter a integridade dos data-attributes
         const originalIndex = observations.indexOf(obs);
-        const sanitizedText = (obs.text || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
         if (obs.isSubTarget) {
             // ----- RENDERIZA COMO UM SUB-ALVO -----
@@ -73,7 +73,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 const sortedSubObs = [...obs.subObservations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
                 
                 sortedSubObs.forEach(subObs => {
-                    const sanitizedSubText = (subObs.text || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
                     subObservationsHTML += `
                         <div class="sub-observation-item">
                             <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}
@@ -385,9 +385,9 @@ export function renderPagination(panelId, currentPage, totalItems, itemsPerPage)
 }
 
 /**
- * (VERSÃO ATUALIZADA)
+ * (VERSÃO ATUALIZADA - PRIORIDADES 1 E 2 APLICADAS)
  * Atualiza toda a interface de perseverança, incluindo a barra de progresso
- * e os novos ícones de marcos cumulativos.
+ * e os novos ícones de marcos cumulativos, com a lógica de cálculo refatorada.
  * @param {object} data - O objeto com os dados de perseverança { consecutiveDays, recordDays }.
  * @param {boolean} isNewRecord - Flag para ativar a animação de novo recorde.
  */
@@ -414,26 +414,9 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
         setTimeout(() => progressBar.classList.remove('new-record-animation'), 2000);
     }
     
-    // 2. NOVA LÓGICA: Cálculo e Renderização dos Marcos Cumulativos
-    let remainingDays = consecutiveDays;
-    const achievedMilestones = [];
-
-    // Algoritmo de cálculo
-    for (const milestone of MILESTONES) {
-        if (remainingDays >= milestone.days) {
-            let count = 0;
-            if (milestone.type === 'principal') {
-                count = Math.floor(remainingDays / milestone.days);
-                remainingDays %= milestone.days;
-            } else {
-                count = 1;
-                remainingDays -= milestone.days;
-            }
-            if (count > 0) {
-                 achievedMilestones.push({ icon: milestone.icon, count: count });
-            }
-        }
-    }
+    // 2. LÓGICA REFINADA: Chama a função de cálculo e renderiza o resultado
+    // A lógica de negócio foi movida para utils.js (Melhoria de Arquitetura - Prioridade 2)
+    const achievedMilestones = calculateMilestones(consecutiveDays);
 
     // Limpa a área de ícones antes de renderizar os novos
     iconsContainer.innerHTML = '';
