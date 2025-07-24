@@ -1,6 +1,8 @@
 // utils.js
 // Responsabilidade: Conter funções utilitárias puras e reutilizáveis em toda a aplicação.
 
+import { MILESTONES } from './config.js';
+
 /**
  * Formata um objeto Date para exibição ao usuário (ex: 27/10/2023).
  * Utiliza toLocaleDateString para respeitar o fuso horário local do usuário na exibição.
@@ -60,4 +62,45 @@ export function timeElapsed(startDate, endDate = new Date()) {
     const diffInMonths = Math.floor(diffInDays / 30.44);
     if (diffInMonths < 12) return `${diffInMonths} meses`;
     return `${Math.floor(diffInDays / 365.25)} anos`;
+}
+
+/**
+ * (NOVA FUNÇÃO)
+ * Calcula os marcos cumulativos com base em um número de dias, seguindo as regras de negócio.
+ * Esta função é uma implementação direta da melhoria arquitetural da "Prioridade 2".
+ * @param {number} consecutiveDays - O total de dias consecutivos.
+ * @returns {Array<{icon: string, count: number}>} - Um array com os marcos alcançados e seus contadores.
+ */
+export function calculateMilestones(consecutiveDays) {
+    let remainingDays = consecutiveDays;
+    const achievedMilestones = [];
+
+    // Validação de entrada para garantir que o cálculo não falhe
+    if (typeof remainingDays !== 'number' || remainingDays < 0) {
+        return [];
+    }
+
+    // O loop itera sobre os marcos definidos em config.js (já em ordem de precedência)
+    for (const milestone of MILESTONES) {
+        // Verifica se o usuário tem dias suficientes para atingir o marco atual
+        if (remainingDays >= milestone.days) {
+            let count = 0;
+            // Se o marco for do tipo 'principal', ele pode ser acumulado (empilhado)
+            if (milestone.type === 'principal') {
+                count = Math.floor(remainingDays / milestone.days);
+                // O "troco" é o que sobra para o próximo cálculo
+                remainingDays %= milestone.days;
+            } else { // Se for do tipo 'etapa', só é contado uma vez
+                count = 1;
+                remainingDays -= milestone.days;
+            }
+
+            // Adiciona o marco à lista de resultados apenas se ele foi conquistado
+            if (count > 0) {
+                 achievedMilestones.push({ icon: milestone.icon, count: count });
+            }
+        }
+    }
+    
+    return achievedMilestones;
 }
