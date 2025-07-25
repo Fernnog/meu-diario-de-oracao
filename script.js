@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!action || !id) return;
 
         const { target, isArchived, panelId } = findTargetInState(id);
-        if (!target && !['select-manual-target'].includes(action)) return;
+        if (!target && !['select-manual-target', 'cancel-edit'].includes(action)) return;
 
         // --- Switch de Ações ---
         switch(action) {
@@ -651,6 +651,105 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.toggleAddObservationForm(id);
                 break;
             
+            // ================================================================================================
+            // ===== INÍCIO DA MODIFICAÇÃO: Adicionados novos 'cases' para a funcionalidade de edição. =====
+            // ================================================================================================
+            case 'edit-title': {
+                const { target } = findTargetInState(id);
+                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title });
+                break;
+            }
+
+            case 'edit-details': {
+                const { target } = findTargetInState(id);
+                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details });
+                break;
+            }
+
+            case 'edit-observation': {
+                const { target } = findTargetInState(id);
+                if (target && target.observations[obsIndex]) {
+                    UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex });
+                }
+                break;
+            }
+
+            case 'save-title': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                const newTitle = document.getElementById(`input-editTitleForm-${id}`).value.trim();
+                if (!target || !newTitle) break;
+                
+                const oldTitle = target.title;
+                target.title = newTitle; // UI Otimista
+                applyFiltersAndRender(panelId);
+                
+                try {
+                    await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
+                    showToast("Título atualizado com sucesso!", "success");
+                } catch (error) {
+                    target.title = oldTitle; // Reverte em caso de erro
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar o título.", "error");
+                }
+                break;
+            }
+
+            case 'save-details': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                const newDetails = document.getElementById(`input-editDetailsForm-${id}`).value.trim();
+                if (!target) break;
+
+                const oldDetails = target.details;
+                target.details = newDetails; // UI Otimista
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
+                    showToast("Detalhes atualizados com sucesso!", "success");
+                } catch (error) {
+                    target.details = oldDetails; // Reverte
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar os detalhes.", "error");
+                }
+                break;
+            }
+
+            case 'save-observation': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                // O obsIndex já vem do dataset
+                const formId = `editObservationForm-${id}-${obsIndex}`;
+                const newText = document.getElementById(`input-${formId}`).value.trim();
+                if (!target || !newText) break;
+
+                const oldText = target.observations[obsIndex].text;
+                target.observations[obsIndex].text = newText; // UI Otimista
+                applyFiltersAndRender(panelId);
+                
+                try {
+                    // Aqui usamos uma função de serviço que atualiza um item específico no array
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { ...target.observations[obsIndex], text: newText });
+                    showToast("Observação atualizada!", "success");
+                } catch (error) {
+                    target.observations[obsIndex].text = oldText; // Reverte
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar a observação.", "error");
+                }
+                break;
+            }
+
+            case 'cancel-edit': {
+                // A ação de cancelar simplesmente esconde o formulário mais próximo
+                const form = e.target.closest('.inline-edit-form');
+                if (form) {
+                    form.style.display = 'none';
+                    form.innerHTML = '';
+                }
+                break;
+            }
+            // ================================================================================================
+            // ===== FIM DA MODIFICAÇÃO: 'cases' de edição adicionados. =====
+            // ================================================================================================
+
             case 'save-observation':
                 await handleAddObservation(target, isArchived, panelId);
                 break;
@@ -679,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await handleTogglePriority(target);
                 break;
 
-            case 'download-target-pdf': { // <-- NOVO CASE ADICIONADO
+            case 'download-target-pdf': { 
                 const { target } = findTargetInState(id);
                 if (!target) return;
                 generateAndDownloadPdf(target);
