@@ -106,40 +106,73 @@ export function calculateMilestones(consecutiveDays) {
 }
 
 /**
- * (NOVA FUNÇÃO - PRIORIDADE 2)
- * Gera o conteúdo HTML formatado para um arquivo .doc a partir de um alvo.
- * @param {object} target - O objeto do alvo de oração.
- * @returns {string} - O conteúdo HTML completo para o arquivo.
+ * Gera e inicia o download de um PDF para um alvo de oração.
+ * @param {object} target - O objeto do alvo a ser exportado.
  */
-export function generateDocContent(target) {
-    // Formata o conteúdo principal do documento
-    let docContent = `
-        <h1>${target.title}</h1>
-        <p><strong>Categoria:</strong> ${target.category || 'N/A'}</p>
-        <p><strong>Data de Criação:</strong> ${formatDateForDisplay(target.date)}</p>
-        <hr>
-        <h3>Detalhes</h3>
-        <p>${target.details ? target.details.replace(/\n/g, '<br>') : 'Sem detalhes.'}</p>
-        <hr>
-        <h3>Observações</h3>
-    `;
-
-    if (target.observations && target.observations.length > 0) {
-        // Ordena as observações da mais antiga para a mais recente para o relatório
-        const sortedObservations = [...target.observations].sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
-        sortedObservations.forEach(obs => {
-            docContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.text}</p>`;
-        });
-    } else {
-        docContent += '<p>Nenhuma observação registrada.</p>';
+export function generateAndDownloadPdf(target) {
+    // Assegura que a biblioteca jsPDF foi carregada
+    if (!window.jspdf) {
+        console.error("jsPDF não está carregado!");
+        alert("Não foi possível gerar o PDF. A biblioteca de exportação não foi carregada.");
+        return;
     }
 
-    // Adiciona o cabeçalho e rodapé necessários para o formato Word
-    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
-          "xmlns:w='urn:schemas-microsoft-com:office:word' "+
-          "xmlns='http://www.w3.org/TR/REC-html40'>"+
-          "<head><meta charset='utf-8'><title>Exportação de Alvo</title></head><body>";
-    const footer = "</body></html>";
-    
-    return header + docContent + footer;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const margin = 15;
+    let y = 20; // Posição vertical inicial
+
+    // Título do Documento
+    doc.setFontSize(18);
+    doc.text(target.title, margin, y);
+    y += 10;
+
+    // Informações Gerais
+    doc.setFontSize(11);
+    doc.text(`Categoria: ${target.category || 'N/A'}`, margin, y);
+    y += 7;
+    doc.text(`Data de Criação: ${formatDateForDisplay(target.date)}`, margin, y);
+    y += 10;
+    doc.line(margin, y - 5, 200, y - 5); // Linha separadora
+
+    // Detalhes
+    doc.setFontSize(14);
+    doc.text("Detalhes:", margin, y);
+    y += 8;
+    doc.setFontSize(11);
+    // O método 'splitTextToSize' quebra o texto longo em várias linhas automaticamente
+    const detailsLines = doc.splitTextToSize(target.details || 'Sem detalhes.', 180);
+    doc.text(detailsLines, margin, y);
+    y += (detailsLines.length * 5) + 5; // Aumenta o 'y' baseado no número de linhas
+    doc.line(margin, y - 2, 200, y - 2);
+
+    // Observações
+    y += 8;
+    doc.setFontSize(14);
+    doc.text("Histórico de Observações:", margin, y);
+    y += 8;
+    doc.setFontSize(11);
+
+    if (target.observations && target.observations.length > 0) {
+        const sortedObs = [...target.observations].sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
+        sortedObs.forEach(obs => {
+            const obsText = `[${formatDateForDisplay(obs.date)}] ${obs.text}`;
+            const obsLines = doc.splitTextToSize(obsText, 180);
+            
+            // Verifica se há espaço na página
+            if (y + (obsLines.length * 5) > 280) {
+                doc.addPage();
+                y = 20; // Reseta a posição na nova página
+            }
+
+            doc.text(obsLines, margin, y);
+            y += (obsLines.length * 5) + 3;
+        });
+    } else {
+        doc.text("Nenhuma observação registrada.", margin, y);
+    }
+
+    // Gera o nome do arquivo e salva
+    const fileName = `${target.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+    doc.save(fileName);
 }
