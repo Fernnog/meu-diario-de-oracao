@@ -168,11 +168,11 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         const editCategoryButton = config.showEditCategoryButton ? `<button class="btn edit-category" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>` : '';
         const deleteButton = config.showDeleteButton ? `<button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>` : '';
         
-        // --- INÍCIO DA ALTERAÇÃO (PRIORIDADE 1) ---
-        const downloadButton = config.showDownloadButton ? `<button class="btn download" data-action="download-target-doc" data-id="${target.id}">Download (.doc)</button>` : '';
-        // --- FIM DA ALTERAÇÃO ---
+        // ==========================================================================================
+        // ===== ALTERAÇÃO SOLICITADA: O botão de download agora usa a nova ação e texto em PDF. =====
+        // ==========================================================================================
+        const downloadButton = config.showDownloadButton ? `<button class="btn download" data-action="download-target-pdf" data-id="${target.id}">Download (.pdf)</button>` : '';
 
-        // MODIFICAÇÃO: A variável ${prayButton} foi removida da string abaixo
         actionsHTML = `<div class="target-actions">
             ${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} 
             ${editDeadlineButton} ${editCategoryButton} ${resolveArchivedButton} ${deleteButton} ${downloadButton}
@@ -246,14 +246,17 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
+        // =========================================================================================
+        // ===== ALTERAÇÃO SOLICITADA: Adicionado 'showDownloadButton: true' para alvos ativos. =====
+        // =========================================================================================
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
-            showDownloadButton: true, // --- INÍCIO DA ALTERAÇÃO (PRIORIDADE 1) ---
-            showForms: true, showPrayButton: false // Botão "Orei!" não aparece na lista geral
-        }; // --- FIM DA ALTERAÇÃO ---
+            showDownloadButton: true, // <--- ADICIONADO
+            showForms: true, showPrayButton: false
+        };
         targets.forEach(target => {
             const div = document.createElement("div");
             div.className = "target";
@@ -276,6 +279,8 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
+            // O botão de download já estava habilitado aqui, a alteração no 'createTargetHTML'
+            // irá atualizar automaticamente o texto e a ação.
             const config = {
                 showCreationDate: true,
                 showCategory: true,
@@ -303,13 +308,17 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
+        // ========================================================================================================
+        // ===== ALTERAÇÃO SOLICITADA: Adicionado 'showActions' e 'showDownloadButton' para alvos respondidos. =====
+        // ========================================================================================================
         const config = {
             showCategory: true,
             showResolvedDate: true,
             showTimeToResolution: true,
-            showDownloadButton: true, // --- INÍCIO DA ALTERAÇÃO (PRIORIDADE 1) ---
-            showObservations: true
-        }; // --- FIM DA ALTERAÇÃO ---
+            showObservations: true,
+            showActions: true, // <--- ADICIONADO (necessário para o container de ações)
+            showDownloadButton: true // <--- ADICIONADO
+        };
         targets.forEach(target => {
             const div = document.createElement("div");
             div.className = 'target resolved';
