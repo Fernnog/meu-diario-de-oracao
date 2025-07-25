@@ -104,3 +104,42 @@ export function calculateMilestones(consecutiveDays) {
     
     return achievedMilestones;
 }
+
+/**
+ * (NOVA FUNÇÃO - PRIORIDADE 2)
+ * Gera o conteúdo HTML formatado para um arquivo .doc a partir de um alvo.
+ * @param {object} target - O objeto do alvo de oração.
+ * @returns {string} - O conteúdo HTML completo para o arquivo.
+ */
+export function generateDocContent(target) {
+    // Formata o conteúdo principal do documento
+    let docContent = `
+        <h1>${target.title}</h1>
+        <p><strong>Categoria:</strong> ${target.category || 'N/A'}</p>
+        <p><strong>Data de Criação:</strong> ${formatDateForDisplay(target.date)}</p>
+        <hr>
+        <h3>Detalhes</h3>
+        <p>${target.details ? target.details.replace(/\n/g, '<br>') : 'Sem detalhes.'}</p>
+        <hr>
+        <h3>Observações</h3>
+    `;
+
+    if (target.observations && target.observations.length > 0) {
+        // Ordena as observações da mais antiga para a mais recente para o relatório
+        const sortedObservations = [...target.observations].sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0));
+        sortedObservations.forEach(obs => {
+            docContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.text}</p>`;
+        });
+    } else {
+        docContent += '<p>Nenhuma observação registrada.</p>';
+    }
+
+    // Adiciona o cabeçalho e rodapé necessários para o formato Word
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
+          "xmlns:w='urn:schemas-microsoft-com:office:word' "+
+          "xmlns='http://www.w3.org/TR/REC-html40'>"+
+          "<head><meta charset='utf-8'><title>Exportação de Alvo</title></head><body>";
+    const footer = "</body></html>";
+    
+    return header + docContent + footer;
+}
