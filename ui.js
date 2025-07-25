@@ -30,33 +30,26 @@ function isDateExpired(date) {
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
  * @returns {string} - A string HTML da lista de observações.
  */
-// PONTO DE MUDANÇA (PRIORIDADE 1)
 function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}) {
     if (!Array.isArray(observations) || observations.length === 0) return '';
     
-    // ORDENAÇÃO INVERTIDA: Exibe os mais recentes primeiro
     const sorted = [...observations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
     
     let html = `<div class="observations">`;
 
     sorted.forEach((obs) => {
-        // Encontra o índice original para manter a integridade dos data-attributes
         const originalIndex = observations.indexOf(obs);
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
         if (obs.isSubTarget) {
-            // ----- RENDERIZA COMO UM SUB-ALVO (Lógica inalterada para esta tarefa)-----
+            // ----- RENDERIZA COMO UM SUB-ALVO -----
             const isResolved = obs.subTargetStatus === 'resolved';
-            
             const subTargetId = `${parentTargetId}_${originalIndex}`;
             const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.targetId === subTargetId);
-
             const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
             const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
             const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
-
             const subTargetPrayButton = `<button class="${prayButtonClass}" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${prayButtonDisabled}>${prayButtonText}</button>`;
-
             const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
             const demoteButtonDisabled = hasSubObservations ? 'disabled' : '';
             const demoteButtonTitle = hasSubObservations ? 'Não é possível reverter um sub-alvo que já possui observações.' : 'Reverter para observação comum';
@@ -70,13 +63,9 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
             if (hasSubObservations) {
                 subObservationsHTML += '<div class="sub-observations-list">';
                 const sortedSubObs = [...obs.subObservations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
-                
                 sortedSubObs.forEach(subObs => {
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
-                    subObservationsHTML += `
-                        <div class="sub-observation-item">
-                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}
-                        </div>`;
+                    subObservationsHTML += `<div class="sub-observation-item"><strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}</div>`;
                 });
                 subObservationsHTML += '</div>';
             }
@@ -91,9 +80,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                         </div>
                     </div>
                     <p><em>${sanitizedText} (Origem: observação de ${formatDateForDisplay(obs.date)})</em></p>
-                    <div class="target-actions" style="margin-top: 10px;">
-                        ${!isResolved ? subTargetPrayButton : ''}
-                    </div>
+                    <div class="target-actions" style="margin-top: 10px;">${!isResolved ? subTargetPrayButton : ''}</div>
                     ${subObservationsHTML}
                 </div>`;
         } else {
@@ -104,7 +91,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                     <div class="observation-actions">
                         <button class="btn-small promote" data-action="promote-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Promover a Sub-Alvo</button>
                     </div>
-                    {/* Container para o formulário de edição da observação */}
                     <div id="editObservationFormContainer-${parentTargetId}-${originalIndex}"></div>
                 </div>`;
         }
@@ -132,9 +118,8 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
     const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
     
-    // ALTERADO: Adicionado ícone de edição nos detalhes
+    // ALTERAÇÃO: Adicionado ícone de edição nos detalhes
     const detailsPara = config.showDetails ? `<p class="target-details">${target.details || 'Sem Detalhes'} <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span></p>` : '';
-    
     const elapsedTimePara = config.showElapsedTime ? `<p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>` : '';
     const archivedDatePara = config.showArchivedDate && target.archivedDate ? `<p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>` : '';
     const timeToResolutionPara = config.showTimeToResolution && target.date && target.resolutionDate ? `<p><strong>Tempo para Resposta:</strong> ${timeElapsed(target.date, target.resolutionDate)}</p>` : '';
@@ -147,18 +132,13 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
         const prayAction = config.isPriorityPanel ? 'pray-priority' : 'pray';
 
-        mainActionHTML = `
-            <div class="target-main-action">
-                <button class="${prayButtonClass}" data-action="${prayAction}" data-id="${target.id}" ${prayButtonDisabled}>${prayButtonText}</button>
-            </div>
-        `;
+        mainActionHTML = `<div class="target-main-action"><button class="${prayButtonClass}" data-action="${prayAction}" data-id="${target.id}" ${prayButtonDisabled}>${prayButtonText}</button></div>`;
     }
 
     let actionsHTML = '';
     if (config.showActions) {
         const priorityButtonClass = `btn toggle-priority ${target.isPriority ? 'is-priority' : ''}`;
         const priorityButtonText = target.isPriority ? 'Remover Prioridade' : 'Marcar Prioridade';
-
         const resolveButton = config.showResolveButton ? `<button class="btn resolved" data-action="resolve" data-id="${target.id}">Respondido</button>` : '';
         const resolveArchivedButton = config.showResolveArchivedButton ? `<button class="btn resolved" data-action="resolve-archived" data-id="${target.id}">Respondido</button>` : '';
         const archiveButton = config.showArchiveButton ? `<button class="btn archive" data-action="archive" data-id="${target.id}">Arquivar</button>` : '';
@@ -169,24 +149,21 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         const deleteButton = config.showDeleteButton ? `<button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>` : '';
         const downloadButton = config.showDownloadButton ? `<button class="btn download" data-action="download-target-pdf" data-id="${target.id}">Download (.pdf)</button>` : '';
 
-        actionsHTML = `<div class="target-actions">
-            ${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} 
-            ${editDeadlineButton} ${editCategoryButton} ${resolveArchivedButton} ${deleteButton} ${downloadButton}
-        </div>`;
+        actionsHTML = `<div class="target-actions">${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} ${editDeadlineButton} ${editCategoryButton} ${resolveArchivedButton} ${deleteButton} ${downloadButton}</div>`;
     }
 
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData) : '';
     
-    // ALTERADO: Adicionados placeholders para os novos formulários de edição
+    // ALTERAÇÃO: Adicionados placeholders para os novos formulários de edição
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-        <div id="editTitleForm-${target.id}" style="display:none;"></div>
-        <div id="editDetailsForm-${target.id}" style="display:none;"></div>` : '';
+        <div id="editTitleForm-${target.id}" class="inline-edit-form" style="display:none;"></div>
+        <div id="editDetailsForm-${target.id}" class="inline-edit-form" style="display:none;"></div>` : '';
 
+    // ALTERAÇÃO: Adicionado ícone de edição no título
     return `
-        {/* ALTERADO: Adicionado ícone de edição no título */}
         <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'} <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span></h3>
         ${detailsPara}
         ${mainActionHTML}
@@ -200,7 +177,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
 }
 
 
-// --- Funções de Renderização de Listas de Alvos (Sem alterações nesta seção) ---
+// --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
 
 export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     const container = document.getElementById('priorityTargetsList');
@@ -309,7 +286,7 @@ export function renderResolvedTargets(targets, total, page, perPage) {
             showObservations: true,
             showActions: true,
             showDownloadButton: true,
-            showForms: true
+            showForms: true // Habilita placeholders de formulário
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -334,7 +311,7 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     if (pending.length > 0) {
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
-            showObservations: true, showActions: false, showPrayButton: true, showForms: true
+            showObservations: true, showActions: true, showPrayButton: true, showForms: true
         };
         pending.forEach(target => {
             const div = document.createElement("div");
@@ -368,7 +345,7 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 }
 
-// --- Funções de Componentes de UI (Sem alterações nesta seção, exceto pela adição da nova função no final) ---
+// --- Funções de Componentes de UI ---
 
 export function renderPagination(panelId, currentPage, totalItems, itemsPerPage) {
     const paginationDiv = document.getElementById(`pagination-${panelId}`);
@@ -399,7 +376,6 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     if (!progressBar || !currentDaysEl || !recordDaysEl || !perseveranceSection || !iconsContainer) return;
 
     perseveranceSection.style.display = 'block';
-
     const percentage = recordDays > 0 ? Math.min((consecutiveDays / recordDays) * 100, 100) : 0;
     progressBar.style.width = `${percentage}%`;
     currentDaysEl.textContent = consecutiveDays;
@@ -441,7 +417,6 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     }
 }
 
-
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
     const now = new Date();
@@ -466,8 +441,7 @@ export function updateWeeklyChart(data) {
         const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
         if (interactions[dateStringUTC]) {
             dayTick.classList.add('active'); 
-        } 
-        else if (i < utcDayOfWeek) { 
+        } else if (i < utcDayOfWeek) { 
             dayTick.classList.add('inactive'); 
         }
     }
@@ -487,12 +461,15 @@ export function showPanel(panelId) {
     const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection', 'prioritySection'];
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
+
     [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
+
     const panelEl = document.getElementById(panelId);
     if (panelEl) panelEl.style.display = 'block';
+
     if (panelId !== 'authSection') {
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
@@ -513,8 +490,10 @@ export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
+
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -535,8 +514,10 @@ export function toggleEditDeadlineForm(targetId, currentDeadline) {
     const formDiv = document.getElementById(`editDeadlineForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
+
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -560,8 +541,10 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
+
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
+    
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -570,6 +553,7 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
         const optionsHTML = categories.map(cat => 
             `<option value="${cat}" ${cat === currentCategory ? 'selected' : ''}>${cat}</option>`
         ).join('');
+
         formDiv.innerHTML = `
             <label for="categorySelect-${targetId}">Nova Categoria:</label>
             <select id="categorySelect-${targetId}" style="width: 95%;">
@@ -588,6 +572,7 @@ export function toggleSubObservationForm(targetId, isArchived, obsIndex) {
     const formDiv = document.getElementById(`subObservationForm-${targetId}-${obsIndex}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
+
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -606,15 +591,20 @@ export function showExpiredTargetsToast(expiredTargets) {
     const toast = document.getElementById('expiredToast');
     const messageEl = document.getElementById('expiredToastMessage');
     const closeBtn = document.getElementById('closeExpiredToast');
+
     if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) {
         return;
     }
+    
     const count = expiredTargets.length;
     messageEl.textContent = `Você tem ${count} alvo${count > 1 ? 's' : ''} com prazo vencido!`;
+    
     toast.classList.remove('hidden');
+    
     closeBtn.onclick = () => {
         toast.classList.add('hidden');
     };
+    
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 8000); 
@@ -631,14 +621,17 @@ export function toggleManualTargetModal(show) {
 export function renderManualSearchResults(results, allTargets, searchTerm = '') {
     const container = document.getElementById('manualTargetSearchResults');
     container.innerHTML = '';
+
     if (searchTerm.trim() === '' && allTargets.length > 0) {
         container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
         return;
     }
+    
     if (results.length === 0) {
         container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
         return;
     }
+
     results.forEach(target => {
         const item = document.createElement('div');
         item.className = 'manual-target-item';
@@ -673,6 +666,7 @@ export function toggleCategoryModal(show, allTargets = []) {
         if (show) {
             const container = document.getElementById('categoryCheckboxesContainer');
             container.innerHTML = '';
+            
             const categories = [...new Set(allTargets.map(t => t.category).filter(Boolean))];
             if (categories.length === 0) {
                 container.innerHTML = '<p>Nenhuma categoria encontrada nos seus alvos.</p>';
@@ -693,6 +687,7 @@ export function toggleCategoryModal(show, allTargets = []) {
 export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
     const groupedTargets = {};
     const useGrouping = selectedCategories.length > 0;
+
     if (useGrouping) {
         for (const category of selectedCategories.sort()) {
             groupedTargets[category] = [];
@@ -701,6 +696,7 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             groupedTargets['Sem Categoria'] = [];
         }
     }
+
     for (const target of targets) {
         if (useGrouping) {
             const category = target.category || 'Sem Categoria';
@@ -712,8 +708,10 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             groupedTargets['all'].push(target);
         }
     }
+
     let bodyContent = '';
     const categoriesToRender = useGrouping ? Object.keys(groupedTargets) : ['all'];
+
     for (const category of categoriesToRender) {
         if (groupedTargets[category] && groupedTargets[category].length > 0) {
             if (useGrouping) {
@@ -729,9 +727,11 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             `).join('<hr class="view-separator-light">');
         }
     }
+    
     if (bodyContent === '') {
         bodyContent = '<p>Nenhum alvo encontrado para os filtros selecionados.</p>';
     }
+
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title>
         <style>
@@ -770,6 +770,7 @@ export function generatePerseveranceReportHTML(data) {
         { name: "Diamante da Oração", days: 300, icon: "💎" },
         { name: "Sol da Eternidade", days: 1000, icon: "☀️" },
     ];
+
     let milestonesHTML = '';
     if (data.consecutiveDays > 0) {
         MILESTONES_REPORT.forEach(milestone => {
@@ -782,6 +783,7 @@ export function generatePerseveranceReportHTML(data) {
     } else {
         milestonesHTML = '<li>Nenhuma sequência ativa para exibir marcos.</li>';
     }
+
     let historyHTML = '';
     if (data.interactionDates && data.interactionDates.length > 0) {
         historyHTML = data.interactionDates.map(dateStr => {
@@ -791,6 +793,7 @@ export function generatePerseveranceReportHTML(data) {
     } else {
         historyHTML = '<li>Nenhuma interação registrada na semana atual.</li>';
     }
+
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança Pessoal</title>
         <style>
@@ -838,7 +841,9 @@ export function generateInteractionReportHTML(allTargets, interactionMap) {
         count: interactionMap.get(target.id) || 0,
         status: target.resolved ? 'Respondido' : (target.archived ? 'Arquivado' : 'Ativo')
     }));
+
     reportData.sort((a, b) => b.count - a.count);
+
     let tableRowsHTML = reportData.map(item => `
         <tr>
             <td>${item.title}</td>
@@ -848,9 +853,11 @@ export function generateInteractionReportHTML(allTargets, interactionMap) {
             <td class="status-${item.status.toLowerCase()}">${item.status}</td>
         </tr>
     `).join('');
+
     if (reportData.length === 0) {
         tableRowsHTML = '<tr><td colspan="5">Nenhum alvo encontrado para gerar o relatório.</td></tr>';
     }
+
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Interação por Alvo</title>
         <style>
@@ -912,6 +919,7 @@ export function updateAuthUI(user, message = '', isError = false) {
     const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
     const authStatusContainer = document.querySelector('.auth-status-container');
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
+
     if (user) {
         authStatusContainer.style.display = 'flex';
         btnLogout.style.display = 'inline-block';
@@ -922,6 +930,7 @@ export function updateAuthUI(user, message = '', isError = false) {
         authStatusContainer.style.display = 'none';
         btnLogout.style.display = 'none';
         emailPasswordAuthForm.style.display = 'block';
+        
         if (message) {
             passwordResetMessageDiv.textContent = message;
             passwordResetMessageDiv.style.color = isError ? "red" : "green";
@@ -932,9 +941,10 @@ export function updateAuthUI(user, message = '', isError = false) {
     }
 }
 
-// ========================================================================================
-// ===== NOVA FUNÇÃO ADICIONADA: Gerenciador de Formulários de Edição Inline =====
-// ========================================================================================
+// =================================================================
+// === NOVA FUNÇÃO (PRIORIDADE 1) ===
+// =================================================================
+
 /**
  * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico.
  * @param {'Title' | 'Details' | 'Observation'} type - O tipo de campo a ser editado.
@@ -943,26 +953,13 @@ export function updateAuthUI(user, message = '', isError = false) {
  */
 export function toggleEditForm(type, targetId, options = {}) {
     const { currentValue = '', obsIndex = -1 } = options;
+    const isObs = type === 'Observation';
+    const formContainerId = isObs 
+        ? `editObservationFormContainer-${targetId}-${obsIndex}` 
+        : `edit${type}Form-${targetId}`;
 
-    // Constrói um ID único para o formulário e seu container
-    const formId = `edit${type}Form-${targetId}${type === 'Observation' ? `-${obsIndex}` : ''}`;
-    let formContainer;
-
-    // Lógica para encontrar o container do formulário
-    if (type === 'Observation') {
-        // Para observações, o formulário aparece dentro do item da observação
-        const obsItem = document.querySelector(`.observation-item [data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
-        if (!obsItem) return;
-        formContainer = obsItem.querySelector(`#editObservationFormContainer-${targetId}-${obsIndex}`);
-    } else {
-        // Para título e detalhes, o formulário usa o placeholder no final do card do alvo
-        formContainer = document.getElementById(`edit${type}Form-${targetId}`);
-    }
-
-    if (!formContainer) {
-        console.error(`Container do formulário não encontrado para: ${formId}`);
-        return;
-    }
+    const formContainer = document.getElementById(formContainerId);
+    if (!formContainer) return;
 
     const isVisible = formContainer.style.display === 'block';
 
@@ -970,23 +967,26 @@ export function toggleEditForm(type, targetId, options = {}) {
         formContainer.style.display = 'none';
         formContainer.innerHTML = '';
     } else {
-        // Sanitiza o valor atual para uso seguro em 'value' e dentro de 'textarea'
-        const sanitizedValue = currentValue.replace(/"/g, '"');
-        
+        // Sanitiza o valor para evitar problemas no HTML
+        const sanitizedValue = currentValue.replace(/"/g, """);
+        const inputId = `input-${formContainerId}`;
+
         const inputElement = type === 'Title'
-            ? `<input type="text" id="input-${formId}" value="${sanitizedValue}" placeholder="Novo ${type.toLowerCase()}">`
-            : `<textarea id="input-${formId}" rows="4" placeholder="Novos ${type.toLowerCase()}...">${sanitizedValue}</textarea>`;
+            ? `<input type="text" id="${inputId}" value="${sanitizedValue}">`
+            : `<textarea id="${inputId}" rows="4">${sanitizedValue}</textarea>`;
 
         formContainer.innerHTML = `
             <div class="inline-edit-form">
+                <label for="${inputId}" style="display:block; margin-bottom: 5px; font-weight: bold;">Editando ${isObs ? 'Observação' : type}:</label>
                 ${inputElement}
                 <div class="form-actions">
-                     <button class="btn-small cancel-btn" data-action="cancel-edit" data-form-id="${formId}">Cancelar</button>
-                     <button class="btn-small save-btn" data-action="save-${type.toLowerCase()}" data-id="${targetId}" ${type === 'Observation' ? `data-obs-index="${obsIndex}"` : ''}>Salvar</button>
+                     <button class="btn-small cancel-btn" data-action="cancel-edit" data-form-id="${formContainerId}">Cancelar</button>
+                     <button class="btn-small save-btn" data-action="save-${type.toLowerCase()}" data-id="${targetId}" ${isObs ? `data-obs-index="${obsIndex}"` : ''}>Salvar</button>
                 </div>
             </div>
         `;
         formContainer.style.display = 'block';
-        document.getElementById(`input-${formId}`).focus(); // Foco automático no campo
+        document.getElementById(inputId).focus();
+        document.getElementById(inputId).select();
     }
 }
