@@ -1384,6 +1384,66 @@ input[type="date"] {
     animation: fadeInItem 0.5s ease-out forwards;
 }
 
+/* ==== INÍCIO: NOVOS ESTILOS PARA EDIÇÃO INLINE ==== */
+/* Estilo para o ícone de edição (lápis) */
+.edit-icon {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 0.8em;
+    opacity: 0.5; /* Começa discreto */
+    transition: opacity 0.2s;
+    vertical-align: middle; /* Alinha com o texto */
+}
+
+/* O ícone fica mais visível ao passar o mouse */
+.target h3:hover .edit-icon,
+.target-details:hover .edit-icon,
+.observation-item:hover .edit-icon {
+    opacity: 1;
+}
+
+/* Container para os formulários de edição inline */
+.inline-edit-form {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #fff9e7; /* Amarelo bem claro para destaque */
+    border: 1px solid #ffe082;
+    border-radius: 5px;
+    animation: fadeInItem 0.4s ease-out;
+}
+
+.inline-edit-form input[type="text"],
+.inline-edit-form textarea {
+    width: 100%;
+    box-sizing: border-box; /* Garante que padding não estoure a largura */
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: 'Playfair Display', serif;
+}
+
+.inline-edit-form .form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end; /* Alinha botões à direita */
+}
+
+.inline-edit-form .btn-small {
+    padding: 5px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    color: white;
+}
+
+.inline-edit-form .save-btn { background-color: #28a745; } /* Verde */
+.inline-edit-form .cancel-btn { background-color: #dc3545; } /* Vermelho */
+/* ==== FIM: NOVOS ESTILOS PARA EDIÇÃO INLINE ==== */
+
+
 /* ==== RESPONSIVENESS ==== */
 @media (max-width: 768px) {
     body { font-size: 15px; padding: 5px; }
@@ -1622,7 +1682,7 @@ input[type="date"] {
 /* Estilo para botões pequenos desabilitados, como o de 'Reverter' */
 .observation-actions .btn-small:disabled {
     background-color: #e0e0e0;
-    border-color: #bdbdbd;
+    border-color: #bdbdbe;
     color: #9e9e9e;
     cursor: not-allowed;
     opacity: 0.7;
