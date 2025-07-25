@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWith
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
 import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
-import { formatDateForDisplay, generateDocContent } from './utils.js'; // <-- MODIFICADO: Importa a nova função
+import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js'; // <-- MODIFICADO: Importa a nova função de PDF
 
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
@@ -678,6 +678,14 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'toggle-priority':
                 await handleTogglePriority(target);
                 break;
+
+            case 'download-target-pdf': { // <-- NOVO CASE ADICIONADO
+                const { target } = findTargetInState(id);
+                if (!target) return;
+                generateAndDownloadPdf(target);
+                showToast(`Gerando PDF para "${target.title}"...`, 'success');
+                break;
+            }
             
             case 'select-manual-target':
                 try {
@@ -690,28 +698,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(error.message, "error");
                 }
                 break;
-
-            // NOVA AÇÃO ADICIONADA (PRIORIDADE 1)
-            case 'download-target-doc': {
-                const { target: targetToDownload } = findTargetInState(id);
-                if (!targetToDownload) return;
-
-                const sourceHTML = generateDocContent(targetToDownload);
-                const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-                
-                const fileDownloadLink = document.createElement("a");
-                document.body.appendChild(fileDownloadLink);
-                fileDownloadLink.href = source;
-                
-                const fileName = `${targetToDownload.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.doc`;
-                fileDownloadLink.download = fileName;
-                
-                fileDownloadLink.click();
-                document.body.removeChild(fileDownloadLink);
-                
-                showToast(`Download de "${targetToDownload.title}" iniciado.`, 'success');
-                break;
-            }
 
             case 'promote-observation': {
                 if (!confirm("Deseja promover esta observação a um sub-alvo?")) return;
