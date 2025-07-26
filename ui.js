@@ -22,13 +22,13 @@ function isDateExpired(date) {
 }
 
 /**
- * (VERSÃO COM EDIÇÃO)
+ * (VERSÃO COM EDIÇÃO CORRIGIDA)
  * Gera o HTML para a lista de observações de um alvo,
- * incluindo ícones e placeholders para edição.
+ * incluindo ícones e placeholders para edição, controlados por uma flag.
  * @param {Array<object>} observations - O array de observações.
  * @param {string} parentTargetId - O ID do alvo principal.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
- * @param {boolean} isEditingEnabled - Controla se os ícones de edição devem ser renderizados.
+ * @param {boolean} isEditingEnabled - Flag para controlar a exibição dos ícones de edição.
  * @returns {string} - A string HTML da lista de observações.
  */
 function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}, isEditingEnabled = false) {
@@ -45,14 +45,12 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
         if (obs.isSubTarget) {
             // ----- RENDERIZA COMO UM SUB-ALVO -----
             const isResolved = obs.subTargetStatus === 'resolved';
-            
             const subTargetId = `${parentTargetId}_${originalIndex}`;
             const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.targetId === subTargetId);
 
             const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
             const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
             const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
-
             const subTargetPrayButton = `<button class="${prayButtonClass}" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${prayButtonDisabled}>${prayButtonText}</button>`;
 
             const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
@@ -64,9 +62,9 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
-            // Ícones de edição para o título do sub-alvo e seu detalhe original
-            const editTitleIcon = isEditingEnabled ? `<span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
-            const editDetailsIcon = isEditingEnabled ? `<span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            // ALTERAÇÃO: Ícones de edição agora são condicionais
+            const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
 
             let subObservationsHTML = '';
             if (hasSubObservations) {
@@ -76,8 +74,8 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 sortedSubObs.forEach(subObs => {
                     const originalSubObsIndex = obs.subObservations.indexOf(subObs);
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
+                    // ALTERAÇÃO: Ícone de edição para sub-observação agora é condicional
                     const editSubObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
-
                     subObservationsHTML += `
                         <div class="sub-observation-item">
                             <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}${editSubObsIcon}
@@ -103,14 +101,14 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 </div>`;
         } else {
             // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL COM ÍCONE DE EDIÇÃO -----
-            const editObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            // ALTERAÇÃO: Ícone de edição agora é condicional
+            const editIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
             html += `
                 <div class="observation-item">
-                    <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}${editObsIcon}</p>
+                    <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}${editIcon}</p>
                     <div class="observation-actions">
                         <button class="btn-small promote" data-action="promote-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Promover a Sub-Alvo</button>
                     </div>
-                    <div id="editObservationFormContainer-${parentTargetId}-${originalIndex}"></div>
                 </div>`;
         }
     });
@@ -121,16 +119,18 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
 // --- Template Engine de Alvos (Refatoração Arquitetônica) ---
 
 /**
- * (VERSÃO COM EDIÇÃO)
+ * (VERSÃO COM EDIÇÃO CORRIGIDA)
  * Cria o HTML para um único alvo com base em uma configuração,
- * incluindo ícones e placeholders para edição.
+ * incluindo ícones e placeholders para edição, controlados por uma flag.
  * @param {object} target - O objeto do alvo de oração.
  * @param {object} config - Configurações de exibição e ações.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
+    // ALTERAÇÃO: Adiciona a flag de controle de edição a partir da configuração
     const isEditingEnabled = config.isEditingEnabled === true;
+    
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
     const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
 
@@ -139,9 +139,10 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
     const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
 
+    // ALTERAÇÃO: Ícones de edição agora são condicionais
     const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span>` : '';
     const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span>` : '';
-
+    
     const detailsPara = config.showDetails ? `<p class="target-details">${target.details || 'Sem Detalhes'}${editDetailsIcon}</p>` : '';
     const elapsedTimePara = config.showElapsedTime ? `<p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>` : '';
     const archivedDatePara = config.showArchivedDate && target.archivedDate ? `<p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>` : '';
@@ -183,14 +184,14 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         </div>`;
     }
 
+    // ALTERAÇÃO: Passa a flag 'isEditingEnabled' para a função que renderiza as observações
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
     
+    // Removidos os placeholders de edição inline de 'formsHTML', pois o novo 'toggleEditForm' cria o formulário dinamicamente.
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
-        <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-        <div id="editTitleForm-${target.id}" class="inline-edit-form" style="display:none;"></div>
-        <div id="editDetailsForm-${target.id}" class="inline-edit-form" style="display:none;"></div>` : '';
+        <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
 
     return `
         <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
@@ -204,6 +205,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         ${formsHTML}
     `;
 }
+
 
 // --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
 
@@ -223,17 +225,11 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     section.style.display = 'block';
     container.innerHTML = ''; 
 
+    // ALTERAÇÃO: Edição desabilitada neste painel
     const config = {
-        showCreationDate: true,
-        showCategory: true,
-        showDeadline: true,
-        showDetails: true,
-        showObservations: true,
-        showActions: true,
-        showPrayButton: true,
-        isPriorityPanel: true,
-        showForms: true,
-        isEditingEnabled: false
+        showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
+        showObservations: true, showActions: false, showPrayButton: true,
+        isPriorityPanel: true, showForms: true, isEditingEnabled: false
     };
     
     priorityTargets.forEach(target => {
@@ -251,14 +247,13 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
+        // ALTERAÇÃO: Edição habilitada neste painel
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
-            showDownloadButton: true,
-            showForms: true, showPrayButton: false,
-            isEditingEnabled: true
+            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -282,20 +277,13 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
+            // ALTERAÇÃO: Edição habilitada neste painel
             const config = {
-                showCreationDate: true,
-                showCategory: true,
-                showResolvedDate: true,
-                showDetails: true,
-                showArchivedDate: true,
-                showObservations: true,
-                showActions: true,
-                showResolveArchivedButton: !target.resolved,
-                showAddObservationButton: true,
-                showDeleteButton: true,
-                showDownloadButton: true,
-                showForms: true,
-                isEditingEnabled: true
+                showCreationDate: true, showCategory: true, showResolvedDate: true,
+                showDetails: true, showArchivedDate: true, showObservations: true,
+                showActions: true, showResolveArchivedButton: !target.resolved,
+                showAddObservationButton: true, showDeleteButton: true,
+                showDownloadButton: true, showForms: true, isEditingEnabled: true
             };
             div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
             container.appendChild(div);
@@ -310,15 +298,11 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
+        // ALTERAÇÃO: Edição habilitada neste painel
         const config = {
-            showCategory: true,
-            showResolvedDate: true,
-            showTimeToResolution: true,
-            showObservations: true,
-            showActions: true,
-            showDownloadButton: true,
-            showForms: true,
-            isEditingEnabled: true
+            showCategory: true, showResolvedDate: true, showTimeToResolution: true,
+            showObservations: true, showActions: false, showDownloadButton: true,
+            showForms: true, isEditingEnabled: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -341,10 +325,11 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
+        // ALTERAÇÃO: Edição desabilitada neste painel
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
-            showObservations: true, showActions: true, showPrayButton: true, showForms: true,
-            isEditingEnabled: false
+            showObservations: true, showActions: false, showPrayButton: true, 
+            showForms: true, isEditingEnabled: false
         };
         pending.forEach(target => {
             const div = document.createElement("div");
@@ -616,84 +601,75 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
 }
 
 /**
- * (NOVA FUNÇÃO)
- * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico (título, detalhes, observação).
- * @param {'Title' | 'Details' | 'Observation'} type - O tipo de campo a ser editado.
+ * (FUNÇÃO REFINADA - CORREÇÃO PRIORIDADE 1)
+ * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico.
+ * @param {'Title'|'Details'|'Observation'|'SubTargetTitle'|'SubTargetDetails'|'SubObservation'} type - O tipo de campo a ser editado.
  * @param {string} targetId - O ID do alvo.
- * @param {object} options - Opções adicionais como valor atual e índice.
+ * @param {object} options - Opções como valor atual, índices e a ação de salvamento.
  */
 export function toggleEditForm(type, targetId, options = {}) {
-    const { currentValue = '', obsIndex = -1 } = options;
-    const isObs = type === 'Observation';
-    
-    // Constrói IDs únicos para os elementos do formulário
-    const formIdSuffix = `${targetId}${isObs ? `-${obsIndex}` : ''}`;
-    const formContainerId = `edit${type}Form${isObs ? 'Container' : ''}-${formIdSuffix}`;
-    const inputId = `input-edit${type}Form-${formIdSuffix}`;
+    const { currentValue = '', obsIndex = -1, subObsIndex = -1, saveAction } = options;
 
-    let formContainer;
+    // Primeiro, fecha qualquer outro formulário de edição inline para evitar conflitos
+    document.querySelectorAll('.inline-edit-form-container').forEach(container => container.remove());
 
-    // Localiza ou cria o contêiner do formulário no DOM
-    if (isObs) {
-        // Para observações, injeta o contêiner dentro do item da observação
-        const obsItem = document.querySelector(`.observation-item [data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
-        formContainer = document.getElementById(formContainerId);
-        if (!formContainer) {
-            const div = document.createElement('div');
-            div.id = formContainerId;
-            obsItem.appendChild(div);
-            formContainer = div;
-        }
-    } else {
-        // Para título e detalhes, usa os divs pré-definidos no final do alvo
-        formContainer = document.getElementById(`edit${type}Form-${targetId}`);
+    // Determina o elemento pai onde o formulário será injetado
+    let parentElement;
+    if (type === 'SubObservation') {
+        parentElement = document.querySelector(`[data-action="edit-sub-observation"][data-id="${targetId}"][data-obs-index="${obsIndex}"][data-sub-obs-index="${subObsIndex}"]`).closest('.sub-observation-item');
+    } else if (type === 'SubTargetTitle' || type === 'SubTargetDetails' || type === 'Observation') {
+        parentElement = document.querySelector(`[data-action*="edit-"][data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
+    } else if (type === 'Title' || type === 'Details') {
+        parentElement = document.querySelector(`[data-target-id="${targetId}"]`);
     }
 
-    if (!formContainer) return;
-    
-    const isVisible = formContainer.style.display === 'block';
+    if (!parentElement) {
+        console.error("Não foi possível encontrar o elemento pai para anexar o formulário para o tipo:", type);
+        return;
+    }
 
-    if (isVisible) {
-        formContainer.style.display = 'none';
-        formContainer.innerHTML = '';
-    } else {
-        // Define o campo de entrada (input para título, textarea para outros)
-        const inputElement = type === 'Title'
-            ? `<input type="text" id="${inputId}" value="${currentValue}" placeholder="Novo título">`
-            : `<textarea id="${inputId}" rows="4" placeholder="Novos detalhes ou observação...">${currentValue}</textarea>`;
+    // Cria um novo container para o formulário
+    const formContainer = document.createElement('div');
+    formContainer.className = 'inline-edit-form-container';
 
-        // Monta o HTML do formulário de edição
-        formContainer.innerHTML = `
-            <div class="inline-edit-form">
-                ${inputElement}
-                <div class="form-actions">
-                     <button class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
-                     <button class="btn-small save-btn" data-action="save-${type.toLowerCase()}" data-id="${targetId}" ${isObs ? `data-obs-index="${obsIndex}"` : ''}>Salvar</button>
-                </div>
+    const inputElement = (type.includes('Title'))
+        ? `<input type="text" class="inline-edit-input" value="${currentValue}" placeholder="Novo texto">`
+        : `<textarea rows="4" class="inline-edit-textarea" placeholder="Novos detalhes...">${currentValue}</textarea>`;
+
+    const finalSaveAction = saveAction || `save-${type.toLowerCase()}`;
+    const obsIndexAttr = obsIndex > -1 ? `data-obs-index="${obsIndex}"` : '';
+    const subObsIndexAttr = subObsIndex > -1 ? `data-sub-obs-index="${subObsIndex}"` : '';
+
+    formContainer.innerHTML = `
+        <div class="inline-edit-form">
+            ${inputElement}
+            <div class="form-actions">
+                 <button class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
+                 <button class="btn-small save-btn" data-action="${finalSaveAction}" data-id="${targetId}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
             </div>
-        `;
-        formContainer.style.display = 'block';
-        
-        const inputField = document.getElementById(inputId);
-        const saveButton = formContainer.querySelector('.save-btn');
-        
-        inputField.focus(); // Foco automático no campo
+        </div>
+    `;
 
-        // Melhoria de UX: Atalhos de teclado
-        inputField.addEventListener('keydown', (e) => {
-            // Salva com "Enter" (permite Shift+Enter para nova linha em textareas)
-            if (e.key === 'Enter' && (type === 'Title' || !e.shiftKey)) {
-                e.preventDefault();
-                saveButton.click(); // Simula o clique no botão Salvar
-            }
-            // Cancela com "Escape"
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                formContainer.querySelector('[data-action="cancel-edit"]').click(); // Simula o clique no botão Cancelar
-            }
-        });
-    }
+    // Anexa e foca no campo de entrada
+    parentElement.appendChild(formContainer);
+    const inputField = formContainer.querySelector('input, textarea');
+    inputField.focus();
+    inputField.select(); // Seleciona o texto para fácil substituição
+
+    // Adiciona atalhos de teclado para uma melhor UX
+    const saveButton = formContainer.querySelector('.save-btn');
+    inputField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (inputField.tagName === 'INPUT' || !e.shiftKey)) {
+            e.preventDefault();
+            saveButton.click();
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            formContainer.querySelector('.cancel-btn').click();
+        }
+    });
 }
+
 
 export function showExpiredTargetsToast(expiredTargets) {
     const toast = document.getElementById('expiredToast');
