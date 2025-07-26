@@ -456,6 +456,44 @@ export async function updateObservationInTarget(uid, targetId, isArchived, obser
     await updateDoc(docRef, { observations: observations });
 }
 
+/**
+ * (NOVA FUNÇÃO - PRIORIDADE 1)
+ * Atualiza o texto de uma sub-observação específica dentro de um sub-alvo.
+ * @param {string} uid - ID do usuário.
+ * @param {string} targetId - ID do alvo principal.
+ * @param {boolean} isArchived - Se o alvo principal está arquivado.
+ * @param {number} subTargetIndex - O índice do sub-alvo (observação promovida).
+ * @param {number} subObservationIndex - O índice da sub-observação a ser alterada.
+ * @param {object} updatedSubObservationData - Os novos dados da sub-observação.
+ * @returns {Promise<void>}
+ */
+export async function updateSubObservationInTarget(uid, targetId, isArchived, subTargetIndex, subObservationIndex, updatedSubObservationData) {
+    const collectionName = isArchived ? "archivedTargets" : "prayerTargets";
+    const docRef = doc(db, "users", uid, collectionName, targetId);
+
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Alvo principal não encontrado.");
+
+    const targetData = docSnap.data();
+    const observations = targetData.observations || [];
+
+    if (subTargetIndex < 0 || subTargetIndex >= observations.length || !observations[subTargetIndex].isSubTarget) {
+        throw new Error("Índice do sub-alvo é inválido.");
+    }
+    
+    const subObservations = observations[subTargetIndex].subObservations || [];
+    if (subObservationIndex < 0 || subObservationIndex >= subObservations.length) {
+        throw new Error("Índice da sub-observação é inválido.");
+    }
+    
+    // Atualiza o item específico
+    subObservations[subObservationIndex] = { ...subObservations[subObservationIndex], ...updatedSubObservationData };
+
+    // Salva o array de observações inteiro de volta
+    await updateDoc(docRef, { observations: observations });
+}
+
+
 export async function addSubObservationToTarget(uid, targetId, isArchived, subTargetIndex, subObservation) {
     const collectionName = isArchived ? "archivedTargets" : "prayerTargets";
     const docRef = doc(db, "users", uid, collectionName, targetId);
