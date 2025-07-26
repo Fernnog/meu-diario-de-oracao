@@ -547,7 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
     document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
     
-    // CORRIGIDO: Chamada direta para a função importada
     document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { 
         const reportData = { 
             ...state.perseveranceData, 
@@ -564,7 +563,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
     document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
 
-    // CORRIGIDO: Chamada direta para a função importada
     document.getElementById('generateResolvedView').addEventListener('click', () => { 
         const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); 
         const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); 
@@ -600,7 +598,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
     document.body.addEventListener('click', async e => {
-        const { action, id, page, panel, obsIndex } = e.target.dataset;
+        // INÍCIO DA MODIFICAÇÃO: subObsIndex é extraído para uso nas novas ações.
+        const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
+        // FIM DA MODIFICAÇÃO
         if (!state.user && action) return;
 
         // Lógica de Paginação
@@ -651,9 +651,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.toggleAddObservationForm(id);
                 break;
             
-            // ================================================================================================
-            // ===== INÍCIO DA MODIFICAÇÃO: Adicionados novos 'cases' para a funcionalidade de edição. =====
-            // ================================================================================================
             case 'edit-title': {
                 const { target } = findTargetInState(id);
                 if (target) UI.toggleEditForm('Title', id, { currentValue: target.title });
@@ -673,6 +670,113 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
+
+            // ================================================================================================
+            // ===== INÍCIO DA MODIFICAÇÃO: Adicionados novos 'cases' para a funcionalidade de edição de sub-alvos. =====
+            // ================================================================================================
+            case 'edit-sub-target-title': {
+                const { target } = findTargetInState(id);
+                if (target && target.observations[obsIndex]?.isSubTarget) {
+                    UI.toggleEditForm('SubTargetTitle', id, { 
+                        currentValue: target.observations[obsIndex].subTargetTitle, 
+                        obsIndex 
+                    });
+                }
+                break;
+            }
+
+            case 'edit-sub-target-details': {
+                const { target } = findTargetInState(id);
+                if (target && target.observations[obsIndex]?.isSubTarget) {
+                    UI.toggleEditForm('SubTargetDetails', id, { 
+                        currentValue: target.observations[obsIndex].text, 
+                        obsIndex 
+                    });
+                }
+                break;
+            }
+
+            case 'edit-sub-observation': {
+                const { target } = findTargetInState(id);
+                if (target && target.observations[obsIndex]?.subObservations?.[subObsIndex]) {
+                    UI.toggleEditForm('SubObservation', id, { 
+                        currentValue: target.observations[obsIndex].subObservations[subObsIndex].text, 
+                        obsIndex, 
+                        subObsIndex 
+                    });
+                }
+                break;
+            }
+
+            case 'save-sub-target-title': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                const newTitle = document.getElementById(`input-editSubTargetTitleForm-${id}-${obsIndex}`).value.trim();
+                
+                if (!target || !newTitle) break;
+                
+                const obsToUpdate = target.observations[obsIndex];
+                const oldTitle = obsToUpdate.subTargetTitle;
+                obsToUpdate.subTargetTitle = newTitle; // UI Otimista
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { subTargetTitle: newTitle });
+                    showToast("Título do sub-alvo atualizado!", "success");
+                } catch (error) {
+                    obsToUpdate.subTargetTitle = oldTitle; // Reverte em caso de erro
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar o título do sub-alvo.", "error");
+                }
+                break;
+            }
+
+            case 'save-sub-target-details': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                const newDetails = document.getElementById(`input-editSubTargetDetailsForm-${id}-${obsIndex}`).value.trim();
+
+                if (!target) break;
+
+                const obsToUpdate = target.observations[obsIndex];
+                const oldDetails = obsToUpdate.text;
+                obsToUpdate.text = newDetails; // UI Otimista
+                applyFiltersAndRender(panelId);
+
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newDetails });
+                    showToast("Detalhes do sub-alvo atualizados!", "success");
+                } catch (error) {
+                    obsToUpdate.text = oldDetails; // Reverte
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar detalhes do sub-alvo.", "error");
+                }
+                break;
+            }
+
+            case 'save-sub-observation': {
+                const { target, isArchived, panelId } = findTargetInState(id);
+                const newText = document.getElementById(`input-editSubObservationForm-${id}-${obsIndex}-${subObsIndex}`).value.trim();
+                
+                if (!target) break;
+
+                const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
+                const oldText = subObsToUpdate.text;
+                subObsToUpdate.text = newText; // UI Otimista
+                applyFiltersAndRender(panelId);
+
+                try {
+                    // Assumindo que a função em firestore-service.js foi criada conforme o plano.
+                    await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), parseInt(subObsIndex), { text: newText });
+                    showToast("Observação do sub-alvo atualizada!", "success");
+                } catch (error) {
+                    subObsToUpdate.text = oldText; // Reverte
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao atualizar a observação.", "error");
+                }
+                break;
+            }
+             // ================================================================================================
+            // ===== FIM DA MODIFICAÇÃO: 'cases' de edição de sub-alvos adicionados. =====
+            // ================================================================================================
 
             case 'save-title': {
                 const { target, isArchived, panelId } = findTargetInState(id);
@@ -715,30 +819,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             case 'save-observation': {
-                const { target, isArchived, panelId } = findTargetInState(id);
-                // O obsIndex já vem do dataset
-                const formId = `editObservationForm-${id}-${obsIndex}`;
-                const newText = document.getElementById(`input-${formId}`).value.trim();
-                if (!target || !newText) break;
-
-                const oldText = target.observations[obsIndex].text;
-                target.observations[obsIndex].text = newText; // UI Otimista
-                applyFiltersAndRender(panelId);
+                // Este 'case' agora trata tanto a adição de uma nova observação
+                // quanto a edição de uma observação existente (que não seja sub-alvo).
+                const addFormTextarea = document.getElementById(`observationText-${id}`);
                 
-                try {
-                    // Aqui usamos uma função de serviço que atualiza um item específico no array
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { ...target.observations[obsIndex], text: newText });
-                    showToast("Observação atualizada!", "success");
-                } catch (error) {
-                    target.observations[obsIndex].text = oldText; // Reverte
+                if (addFormTextarea) {
+                    // Cenário de Adicionar Nova Observação
+                    await handleAddObservation(target, isArchived, panelId);
+                } else {
+                    // Cenário de Editar Observação Existente
+                    const { target, isArchived, panelId } = findTargetInState(id);
+                    const newText = document.getElementById(`input-editObservationForm-${id}-${obsIndex}`).value.trim();
+                    if (!target || !newText) break;
+
+                    const obsToUpdate = target.observations[obsIndex];
+                    if (obsToUpdate.isSubTarget) {
+                        // Este bloco não deve ser alcançado se a lógica de 'save-sub-target-details' for usada.
+                        // Mas é um fallback de segurança.
+                        showToast("Ação de salvamento inválida para sub-alvo. Use a ação apropriada.", "error");
+                        break;
+                    }
+
+                    const oldText = obsToUpdate.text;
+                    obsToUpdate.text = newText; // UI Otimista
                     applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar a observação.", "error");
+                    
+                    try {
+                        await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
+                        showToast("Observação atualizada!", "success");
+                    } catch (error) {
+                        obsToUpdate.text = oldText; // Reverte
+                        applyFiltersAndRender(panelId);
+                        showToast("Falha ao atualizar a observação.", "error");
+                    }
                 }
                 break;
             }
 
             case 'cancel-edit': {
-                // A ação de cancelar simplesmente esconde o formulário mais próximo
                 const form = e.target.closest('.inline-edit-form');
                 if (form) {
                     form.style.display = 'none';
@@ -746,14 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-            // ================================================================================================
-            // ===== FIM DA MODIFICAÇÃO: 'cases' de edição adicionados. =====
-            // ================================================================================================
-
-            case 'save-observation':
-                await handleAddObservation(target, isArchived, panelId);
-                break;
-
+            
             case 'edit-deadline': 
                 UI.toggleEditDeadlineForm(id, target?.deadlineDate); 
                 break;
@@ -834,24 +945,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             case 'pray-sub-target': {
                 try {
-                    // UI Otimista: desabilita o botão imediatamente
                     e.target.disabled = true;
                     e.target.textContent = '✓ Orado!';
                     e.target.classList.add('prayed');
                     
                     const subTargetId = `${id}_${obsIndex}`;
                     
-                    // Atualiza o estado localmente para refletir a oração
                     const { target: parentTarget } = findTargetInState(id);
                     if (parentTarget) {
                         state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true });
                     }
                     
-                    // Chama os serviços de back-end
                     await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
                     const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
                     
-                    // Recarrega os dados de perseverança para manter a UI sincronizada
                     const [perseveranceData, weeklyData] = await Promise.all([
                         Service.loadPerseveranceData(state.user.uid),
                         Service.loadWeeklyPrayerData(state.user.uid)
@@ -866,7 +973,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error("Erro ao registrar interação com sub-alvo:", error);
                     showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    // Reverte a UI em caso de erro
                     e.target.disabled = false;
                     e.target.textContent = 'Orei!';
                     e.target.classList.remove('prayed');
