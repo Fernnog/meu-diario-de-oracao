@@ -16,19 +16,131 @@ import { MILESTONES } from './config.js';
 function isDateExpired(date) {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return false;
     const now = new Date();
-    // Compara apenas as datas, ignorando a hora, usando UTC para consistência.
     const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return date.getTime() < todayUTCStart.getTime();
 }
 
+// =================================================================
+// === ARQUITETURA DE COMPONENTES DE EDIÇÃO (MELHORIA APLICADA) ====
+// =================================================================
+
 /**
- * (VERSÃO COM EDIÇÃO)
- * Gera o HTML para a lista de observações de um alvo,
- * incluindo ícones e placeholders para edição.
- * @param {Array<object>} observations - O array de observações.
- * @param {string} parentTargetId - O ID do alvo principal.
- * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
- * @returns {string} - A string HTML da lista de observações.
+ * Remove qualquer formulário de edição inline que esteja aberto.
+ * @param {HTMLElement} elementInsideForm - Um elemento dentro do formulário a ser fechado.
+ */
+export function removeInlineEditor(elementInsideForm) {
+    const form = elementInsideForm.closest('.inline-edit-form-wrapper');
+    if (form) {
+        form.innerHTML = ''; // Limpa o conteúdo, efetivamente removendo o formulário.
+    }
+}
+
+/**
+ * Renderiza o formulário de edição para um campo de texto.
+ * @param {HTMLElement} container - O elemento que conterá o formulário.
+ * @param {object} config - Configurações para o formulário.
+ */
+function renderEditor(container, config) {
+    // Fecha qualquer outro editor que possa estar aberto
+    document.querySelectorAll('.inline-edit-form-wrapper').forEach(form => form.innerHTML = '');
+
+    const { value, action, id, obsIndex, subObsIndex, inputType = 'input' } = config;
+    
+    const inputElement = inputType === 'textarea'
+        ? `<textarea class="inline-edit-input" placeholder="Digite aqui...">${value}</textarea>`
+        : `<input type="text" class="inline-edit-input" value="${value}" placeholder="Digite aqui...">`;
+
+    const obsIndexAttr = obsIndex !== undefined ? `data-obs-index="${obsIndex}"` : '';
+    const subObsIndexAttr = subObsIndex !== undefined ? `data-sub-obs-index="${subObsIndex}"` : '';
+
+    container.innerHTML = `
+        <div class="inline-edit-form">
+            ${inputElement}
+            <div class="form-actions">
+                 <button class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
+                 <button class="btn-small save-btn" data-action="${action}" data-id="${id}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
+            </div>
+        </div>
+    `;
+    const input = container.querySelector('.inline-edit-input');
+    input.focus();
+    input.select();
+}
+
+/**
+ * Exibe o editor para o título de um alvo principal.
+ * @param {object} target - O objeto do alvo.
+ */
+export function showTitleEditor(target) {
+    const container = document.getElementById(`editTitleForm-${target.id}`);
+    if (container) {
+        renderEditor(container, { value: target.title, action: 'save-title', id: target.id });
+    }
+}
+
+/**
+ * Exibe o editor para os detalhes de um alvo principal.
+ * @param {object} target - O objeto do alvo.
+ */
+export function showDetailsEditor(target) {
+    const container = document.getElementById(`editDetailsForm-${target.id}`);
+    if (container) {
+        renderEditor(container, { value: target.details, action: 'save-details', id: target.id, inputType: 'textarea' });
+    }
+}
+
+/**
+ * Exibe o editor para uma observação comum.
+ * @param {object} target - O objeto do alvo pai.
+ * @param {number} obsIndex - O índice da observação.
+ */
+export function showObservationEditor(target, obsIndex) {
+    const container = document.getElementById(`editObservationFormContainer-${target.id}-${obsIndex}`);
+    if (container) {
+        renderEditor(container, { value: target.observations[obsIndex].text, action: 'save-observation', id: target.id, obsIndex, inputType: 'textarea' });
+    }
+}
+
+/**
+ * Exibe o editor para o título de um sub-alvo.
+ * @param {object} target - O objeto do alvo pai.
+ * @param {number} obsIndex - O índice do sub-alvo (que é uma observação).
+ */
+export function showSubTargetTitleEditor(target, obsIndex) {
+    const container = document.getElementById(`editSubTargetTitleFormContainer-${target.id}-${obsIndex}`);
+    if (container) {
+        renderEditor(container, { value: target.observations[obsIndex].subTargetTitle, action: 'save-sub-target-title', id: target.id, obsIndex });
+    }
+}
+
+/**
+ * Exibe o editor para o texto de uma sub-observação aninhada.
+ * @param {object} target - O objeto do alvo pai.
+ * @param {number} obsIndex - O índice do sub-alvo.
+ * @param {number} subObsIndex - O índice da sub-observação.
+ */
+export function showSubObservationEditor(target, obsIndex, subObsIndex) {
+    // O container para o editor da sub-observação fica dentro do container do sub-alvo pai.
+    const container = document.getElementById(`editSubObservationFormContainer-${target.id}-${obsIndex}-${subObsIndex}`);
+    if (container) {
+        renderEditor(container, { 
+            value: target.observations[obsIndex].subObservations[subObsIndex].text, 
+            action: 'save-sub-observation', 
+            id: target.id, 
+            obsIndex, 
+            subObsIndex,
+            inputType: 'textarea' 
+        });
+    }
+}
+
+// =================================================================
+// === FUNÇÕES DE RENDERIZAÇÃO DE TEMPLATES (COM MUDANÇAS) ========
+// =================================================================
+
+/**
+ * (VERSÃO ATUALIZADA)
+ * Gera o HTML para a lista de observações, incluindo ícones de edição e placeholders para os editores.
  */
 function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}) {
     if (!Array.isArray(observations) || observations.length === 0) return '';
@@ -45,34 +157,31 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
             // ----- RENDERIZA COMO UM SUB-ALVO -----
             const isResolved = obs.subTargetStatus === 'resolved';
             
+            const editIconForSubTitle = !isResolved ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+
             const subTargetId = `${parentTargetId}_${originalIndex}`;
             const hasBeenPrayedToday = (dailyTargetsData.completed || []).some(t => t.targetId === subTargetId);
-
             const prayButtonText = hasBeenPrayedToday ? '✓ Orado!' : 'Orei!';
             const prayButtonClass = `btn pray-button ${hasBeenPrayedToday ? 'prayed' : ''}`;
             const prayButtonDisabled = hasBeenPrayedToday ? 'disabled' : '';
-
             const subTargetPrayButton = `<button class="${prayButtonClass}" data-action="pray-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${prayButtonDisabled}>${prayButtonText}</button>`;
-
             const hasSubObservations = Array.isArray(obs.subObservations) && obs.subObservations.length > 0;
             const demoteButtonDisabled = hasSubObservations ? 'disabled' : '';
             const demoteButtonTitle = hasSubObservations ? 'Não é possível reverter um sub-alvo que já possui observações.' : 'Reverter para observação comum';
-
-            const subTargetActions = !isResolved ? `
-                <button class="btn-small" data-action="add-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">+ Observação</button>
-                <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
-            ` : `<span class="resolved-tag">Respondido</span>`;
+            const subTargetActions = !isResolved ? `<button class="btn-small" data-action="add-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">+ Observação</button><button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>` : `<span class="resolved-tag">Respondido</span>`;
 
             let subObservationsHTML = '';
             if (hasSubObservations) {
                 subObservationsHTML += '<div class="sub-observations-list">';
                 const sortedSubObs = [...obs.subObservations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
                 
-                sortedSubObs.forEach(subObs => {
+                sortedSubObs.forEach((subObs, subObsIndex) => {
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
+                    const editIconForSubObs = !isResolved ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalIndex}">✏️</span>` : '';
                     subObservationsHTML += `
                         <div class="sub-observation-item">
-                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}
+                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}${editIconForSubObs}
+                            <div id="editSubObservationFormContainer-${parentTargetId}-${originalIndex}-${originalIndex}" class="inline-edit-form-wrapper"></div>
                         </div>`;
                 });
                 subObservationsHTML += '</div>';
@@ -81,27 +190,26 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
             html += `
                 <div class="observation-item sub-target ${isResolved ? 'resolved' : ''}">
                     <div class="sub-target-header">
-                        <span class="sub-target-title">${obs.subTargetTitle}</span>
+                        <span class="sub-target-title">${obs.subTargetTitle}${editIconForSubTitle}</span>
                         <div class="observation-actions">
                            ${subTargetActions}
                            <button class="btn-small demote" data-action="demote-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${demoteButtonDisabled} title="${demoteButtonTitle}">Reverter</button>
                         </div>
                     </div>
+                    <div id="editSubTargetTitleFormContainer-${parentTargetId}-${originalIndex}" class="inline-edit-form-wrapper"></div>
                     <p><em>${sanitizedText} (Origem: observação de ${formatDateForDisplay(obs.date)})</em></p>
-                    <div class="target-actions" style="margin-top: 10px;">
-                        ${!isResolved ? subTargetPrayButton : ''}
-                    </div>
+                    <div class="target-actions" style="margin-top: 10px;">${!isResolved ? subTargetPrayButton : ''}</div>
                     ${subObservationsHTML}
                 </div>`;
         } else {
-            // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL COM ÍCONE DE EDIÇÃO -----
+            // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL -----
             html += `
                 <div class="observation-item">
                     <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText} <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span></p>
+                    <div id="editObservationFormContainer-${parentTargetId}-${originalIndex}" class="inline-edit-form-wrapper"></div>
                     <div class="observation-actions">
                         <button class="btn-small promote" data-action="promote-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Promover a Sub-Alvo</button>
                     </div>
-                    <div id="editObservationFormContainer-${parentTargetId}-${originalIndex}"></div>
                 </div>`;
         }
     });
@@ -109,16 +217,9 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
     return html + `</div>`;
 }
 
-// --- Template Engine de Alvos (Refatoração Arquitetônica) ---
-
 /**
- * (VERSÃO COM EDIÇÃO)
- * Cria o HTML para um único alvo com base em uma configuração,
- * incluindo ícones e placeholders para edição.
- * @param {object} target - O objeto do alvo de oração.
- * @param {object} config - Configurações de exibição e ações.
- * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
- * @returns {string} - O HTML do elemento do alvo.
+ * (VERSÃO ATUALIZADA)
+ * Cria o HTML para um único alvo, incluindo ícones de edição e placeholders para os editores.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
@@ -153,9 +254,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     if (config.showActions) {
         const priorityButtonClass = `btn toggle-priority ${target.isPriority ? 'is-priority' : ''}`;
         const priorityButtonText = target.isPriority ? 'Remover Prioridade' : 'Marcar Prioridade';
-
         const resolveButton = config.showResolveButton ? `<button class="btn resolved" data-action="resolve" data-id="${target.id}">Respondido</button>` : '';
-        const resolveArchivedButton = config.showResolveArchivedButton ? `<button class="btn resolved" data-action="resolve-archived" data-id="${target.id}">Respondido</button>` : '';
         const archiveButton = config.showArchiveButton ? `<button class="btn archive" data-action="archive" data-id="${target.id}">Arquivar</button>` : '';
         const togglePriorityButton = config.showTogglePriorityButton ? `<button class="${priorityButtonClass}" data-action="toggle-priority" data-id="${target.id}">${priorityButtonText}</button>` : '';
         const addObservationButton = config.showAddObservationButton ? `<button class="btn add-observation" data-action="toggle-observation" data-id="${target.id}">Observação</button>` : '';
@@ -163,10 +262,9 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         const editCategoryButton = config.showEditCategoryButton ? `<button class="btn edit-category" data-action="edit-category" data-id="${target.id}">Editar Categoria</button>` : '';
         const deleteButton = config.showDeleteButton ? `<button class="btn delete" data-action="delete-archived" data-id="${target.id}">Excluir</button>` : '';
         const downloadButton = config.showDownloadButton ? `<button class="btn download" data-action="download-target-pdf" data-id="${target.id}">Download (.pdf)</button>` : '';
-
         actionsHTML = `<div class="target-actions">
             ${resolveButton} ${archiveButton} ${togglePriorityButton} ${addObservationButton} 
-            ${editDeadlineButton} ${editCategoryButton} ${resolveArchivedButton} ${deleteButton} ${downloadButton}
+            ${editDeadlineButton} ${editCategoryButton} ${deleteButton} ${downloadButton}
         </div>`;
     }
 
@@ -176,8 +274,9 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
         <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>
-        <div id="editTitleForm-${target.id}" class="inline-edit-form" style="display:none;"></div>
-        <div id="editDetailsForm-${target.id}" class="inline-edit-form" style="display:none;"></div>` : '';
+        <div id="editTitleForm-${target.id}" class="inline-edit-form-wrapper"></div>
+        <div id="editDetailsForm-${target.id}" class="inline-edit-form-wrapper"></div>
+        ` : '';
 
     return `
         <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'} <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span></h3>
@@ -192,7 +291,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     `;
 }
 
-// --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
+// --- Funções de Renderização de Listas de Alvos (sem alterações) ---
 
 export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     const container = document.getElementById('priorityTargetsList');
@@ -216,10 +315,10 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
         showDeadline: true,
         showDetails: true,
         showObservations: true,
-        showActions: true,
+        showActions: false, // As ações principais (pray) são mostradas em outro lugar
         showPrayButton: true,
         isPriorityPanel: true,
-        showForms: true
+        showForms: true // Habilita placeholders
     };
     
     priorityTargets.forEach(target => {
@@ -242,8 +341,7 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
-            showDownloadButton: true,
-            showForms: true, showPrayButton: false
+            showDownloadButton: true, showForms: true, showPrayButton: false
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -266,7 +364,6 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             const div = document.createElement("div");
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
-            
             const config = {
                 showCreationDate: true,
                 showCategory: true,
@@ -275,7 +372,6 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
                 showArchivedDate: true,
                 showObservations: true,
                 showActions: true,
-                showResolveArchivedButton: !target.resolved,
                 showAddObservationButton: true,
                 showDeleteButton: true,
                 showDownloadButton: true,
@@ -326,7 +422,7 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     if (pending.length > 0) {
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
-            showObservations: true, showActions: true, showPrayButton: true, showForms: true
+            showObservations: true, showActions: false, showPrayButton: true, showForms: true
         };
         pending.forEach(target => {
             const div = document.createElement("div");
@@ -360,7 +456,8 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 }
 
-// --- Funções de Componentes de UI ---
+
+// --- Funções de Componentes de UI (sem alterações) ---
 
 export function renderPagination(panelId, currentPage, totalItems, itemsPerPage) {
     const paginationDiv = document.getElementById(`pagination-${panelId}`);
@@ -403,27 +500,22 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     }
     
     const achievedMilestones = calculateMilestones(consecutiveDays);
-
     iconsContainer.innerHTML = '';
 
     if (achievedMilestones.length > 0) {
         achievedMilestones.forEach(ms => {
             const group = document.createElement('div');
             group.className = 'milestone-group';
-
             const iconSpan = document.createElement('span');
             iconSpan.className = 'milestone-icon';
             iconSpan.textContent = ms.icon;
-            
             group.appendChild(iconSpan);
-
             if (ms.count > 1) {
                 const counterSpan = document.createElement('span');
                 counterSpan.className = 'milestone-counter';
                 counterSpan.textContent = `x${ms.count}`;
                 group.appendChild(counterSpan);
             }
-            
             iconsContainer.appendChild(group);
         });
     } else {
@@ -438,13 +530,12 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
     }
 }
 
+
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
     const now = new Date();
-
     const localDayOfWeek = now.getDay(); 
     const utcDayOfWeek = now.getUTCDay(); 
-    
     const firstDayOfWeek = new Date(now);
     firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
     firstDayOfWeek.setHours(0, 0, 0, 0);
@@ -452,25 +543,19 @@ export function updateWeeklyChart(data) {
     for (let i = 0; i < 7; i++) { 
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
-
         const dayContainer = dayTick.parentElement;
         if (dayContainer) dayContainer.classList.remove('current-day-container');
         dayTick.className = 'day-tick'; 
-
         if (i === localDayOfWeek) {
             dayTick.classList.add('current-day');
             if (dayContainer) dayContainer.classList.add('current-day-container');
         }
-
         const currentTickDate = new Date(firstDayOfWeek);
         currentTickDate.setDate(firstDayOfWeek.getDate() + i);
-        
         const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
-
         if (interactions[dateStringUTC]) {
             dayTick.classList.add('active'); 
-        } 
-        else if (i < utcDayOfWeek) { 
+        } else if (i < utcDayOfWeek) { 
             dayTick.classList.add('inactive'); 
         }
     }
@@ -519,10 +604,8 @@ export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
-
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
-
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -543,10 +626,8 @@ export function toggleEditDeadlineForm(targetId, currentDeadline) {
     const formDiv = document.getElementById(`editDeadlineForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
-
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
-
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
@@ -570,25 +651,17 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
     if (!formDiv) return;
     const isVisible = formDiv.style.display === 'block';
-
     document.getElementById(`observationForm-${targetId}`).style.display = 'none';
     document.getElementById(`editDeadlineForm-${targetId}`).style.display = 'none';
-    
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
     } else {
         const categories = ["Família", "Pessoal", "Igreja", "Trabalho", "Sonho", "Profético", "Promessas", "Esposa", "Filhas", "Ministério de Intercessão", "Outros"];
-        const optionsHTML = categories.map(cat => 
-            `<option value="${cat}" ${cat === currentCategory ? 'selected' : ''}>${cat}</option>`
-        ).join('');
-
+        const optionsHTML = categories.map(cat => `<option value="${cat}" ${cat === currentCategory ? 'selected' : ''}>${cat}</option>`).join('');
         formDiv.innerHTML = `
             <label for="categorySelect-${targetId}">Nova Categoria:</label>
-            <select id="categorySelect-${targetId}" style="width: 95%;">
-                <option value="">-- Nenhuma --</option>
-                ${optionsHTML}
-            </select>
+            <select id="categorySelect-${targetId}" style="width: 95%;"><option value="">-- Nenhuma --</option>${optionsHTML}</select>
             <button class="btn save-category-btn" data-action="save-category" data-id="${targetId}">Salvar Categoria</button>
             <button class="btn cancel-category-btn" onclick="document.getElementById('editCategoryForm-${targetId}').style.display='none';">Cancelar</button>
         `;
@@ -597,107 +670,16 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
     }
 }
 
-/**
- * (NOVA FUNÇÃO)
- * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico (título, detalhes, observação).
- * @param {'Title' | 'Details' | 'Observation'} type - O tipo de campo a ser editado.
- * @param {string} targetId - O ID do alvo.
- * @param {object} options - Opções adicionais como valor atual e índice.
- */
-export function toggleEditForm(type, targetId, options = {}) {
-    const { currentValue = '', obsIndex = -1 } = options;
-    const isObs = type === 'Observation';
-    
-    // Constrói IDs únicos para os elementos do formulário
-    const formIdSuffix = `${targetId}${isObs ? `-${obsIndex}` : ''}`;
-    const formContainerId = `edit${type}Form${isObs ? 'Container' : ''}-${formIdSuffix}`;
-    const inputId = `input-edit${type}Form-${formIdSuffix}`;
-
-    let formContainer;
-
-    // Localiza ou cria o contêiner do formulário no DOM
-    if (isObs) {
-        // Para observações, injeta o contêiner dentro do item da observação
-        const obsItem = document.querySelector(`.observation-item [data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
-        formContainer = document.getElementById(formContainerId);
-        if (!formContainer) {
-            const div = document.createElement('div');
-            div.id = formContainerId;
-            obsItem.appendChild(div);
-            formContainer = div;
-        }
-    } else {
-        // Para título e detalhes, usa os divs pré-definidos no final do alvo
-        formContainer = document.getElementById(`edit${type}Form-${targetId}`);
-    }
-
-    if (!formContainer) return;
-    
-    const isVisible = formContainer.style.display === 'block';
-
-    if (isVisible) {
-        formContainer.style.display = 'none';
-        formContainer.innerHTML = '';
-    } else {
-        // Define o campo de entrada (input para título, textarea para outros)
-        const inputElement = type === 'Title'
-            ? `<input type="text" id="${inputId}" value="${currentValue}" placeholder="Novo título">`
-            : `<textarea id="${inputId}" rows="4" placeholder="Novos detalhes ou observação...">${currentValue}</textarea>`;
-
-        // Monta o HTML do formulário de edição
-        formContainer.innerHTML = `
-            <div class="inline-edit-form">
-                ${inputElement}
-                <div class="form-actions">
-                     <button class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
-                     <button class="btn-small save-btn" data-action="save-${type.toLowerCase()}" data-id="${targetId}" ${isObs ? `data-obs-index="${obsIndex}"` : ''}>Salvar</button>
-                </div>
-            </div>
-        `;
-        formContainer.style.display = 'block';
-        
-        const inputField = document.getElementById(inputId);
-        const saveButton = formContainer.querySelector('.save-btn');
-        
-        inputField.focus(); // Foco automático no campo
-
-        // Melhoria de UX: Atalhos de teclado
-        inputField.addEventListener('keydown', (e) => {
-            // Salva com "Enter" (permite Shift+Enter para nova linha em textareas)
-            if (e.key === 'Enter' && (type === 'Title' || !e.shiftKey)) {
-                e.preventDefault();
-                saveButton.click(); // Simula o clique no botão Salvar
-            }
-            // Cancela com "Escape"
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                formContainer.querySelector('[data-action="cancel-edit"]').click(); // Simula o clique no botão Cancelar
-            }
-        });
-    }
-}
-
 export function showExpiredTargetsToast(expiredTargets) {
     const toast = document.getElementById('expiredToast');
     const messageEl = document.getElementById('expiredToastMessage');
     const closeBtn = document.getElementById('closeExpiredToast');
-
-    if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) {
-        return;
-    }
-    
+    if (!toast || !messageEl || !closeBtn || expiredTargets.length === 0) return;
     const count = expiredTargets.length;
     messageEl.textContent = `Você tem ${count} alvo${count > 1 ? 's' : ''} com prazo vencido!`;
-    
     toast.classList.remove('hidden');
-    
-    closeBtn.onclick = () => {
-        toast.classList.add('hidden');
-    };
-    
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 8000); 
+    closeBtn.onclick = () => { toast.classList.add('hidden'); };
+    setTimeout(() => { toast.classList.add('hidden'); }, 8000); 
 }
 
 export function toggleManualTargetModal(show) {
@@ -711,17 +693,14 @@ export function toggleManualTargetModal(show) {
 export function renderManualSearchResults(results, allTargets, searchTerm = '') {
     const container = document.getElementById('manualTargetSearchResults');
     container.innerHTML = '';
-
     if (searchTerm.trim() === '' && allTargets.length > 0) {
         container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
         return;
     }
-    
     if (results.length === 0) {
         container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
         return;
     }
-
     results.forEach(target => {
         const item = document.createElement('div');
         item.className = 'manual-target-item';
@@ -756,7 +735,6 @@ export function toggleCategoryModal(show, allTargets = []) {
         if (show) {
             const container = document.getElementById('categoryCheckboxesContainer');
             container.innerHTML = '';
-            
             const categories = [...new Set(allTargets.map(t => t.category).filter(Boolean))];
             if (categories.length === 0) {
                 container.innerHTML = '<p>Nenhuma categoria encontrada nos seus alvos.</p>';
@@ -777,7 +755,6 @@ export function toggleCategoryModal(show, allTargets = []) {
 export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
     const groupedTargets = {};
     const useGrouping = selectedCategories.length > 0;
-
     if (useGrouping) {
         for (const category of selectedCategories.sort()) {
             groupedTargets[category] = [];
@@ -786,7 +763,6 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             groupedTargets['Sem Categoria'] = [];
         }
     }
-
     for (const target of targets) {
         if (useGrouping) {
             const category = target.category || 'Sem Categoria';
@@ -798,10 +774,8 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             groupedTargets['all'].push(target);
         }
     }
-
     let bodyContent = '';
     const categoriesToRender = useGrouping ? Object.keys(groupedTargets) : ['all'];
-
     for (const category of categoriesToRender) {
         if (groupedTargets[category] && groupedTargets[category].length > 0) {
             if (useGrouping) {
@@ -817,11 +791,9 @@ export function generateViewHTML(targets, pageTitle, selectedCategories = []) {
             `).join('<hr class="view-separator-light">');
         }
     }
-    
     if (bodyContent === '') {
         bodyContent = '<p>Nenhum alvo encontrado para os filtros selecionados.</p>';
     }
-
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${pageTitle}</title>
         <style>
@@ -860,7 +832,6 @@ export function generatePerseveranceReportHTML(data) {
         { name: "Diamante da Oração", days: 300, icon: "💎" },
         { name: "Sol da Eternidade", days: 1000, icon: "☀️" },
     ];
-
     let milestonesHTML = '';
     if (data.consecutiveDays > 0) {
         MILESTONES_REPORT.forEach(milestone => {
@@ -873,7 +844,6 @@ export function generatePerseveranceReportHTML(data) {
     } else {
         milestonesHTML = '<li>Nenhuma sequência ativa para exibir marcos.</li>';
     }
-
     let historyHTML = '';
     if (data.interactionDates && data.interactionDates.length > 0) {
         historyHTML = data.interactionDates.map(dateStr => {
@@ -883,7 +853,6 @@ export function generatePerseveranceReportHTML(data) {
     } else {
         historyHTML = '<li>Nenhuma interação registrada na semana atual.</li>';
     }
-
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Perseverança Pessoal</title>
         <style>
@@ -904,20 +873,9 @@ export function generatePerseveranceReportHTML(data) {
         </head><body>
         <div class="container">
             <h1>Relatório de Perseverança Pessoal</h1>
-            <div class="section">
-                <h2>Resumo Geral</h2>
-                <div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s) consecutivos</div>
-                <div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div>
-                <div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div>
-            </div>
-            <div class="section">
-                <h2>Marcos da Sequência Atual</h2>
-                <ul>${milestonesHTML}</ul>
-            </div>
-            <div class="section">
-                <h2>Interações Recentes (Semana Atual)</h2>
-                <ul>${historyHTML}</ul>
-            </div>
+            <div class="section"><h2>Resumo Geral</h2><div class="stat-item"><strong>Sequência Atual:</strong> ${data.consecutiveDays} dia(s) consecutivos</div><div class="stat-item"><strong>Recorde Pessoal:</strong> ${data.recordDays} dia(s)</div><div class="stat-item"><strong>Última Interação:</strong> ${data.lastInteractionDate}</div></div>
+            <div class="section"><h2>Marcos da Sequência Atual</h2><ul>${milestonesHTML}</ul></div>
+            <div class="section"><h2>Interações Recentes (Semana Atual)</h2><ul>${historyHTML}</ul></div>
         </div>
         </body></html>
     `;
@@ -931,9 +889,7 @@ export function generateInteractionReportHTML(allTargets, interactionMap) {
         count: interactionMap.get(target.id) || 0,
         status: target.resolved ? 'Respondido' : (target.archived ? 'Arquivado' : 'Ativo')
     }));
-
     reportData.sort((a, b) => b.count - a.count);
-
     let tableRowsHTML = reportData.map(item => `
         <tr>
             <td>${item.title}</td>
@@ -943,11 +899,9 @@ export function generateInteractionReportHTML(allTargets, interactionMap) {
             <td class="status-${item.status.toLowerCase()}">${item.status}</td>
         </tr>
     `).join('');
-
     if (reportData.length === 0) {
         tableRowsHTML = '<tr><td colspan="5">Nenhum alvo encontrado para gerar o relatório.</td></tr>';
     }
-
     return `
         <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Interação por Alvo</title>
         <style>
@@ -965,20 +919,7 @@ export function generateInteractionReportHTML(allTargets, interactionMap) {
         </style>
         </head><body>
             <h1>Relatório de Interação por Alvo</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Título do Alvo</th>
-                        <th class="center">Interações</th>
-                        <th>Categoria</th>
-                        <th>Data de Criação</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRowsHTML}
-                </tbody>
-            </table>
+            <table><thead><tr><th>Título do Alvo</th><th class="center">Interações</th><th>Categoria</th><th>Data de Criação</th><th>Status</th></tr></thead><tbody>${tableRowsHTML}</tbody></table>
         </body></html>
     `;
 }
@@ -1009,7 +950,6 @@ export function updateAuthUI(user, message = '', isError = false) {
     const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
     const authStatusContainer = document.querySelector('.auth-status-container');
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
-
     if (user) {
         authStatusContainer.style.display = 'flex';
         btnLogout.style.display = 'inline-block';
@@ -1020,7 +960,6 @@ export function updateAuthUI(user, message = '', isError = false) {
         authStatusContainer.style.display = 'none';
         btnLogout.style.display = 'none';
         emailPasswordAuthForm.style.display = 'block';
-        
         if (message) {
             passwordResetMessageDiv.textContent = message;
             passwordResetMessageDiv.style.color = isError ? "red" : "green";
