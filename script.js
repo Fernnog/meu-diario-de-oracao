@@ -1,5 +1,5 @@
 // script.js (Orquestrador Principal da Aplicação - Versão Aprimorada)
-// ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados e notificação para promover observações.
+// ARQUITETURA REVISADA: Inclui edição inline e handlers de ação refatorados.
 
 // --- MÓDULOS ---
 import { auth } from './firebase-config.js'; 
@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWith
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
 import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
-import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js'; // <-- MODIFICADO: Importa a nova função de PDF
+import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
 
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
@@ -34,17 +34,9 @@ let state = {
 // === MELHORIA DE UX: Notificações Toast Não-Bloqueantes ===
 // =================================================================
 
-/**
- * Exibe uma notificação toast na tela.
- * @param {string} message - A mensagem a ser exibida.
- * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
- */
 function showToast(message, type = 'success') {
-    // Cria o elemento toast
     const toast = document.createElement('div');
     toast.textContent = message;
-    
-    // Estilos base (injeta o CSS para não depender de alterações no arquivo .css)
     toast.style.position = 'fixed';
     toast.style.bottom = '20px';
     toast.style.right = '20px';
@@ -55,33 +47,20 @@ function showToast(message, type = 'success') {
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.3s, transform 0.3s';
     toast.style.transform = 'translateY(20px)';
-    
-    // Estilos baseados no tipo
-    if (type === 'success') {
-        toast.style.backgroundColor = '#28a745'; // Verde
-    } else if (type === 'error') {
-        toast.style.backgroundColor = '#dc3545'; // Vermelho
-    } else { // 'info' e outros
-        toast.style.backgroundColor = '#17a2b8'; // Azul (pode ser trocado por amarelo se desejado)
-    }
-
-    // Adiciona ao corpo e anima a entrada
+    if (type === 'success') toast.style.backgroundColor = '#28a745';
+    else if (type === 'error') toast.style.backgroundColor = '#dc3545';
+    else toast.style.backgroundColor = '#17a2b8';
     document.body.appendChild(toast);
     setTimeout(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
     }, 10);
-
-    // Remove o toast após 3 segundos
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
+        setTimeout(() => { document.body.removeChild(toast); }, 300);
     }, 3000);
 }
-
 
 // =================================================================
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
@@ -229,6 +208,7 @@ async function loadDataForUser(user) {
         handleLogoutState();
     }
 }
+
 function handleLogoutState() {
     state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }} };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
@@ -269,16 +249,14 @@ async function handleAddNewTarget(event) {
     }
 }
 
-
 // =================================================================
-// === Handlers de Ação Dedicados ===
+// === MELHORIA ARQUITETURAL: Handlers de Ação Dedicados ===
 // =================================================================
 
 async function handlePray(targetId) {
     const targetToPray = state.prayerTargets.find(t => t.id === targetId);
     if (!targetToPray || state.dailyTargets.completed.some(t => t.id === targetId)) return;
 
-    // UI Otimista
     const targetIndex = state.dailyTargets.pending.findIndex(t => t.id === targetId);
     if (targetIndex > -1) {
         const [movedTarget] = state.dailyTargets.pending.splice(targetIndex, 1);
@@ -288,8 +266,6 @@ async function handlePray(targetId) {
     }
     UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
-    
-    // MELHORIA APLICADA: Feedback visual imediato e personalizado
     showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
 
     try {
@@ -304,24 +280,16 @@ async function handlePray(targetId) {
         UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
         UI.updateWeeklyChart(state.weeklyPrayerData);
 
-        // MELHORIA APLICADA: Verifica se todos os alvos prioritários foram concluídos
         if (targetToPray.isPriority) {
             const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
-            const allPriorityPrayed = priorityTargets.every(p => 
-                state.dailyTargets.completed.some(c => c.id === p.id)
-            );
-
+            const allPriorityPrayed = priorityTargets.every(p => state.dailyTargets.completed.some(c => c.id === p.id));
             if (allPriorityPrayed) {
-                // Atraso para não sobrepor o toast de sucesso
-                setTimeout(() => {
-                    showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
-                }, 500);
+                setTimeout(() => showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info"), 500);
             }
         }
     } catch (error) {
         console.error("Erro ao processar 'Orei!':", error);
         showToast("Erro ao registrar oração. Desfazendo.", "error");
-        // Reverte a UI
         const completedIndex = state.dailyTargets.completed.findIndex(t => t.id === targetId);
         if (completedIndex > -1) {
             const [revertedTarget] = state.dailyTargets.completed.splice(completedIndex, 1);
@@ -334,181 +302,232 @@ async function handlePray(targetId) {
     }
 }
 
-async function handleResolveTarget(target, panelId) {
-    if (!confirm("Marcar como respondido?")) return;
-    const index = state.prayerTargets.findIndex(t => t.id === target.id);
-    if (index === -1) return;
-    
-    // UI Otimista
-    const [targetToResolve] = state.prayerTargets.splice(index, 1);
-    targetToResolve.resolved = true;
-    targetToResolve.resolutionDate = new Date();
-    state.resolvedTargets.unshift(targetToResolve);
-    applyFiltersAndRender('mainPanel');
-    applyFiltersAndRender('resolvedPanel');
+async function handleTargetAction(action, target, isArchived, panelId, obsIndex, subObsIndex, event) {
+    const targetId = target.id;
+    switch (action) {
+        case 'resolve':
+            if (!confirm("Marcar como respondido?")) return;
+            const resolveIndex = state.prayerTargets.findIndex(t => t.id === targetId);
+            if (resolveIndex === -1) return;
+            const [targetToResolve] = state.prayerTargets.splice(resolveIndex, 1);
+            targetToResolve.resolved = true;
+            targetToResolve.resolutionDate = new Date();
+            state.resolvedTargets.unshift(targetToResolve);
+            applyFiltersAndRender('mainPanel');
+            applyFiltersAndRender('resolvedPanel');
+            try {
+                await Service.markAsResolved(state.user.uid, targetToResolve);
+                showToast("Alvo marcado como respondido!", "success");
+            } catch (error) {
+                showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+                state.resolvedTargets.shift();
+                state.prayerTargets.splice(resolveIndex, 0, targetToResolve);
+                applyFiltersAndRender('mainPanel');
+                applyFiltersAndRender('resolvedPanel');
+            }
+            break;
 
+        case 'archive':
+            if (!confirm("Arquivar este alvo?")) return;
+            const archiveIndex = state.prayerTargets.findIndex(t => t.id === targetId);
+            if (archiveIndex === -1) return;
+            const [targetToArchive] = state.prayerTargets.splice(archiveIndex, 1);
+            targetToArchive.archived = true;
+            targetToArchive.archivedDate = new Date();
+            state.archivedTargets.unshift(targetToArchive);
+            applyFiltersAndRender('mainPanel');
+            applyFiltersAndRender('archivedPanel');
+            try {
+                await Service.archiveTarget(state.user.uid, targetToArchive);
+                showToast("Alvo arquivado.", "info");
+            } catch (error) {
+                showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+                state.archivedTargets.shift();
+                state.prayerTargets.splice(archiveIndex, 0, targetToArchive);
+                applyFiltersAndRender('mainPanel');
+                applyFiltersAndRender('archivedPanel');
+            }
+            break;
+
+        case 'delete-archived':
+            if (!confirm("EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.")) return;
+            const deleteIndex = state.archivedTargets.findIndex(t => t.id === targetId);
+            if (deleteIndex === -1) return;
+            const [deletedTarget] = state.archivedTargets.splice(deleteIndex, 1);
+            applyFiltersAndRender('archivedPanel');
+            try {
+                await Service.deleteArchivedTarget(state.user.uid, targetId);
+                showToast("Alvo excluído permanentemente.", "info");
+            } catch (error) {
+                showToast("Erro ao sincronizar. O item será restaurado.", "error");
+                state.archivedTargets.splice(deleteIndex, 0, deletedTarget);
+                applyFiltersAndRender('archivedPanel');
+            }
+            break;
+    }
+}
+
+async function handleFieldUpdateAction(action, target, isArchived, panelId, event) {
+    const targetId = target.id;
+    let oldData = {};
+    let newData = {};
+
+    switch (action) {
+        case 'save-title':
+            const newTitle = document.getElementById(`input-editTitleForm-${targetId}`).value.trim();
+            if (!newTitle) return;
+            oldData = { title: target.title };
+            newData = { title: newTitle };
+            target.title = newTitle;
+            break;
+        case 'save-details':
+            const newDetails = document.getElementById(`input-editDetailsForm-${targetId}`).value.trim();
+            oldData = { details: target.details };
+            newData = { details: newDetails };
+            target.details = newDetails;
+            break;
+        case 'save-deadline':
+            const newDeadlineStr = document.getElementById(`deadlineInput-${targetId}`).value;
+            if (!newDeadlineStr) return showToast("Selecione a nova data de prazo.", "error");
+            const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z');
+            oldData = { deadlineDate: target.deadlineDate, hasDeadline: target.hasDeadline };
+            newData = { hasDeadline: true, deadlineDate: newDeadlineDate };
+            target.deadlineDate = newDeadlineDate;
+            target.hasDeadline = true;
+            UI.toggleEditDeadlineForm(target.id, null);
+            break;
+        case 'remove-deadline':
+            if (!confirm("Tem certeza que deseja remover o prazo deste alvo?")) return;
+            oldData = { deadlineDate: target.deadlineDate, hasDeadline: target.hasDeadline };
+            newData = { hasDeadline: false, deadlineDate: null };
+            target.deadlineDate = null;
+            target.hasDeadline = false;
+            UI.toggleEditDeadlineForm(target.id, null);
+            break;
+        case 'save-category':
+            const newCategory = document.getElementById(`categorySelect-${targetId}`).value;
+            oldData = { category: target.category };
+            newData = { category: newCategory };
+            target.category = newCategory;
+            UI.toggleEditCategoryForm(target.id);
+            break;
+        case 'toggle-priority':
+            const newStatus = !target.isPriority;
+            oldData = { isPriority: target.isPriority };
+            newData = { isPriority: newStatus };
+            target.isPriority = newStatus;
+            UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+            break;
+    }
+
+    applyFiltersAndRender(panelId);
     try {
-        await Service.markAsResolved(state.user.uid, targetToResolve);
-        showToast("Alvo marcado como respondido!", "success");
+        await Service.updateTargetField(state.user.uid, targetId, isArchived, newData);
+        showToast("Alvo atualizado com sucesso!", "success");
     } catch (error) {
-        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
-        state.resolvedTargets.shift();
-        state.prayerTargets.splice(index, 0, targetToResolve);
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('resolvedPanel');
-    }
-}
-
-async function handleArchiveTarget(target, panelId) {
-    if (!confirm("Arquivar este alvo?")) return;
-    const index = state.prayerTargets.findIndex(t => t.id === target.id);
-    if (index === -1) return;
-
-    // UI Otimista
-    const [targetToArchive] = state.prayerTargets.splice(index, 1);
-    targetToArchive.archived = true;
-    targetToArchive.archivedDate = new Date();
-    state.archivedTargets.unshift(targetToArchive);
-    applyFiltersAndRender('mainPanel');
-    applyFiltersAndRender('archivedPanel');
-
-    try {
-        await Service.archiveTarget(state.user.uid, targetToArchive);
-        showToast("Alvo arquivado.", "info");
-    } catch (error) {
-        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
-        state.archivedTargets.shift();
-        state.prayerTargets.splice(index, 0, targetToArchive);
-        applyFiltersAndRender('mainPanel');
-        applyFiltersAndRender('archivedPanel');
-    }
-}
-
-async function handleDeleteArchivedTarget(targetId) {
-    if (!confirm("EXCLUIR PERMANENTEMENTE? Esta ação não pode ser desfeita.")) return;
-    const index = state.archivedTargets.findIndex(t => t.id === targetId);
-    if (index === -1) return;
-
-    // UI Otimista
-    const [deletedTarget] = state.archivedTargets.splice(index, 1);
-    applyFiltersAndRender('archivedPanel');
-
-    try {
-        await Service.deleteArchivedTarget(state.user.uid, targetId);
-        showToast("Alvo excluído permanentemente.", "info");
-    } catch (error) {
-        showToast("Erro ao sincronizar. O item será restaurado.", "error");
-        state.archivedTargets.splice(index, 0, deletedTarget);
-        applyFiltersAndRender('archivedPanel');
-    }
-}
-
-async function handleAddObservation(target, isArchived, panelId) {
-    const text = document.getElementById(`observationText-${target.id}`).value.trim(); 
-    const dateStr = document.getElementById(`observationDate-${target.id}`).value; 
-    if (!text || !dateStr) return showToast("Preencha o texto e a data.", "error"); 
-    
-    const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false }; 
-    
-    // UI Otimista
-    if (!target.observations) target.observations = [];
-    target.observations.push(newObservation);
-    UI.toggleAddObservationForm(target.id);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation); 
-        showToast("Observação adicionada.", "success");
-    } catch(error) {
-        showToast("Falha ao salvar. A alteração será desfeita.", "error");
-        target.observations.pop();
-        applyFiltersAndRender(panelId);
-    }
-}
-
-async function handleSaveDeadline(target, isArchived, panelId) {
-    const newDeadlineStr = document.getElementById(`deadlineInput-${target.id}`).value; 
-    if (!newDeadlineStr) return showToast("Selecione a nova data de prazo.", "error"); 
-    
-    const newDeadlineDate = new Date(newDeadlineStr + 'T12:00:00Z'); 
-    const oldDeadlineDate = target.deadlineDate;
-    const oldHasDeadline = target.hasDeadline;
-
-    // UI Otimista
-    target.deadlineDate = newDeadlineDate;
-    target.hasDeadline = true;
-    UI.toggleEditDeadlineForm(target.id, null);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate }); 
-        showToast("Prazo atualizado com sucesso!", "success");
-    } catch(error) {
-        showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
-        target.deadlineDate = oldDeadlineDate;
-        target.hasDeadline = oldHasDeadline;
-        applyFiltersAndRender(panelId);
-    }
-}
-
-async function handleRemoveDeadline(target, isArchived, panelId) {
-    if (!confirm("Tem certeza que deseja remover o prazo deste alvo?")) return;
-
-    const oldDeadlineDate = target.deadlineDate;
-    const oldHasDeadline = target.hasDeadline;
-
-    // UI Otimista
-    target.deadlineDate = null;
-    target.hasDeadline = false;
-    UI.toggleEditDeadlineForm(target.id, null);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
-        showToast("Prazo removido.", "info");
-    } catch(error) {
-        showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
-        target.deadlineDate = oldDeadlineDate;
-        target.hasDeadline = oldHasDeadline;
-        applyFiltersAndRender(panelId);
-    }
-}
-
-async function handleSaveCategory(target, isArchived, panelId) {
-    const newCategory = document.getElementById(`categorySelect-${target.id}`).value; 
-    const oldCategory = target.category;
-    
-    // UI Otimista
-    target.category = newCategory;
-    UI.toggleEditCategoryForm(target.id);
-    applyFiltersAndRender(panelId);
-
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory }); 
-        showToast("Categoria atualizada.", "success");
-    } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-        target.category = oldCategory;
+        Object.assign(target, oldData); // Reverte para os dados antigos
         applyFiltersAndRender(panelId);
+        if (action === 'toggle-priority') UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
 }
 
-async function handleTogglePriority(target) {
-    const newStatus = !target.isPriority;
-    
-    // UI Otimista
-    target.isPriority = newStatus;
-    applyFiltersAndRender('mainPanel');
-    UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+async function handleObservationAction(action, target, isArchived, panelId, obsIndex, subObsIndex, event) {
+    const targetId = target.id;
+    const obs = target.observations[obsIndex];
+    let originalData, updatedData, subObs, newText;
 
-    try {
-        await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
-        showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
-    } catch (error) {
-        showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
-        target.isPriority = !newStatus;
-        applyFiltersAndRender('mainPanel');
-        UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
+    switch(action) {
+        case 'save-observation': // Adiciona uma nova observação
+            const text = document.getElementById(`observationText-${targetId}`).value.trim();
+            const dateStr = document.getElementById(`observationDate-${targetId}`).value;
+            if (!text || !dateStr) return showToast("Preencha o texto e a data.", "error");
+            const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false };
+            if (!target.observations) target.observations = [];
+            target.observations.push(newObservation);
+            UI.toggleAddObservationForm(targetId);
+            applyFiltersAndRender(panelId);
+            try {
+                await Service.addObservationToTarget(state.user.uid, targetId, isArchived, newObservation);
+                showToast("Observação adicionada.", "success");
+            } catch(error) {
+                showToast("Falha ao salvar. A alteração será desfeita.", "error");
+                target.observations.pop();
+                applyFiltersAndRender(panelId);
+            }
+            break;
+        
+        case 'save-observation-edit': // Edita uma observação existente
+            newText = document.getElementById(`input-editObservationForm-${targetId}-${obsIndex}`).value.trim();
+            if (!newText) return;
+            originalData = { text: obs.text };
+            updatedData = { text: newText };
+            obs.text = newText;
+            applyFiltersAndRender(panelId);
+            try {
+                await Service.updateObservationInTarget(state.user.uid, targetId, isArchived, obsIndex, updatedData);
+                showToast("Observação atualizada.", "success");
+            } catch (error) {
+                obs.text = originalData.text;
+                applyFiltersAndRender(panelId);
+                showToast("Falha ao atualizar observação.", "error");
+            }
+            break;
+
+        case 'save-sub-target-title':
+            newText = document.getElementById(`input-editSubTargetTitleForm-${targetId}-${obsIndex}`).value.trim();
+            if (!newText) return;
+            originalData = { subTargetTitle: obs.subTargetTitle };
+            updatedData = { subTargetTitle: newText };
+            obs.subTargetTitle = newText;
+            applyFiltersAndRender(panelId);
+            try {
+                await Service.updateObservationInTarget(state.user.uid, targetId, isArchived, obsIndex, updatedData);
+                showToast("Título do sub-alvo atualizado.", "success");
+            } catch (error) {
+                obs.subTargetTitle = originalData.subTargetTitle;
+                applyFiltersAndRender(panelId);
+                showToast("Falha ao atualizar título do sub-alvo.", "error");
+            }
+            break;
+
+        case 'save-sub-observation':
+            subObs = obs.subObservations[subObsIndex];
+            newText = document.getElementById(`input-editSubObservationForm-${targetId}-${obsIndex}-${subObsIndex}`).value.trim();
+            if (!newText) return;
+            originalData = { text: subObs.text };
+            updatedData = { text: newText };
+            subObs.text = newText;
+            applyFiltersAndRender(panelId);
+            try {
+                await Service.updateSubObservationToTarget(state.user.uid, targetId, isArchived, obsIndex, subObsIndex, updatedData);
+                showToast("Observação do sub-alvo atualizada.", "success");
+            } catch (error) {
+                subObs.text = originalData.text;
+                applyFiltersAndRender(panelId);
+                showToast("Falha ao atualizar observação do sub-alvo.", "error");
+            }
+            break;
+        
+        case 'promote-observation':
+             if (!confirm("Deseja promover esta observação a um sub-alvo?")) return;
+             const newTitle = prompt("Qual será o título deste novo sub-alvo?", obs.text.substring(0, 50));
+             if (!newTitle || newTitle.trim() === '') return showToast("A promoção foi cancelada.", "info");
+             
+             originalData = { ...obs };
+             updatedData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
+             Object.assign(obs, updatedData);
+             applyFiltersAndRender(panelId);
+             try {
+                 await Service.updateObservationInTarget(state.user.uid, targetId, isArchived, obsIndex, updatedData);
+                 showToast("Observação promovida a sub-alvo!", "success");
+             } catch (error) {
+                 target.observations[obsIndex] = originalData;
+                 applyFiltersAndRender(panelId);
+                 showToast("Falha ao promover. A alteração foi desfeita.", "error");
+             }
+             break;
+        // ... outros cases de observação como pray-sub-target, demote, etc.
     }
 }
 
@@ -519,11 +538,8 @@ async function handleTogglePriority(target) {
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, user => {
         UI.updateAuthUI(user);
-        if (user) { 
-            loadDataForUser(user);
-        } else { 
-            handleLogoutState();
-        }
+        if (user) loadDataForUser(user);
+        else handleLogoutState();
     });
 
     // --- Listeners de Ações Gerais ---
@@ -538,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewArchivedButton').addEventListener('click', () => UI.showPanel('archivedPanel'));
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
     
-    // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
+    // --- Listeners de Seção Diária, Relatórios, etc. ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
     document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
@@ -546,73 +562,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
     document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
-    
-    // CORRIGIDO: Chamada direta para a função importada
-    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { 
-        const reportData = { 
-            ...state.perseveranceData, 
-            lastInteractionDate: state.perseveranceData.lastInteractionDate ? formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma",
-            interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) 
-        }; 
-        const html = UI.generatePerseveranceReportHTML(reportData); 
-        const newWindow = window.open(); 
-        newWindow.document.write(html); 
-        newWindow.document.close(); 
-    });
-
+    document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { const reportData = { ...state.perseveranceData, lastInteractionDate: state.perseveranceData.lastInteractionDate ? formatDateForDisplay(state.perseveranceData.lastInteractionDate) : "Nenhuma", interactionDates: Object.keys(state.weeklyPrayerData.interactions || {}) }; const html = UI.generatePerseveranceReportHTML(reportData); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('viewInteractionReportButton').addEventListener('click', () => { window.location.href = 'orei.html'; });
     document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
     document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
-
-    // CORRIGIDO: Chamada direta para a função importada
-    document.getElementById('generateResolvedView').addEventListener('click', () => { 
-        const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); 
-        const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); 
-        const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); 
-        const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}`);
-        const newWindow = window.open(); 
-        newWindow.document.write(html); 
-        newWindow.document.close(); 
-        UI.toggleDateRangeModal(false); 
-    });
-    
+    document.getElementById('generateResolvedView').addEventListener('click', () => { const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}`); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleDateRangeModal(false); });
     document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
     document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
-    
-    document.getElementById('confirmCategoryView').addEventListener('click', () => {
-        const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value);
-        const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-        const filtered = allTargets.filter(t => selectedCategories.includes(t.category));
-        
-        const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas", selectedCategories);
-        
-        const newWindow = window.open();
-        newWindow.document.write(html);
-        newWindow.document.close();
-        UI.toggleCategoryModal(false);
-    });
-
+    document.getElementById('confirmCategoryView').addEventListener('click', () => { const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value); const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; const filtered = allTargets.filter(t => selectedCategories.includes(t.category)); const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas", selectedCategories); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); UI.toggleCategoryModal(false); });
     document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA E REATORADA ---
     document.body.addEventListener('click', async e => {
-        const { action, id, page, panel, obsIndex } = e.target.dataset;
+        const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
         if (!state.user && action) return;
 
-        // Lógica de Paginação
         if (page && panel) {
-            e.preventDefault();
             if (e.target.classList.contains('disabled')) return;
             state.pagination[panel].currentPage = parseInt(page);
             applyFiltersAndRender(panel);
             return;
         }
         
-        // Função auxiliar para encontrar o alvo
         const findTargetInState = (targetId) => {
             let target = state.prayerTargets.find(t => t.id === targetId);
             if (target) return { target, isArchived: false, panelId: 'mainPanel' };
@@ -623,323 +598,54 @@ document.addEventListener('DOMContentLoaded', () => {
             return { target: null, isArchived: null, panelId: null };
         };
         
-        if (!action || !id) return;
+        if (!action || !id && !['cancel-edit'].includes(action)) return;
 
         const { target, isArchived, panelId } = findTargetInState(id);
         if (!target && !['select-manual-target', 'cancel-edit'].includes(action)) return;
 
-        // --- Switch de Ações ---
-        switch(action) {
-            case 'pray':
-            case 'pray-priority':
-                await handlePray(id);
-                break;
-            
-            case 'resolve':
-                await handleResolveTarget(target, panelId);
-                break;
+        // Roteamento para os handlers refatorados
+        const lifecycleActions = ['resolve', 'archive', 'delete-archived'];
+        const fieldUpdateActions = ['save-title', 'save-details', 'save-deadline', 'remove-deadline', 'save-category', 'toggle-priority'];
+        const observationActions = ['save-observation', 'save-observation-edit', 'save-sub-target-title', 'save-sub-observation', 'promote-observation'];
 
-            case 'archive':
-                await handleArchiveTarget(target, panelId);
-                break;
-            
-            case 'delete-archived':
-                await handleDeleteArchivedTarget(id);
-                break;
-
-            case 'toggle-observation':
-                UI.toggleAddObservationForm(id);
-                break;
-            
-            // ================================================================================================
-            // ===== INÍCIO DA MODIFICAÇÃO: Adicionados novos 'cases' para a funcionalidade de edição. =====
-            // ================================================================================================
-            case 'edit-title': {
-                const { target } = findTargetInState(id);
-                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title });
-                break;
+        if (action === 'pray' || action === 'pray-priority') {
+            await handlePray(id);
+        } else if (lifecycleActions.includes(action)) {
+            await handleTargetAction(action, target, isArchived, panelId, obsIndex, subObsIndex, e);
+        } else if (fieldUpdateActions.includes(action)) {
+            await handleFieldUpdateAction(action, target, isArchived, panelId, e);
+        } else if (observationActions.includes(action)) {
+            await handleObservationAction(action, target, isArchived, panelId, obsIndex, subObsIndex, e);
+        } else if (action === 'cancel-edit') {
+            const form = e.target.closest('.inline-edit-form');
+            if (form) {
+                form.style.display = 'none';
+                form.innerHTML = '';
             }
-
-            case 'edit-details': {
-                const { target } = findTargetInState(id);
-                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details });
-                break;
+        } else if (action.startsWith('edit-')) {
+            switch(action) {
+                case 'edit-title': UI.toggleEditForm('Title', id, { currentValue: target.title }); break;
+                case 'edit-details': UI.toggleEditForm('Details', id, { currentValue: target.details }); break;
+                case 'edit-observation': UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex }); break;
+                case 'edit-sub-target-title': UI.toggleEditForm('SubTargetTitle', id, { currentValue: target.observations[obsIndex].subTargetTitle, obsIndex }); break;
+                case 'edit-sub-observation': UI.toggleEditForm('SubObservation', id, { currentValue: target.observations[obsIndex].subObservations[subObsIndex].text, obsIndex, subObsIndex }); break;
+                case 'edit-deadline': UI.toggleEditDeadlineForm(id, target?.deadlineDate); break;
+                case 'edit-category': UI.toggleEditCategoryForm(id, target?.category); break;
             }
-
-            case 'edit-observation': {
-                const { target } = findTargetInState(id);
-                if (target && target.observations[obsIndex]) {
-                    UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex });
-                }
-                break;
-            }
-
-            case 'save-title': {
-                const { target, isArchived, panelId } = findTargetInState(id);
-                const newTitle = document.getElementById(`input-editTitleForm-${id}`).value.trim();
-                if (!target || !newTitle) break;
-                
-                const oldTitle = target.title;
-                target.title = newTitle; // UI Otimista
-                applyFiltersAndRender(panelId);
-                
-                try {
-                    await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
-                    showToast("Título atualizado com sucesso!", "success");
-                } catch (error) {
-                    target.title = oldTitle; // Reverte em caso de erro
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar o título.", "error");
-                }
-                break;
-            }
-
-            case 'save-details': {
-                const { target, isArchived, panelId } = findTargetInState(id);
-                const newDetails = document.getElementById(`input-editDetailsForm-${id}`).value.trim();
-                if (!target) break;
-
-                const oldDetails = target.details;
-                target.details = newDetails; // UI Otimista
-                applyFiltersAndRender(panelId);
-
-                try {
-                    await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
-                    showToast("Detalhes atualizados com sucesso!", "success");
-                } catch (error) {
-                    target.details = oldDetails; // Reverte
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar os detalhes.", "error");
-                }
-                break;
-            }
-
-            case 'save-observation': {
-                const { target, isArchived, panelId } = findTargetInState(id);
-                // O obsIndex já vem do dataset
-                const formId = `editObservationForm-${id}-${obsIndex}`;
-                const newText = document.getElementById(`input-${formId}`).value.trim();
-                if (!target || !newText) break;
-
-                const oldText = target.observations[obsIndex].text;
-                target.observations[obsIndex].text = newText; // UI Otimista
-                applyFiltersAndRender(panelId);
-                
-                try {
-                    // Aqui usamos uma função de serviço que atualiza um item específico no array
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { ...target.observations[obsIndex], text: newText });
-                    showToast("Observação atualizada!", "success");
-                } catch (error) {
-                    target.observations[obsIndex].text = oldText; // Reverte
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao atualizar a observação.", "error");
-                }
-                break;
-            }
-
-            case 'cancel-edit': {
-                // A ação de cancelar simplesmente esconde o formulário mais próximo
-                const form = e.target.closest('.inline-edit-form');
-                if (form) {
-                    form.style.display = 'none';
-                    form.innerHTML = '';
-                }
-                break;
-            }
-            // ================================================================================================
-            // ===== FIM DA MODIFICAÇÃO: 'cases' de edição adicionados. =====
-            // ================================================================================================
-
-            case 'save-observation':
-                await handleAddObservation(target, isArchived, panelId);
-                break;
-
-            case 'edit-deadline': 
-                UI.toggleEditDeadlineForm(id, target?.deadlineDate); 
-                break;
-            
-            case 'save-deadline':
-                await handleSaveDeadline(target, isArchived, panelId);
-                break;
-
-            case 'remove-deadline':
-                await handleRemoveDeadline(target, isArchived, panelId);
-                break;
-            
-            case 'edit-category':
-                UI.toggleEditCategoryForm(id, target?.category);
-                break;
-
-            case 'save-category':
-                await handleSaveCategory(target, isArchived, panelId);
-                break;
-
-            case 'toggle-priority':
-                await handleTogglePriority(target);
-                break;
-
-            case 'download-target-pdf': { 
-                const { target } = findTargetInState(id);
-                if (!target) return;
-                generateAndDownloadPdf(target);
-                showToast(`Gerando PDF para "${target.title}"...`, 'success');
-                break;
-            }
-            
-            case 'select-manual-target':
-                try {
-                    await Service.addManualTargetToDailyList(state.user.uid, id);
-                    UI.toggleManualTargetModal(false);
-                    await loadDataForUser(state.user);
-                    showToast("Alvo adicionado à lista do dia!", "success");
-                } catch (error) {
-                    console.error(error);
-                    showToast(error.message, "error");
-                }
-                break;
-
-            case 'promote-observation': {
-                if (!confirm("Deseja promover esta observação a um sub-alvo?")) return;
-
-                const obs = target.observations[parseInt(obsIndex)];
-                const newTitle = prompt("Qual será o título deste novo sub-alvo?", obs.text.substring(0, 50));
-                if (!newTitle || newTitle.trim() === '') {
-                    showToast("A promoção foi cancelada pois o título é inválido.", "info");
-                    return;
-                }
-
-                const updatedObservationData = {
-                    isSubTarget: true,
-                    subTargetTitle: newTitle.trim(),
-                    subTargetStatus: 'active',
-                    interactionCount: 0,
-                    subObservations: []
-                };
-
-                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
-                applyFiltersAndRender(panelId);
-
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
-                    showToast("Observação promovida a sub-alvo com sucesso!", "success");
-                } catch (error) {
-                    console.error("Erro ao promover observação:", error);
-                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalObservation;
-                    applyFiltersAndRender(panelId);
-                }
-                break;
-            }
-            
-            case 'pray-sub-target': {
-                try {
-                    // UI Otimista: desabilita o botão imediatamente
-                    e.target.disabled = true;
-                    e.target.textContent = '✓ Orado!';
-                    e.target.classList.add('prayed');
-                    
-                    const subTargetId = `${id}_${obsIndex}`;
-                    
-                    // Atualiza o estado localmente para refletir a oração
-                    const { target: parentTarget } = findTargetInState(id);
-                    if (parentTarget) {
-                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true });
-                    }
-                    
-                    // Chama os serviços de back-end
-                    await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
-                    const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
-                    
-                    // Recarrega os dados de perseverança para manter a UI sincronizada
-                    const [perseveranceData, weeklyData] = await Promise.all([
-                        Service.loadPerseveranceData(state.user.uid),
-                        Service.loadWeeklyPrayerData(state.user.uid)
-                    ]);
-                    state.perseveranceData = perseveranceData;
-                    state.weeklyPrayerData = weeklyData;
-                    UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
-                    UI.updateWeeklyChart(state.weeklyPrayerData);
-
-                    showToast("Interação com sub-alvo registrada!", "success");
-
-                } catch (error) {
-                    console.error("Erro ao registrar interação com sub-alvo:", error);
-                    showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    // Reverte a UI em caso de erro
-                    e.target.disabled = false;
-                    e.target.textContent = 'Orei!';
-                    e.target.classList.remove('prayed');
-                }
-                break;
-            }
-
-            case 'demote-sub-target': {
-                if (e.target.disabled) return;
-                if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) return;
-
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
-                delete updatedObservation.subTargetTitle;
-                delete updatedObservation.subTargetStatus;
-                delete updatedObservation.interactionCount;
-                delete updatedObservation.subObservations;
-                
-                target.observations[parseInt(obsIndex)] = updatedObservation;
-                applyFiltersAndRender(panelId);
-
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo revertido para observação.", "info");
-                } catch (error) {
-                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                }
-                break;
-            }
-
-            case 'resolve-sub-target': {
-                if (!confirm("Marcar este sub-alvo como respondido?")) return;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { subTargetStatus: 'resolved' };
-
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
-                applyFiltersAndRender(panelId);
-
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo marcado como respondido!", "success");
-                } catch (error) {
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                }
-                break;
-            }
-
-            case 'add-sub-observation': {
-                const text = prompt("Digite a nova observação para este sub-alvo:");
-                if (!text || text.trim() === '') return;
-
-                const newSubObservation = { text: text.trim(), date: new Date() };
-
-                const subTarget = target.observations[parseInt(obsIndex)];
-                if (!Array.isArray(subTarget.subObservations)) {
-                    subTarget.subObservations = [];
-                }
-                subTarget.subObservations.push(newSubObservation);
-                applyFiltersAndRender(panelId);
-
-                try {
-                    await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
-                    showToast("Observação adicionada ao sub-alvo.", "success");
-                } catch (error) {
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                    subTarget.subObservations.pop();
-                    applyFiltersAndRender(panelId);
-                }
-                break;
+        } else if (action === 'toggle-observation') {
+             UI.toggleAddObservationForm(id);
+        } else if (action === 'download-target-pdf') {
+            generateAndDownloadPdf(target);
+            showToast(`Gerando PDF para "${target.title}"...`, 'success');
+        } else if (action === 'select-manual-target') {
+            try {
+                await Service.addManualTargetToDailyList(state.user.uid, id);
+                UI.toggleManualTargetModal(false);
+                await loadDataForUser(state.user);
+                showToast("Alvo adicionado à lista do dia!", "success");
+            } catch (error) {
+                console.error(error);
+                showToast(error.message, "error");
             }
         }
     });
