@@ -28,9 +28,10 @@ function isDateExpired(date) {
  * @param {Array<object>} observations - O array de observações.
  * @param {string} parentTargetId - O ID do alvo principal.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
+ * @param {boolean} isEditingEnabled - Controla se os ícones de edição devem ser renderizados.
  * @returns {string} - A string HTML da lista de observações.
  */
-function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}) {
+function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}, isEditingEnabled = false) {
     if (!Array.isArray(observations) || observations.length === 0) return '';
     
     const sorted = [...observations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
@@ -63,16 +64,23 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
+            // Ícones de edição para o título do sub-alvo e seu detalhe original
+            const editTitleIcon = isEditingEnabled ? `<span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            const editDetailsIcon = isEditingEnabled ? `<span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+
             let subObservationsHTML = '';
             if (hasSubObservations) {
                 subObservationsHTML += '<div class="sub-observations-list">';
                 const sortedSubObs = [...obs.subObservations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
                 
                 sortedSubObs.forEach(subObs => {
+                    const originalSubObsIndex = obs.subObservations.indexOf(subObs);
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
+                    const editSubObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
+
                     subObservationsHTML += `
                         <div class="sub-observation-item">
-                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}
+                            <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}${editSubObsIcon}
                         </div>`;
                 });
                 subObservationsHTML += '</div>';
@@ -81,13 +89,13 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
             html += `
                 <div class="observation-item sub-target ${isResolved ? 'resolved' : ''}">
                     <div class="sub-target-header">
-                        <span class="sub-target-title">${obs.subTargetTitle}</span>
+                        <span class="sub-target-title">${obs.subTargetTitle}${editTitleIcon}</span>
                         <div class="observation-actions">
                            ${subTargetActions}
                            <button class="btn-small demote" data-action="demote-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}" ${demoteButtonDisabled} title="${demoteButtonTitle}">Reverter</button>
                         </div>
                     </div>
-                    <p><em>${sanitizedText} (Origem: observação de ${formatDateForDisplay(obs.date)})</em></p>
+                    <p><em>${sanitizedText}${editDetailsIcon} (Origem: observação de ${formatDateForDisplay(obs.date)})</em></p>
                     <div class="target-actions" style="margin-top: 10px;">
                         ${!isResolved ? subTargetPrayButton : ''}
                     </div>
@@ -95,9 +103,10 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 </div>`;
         } else {
             // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL COM ÍCONE DE EDIÇÃO -----
+            const editObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
             html += `
                 <div class="observation-item">
-                    <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText} <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span></p>
+                    <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}${editObsIcon}</p>
                     <div class="observation-actions">
                         <button class="btn-small promote" data-action="promote-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Promover a Sub-Alvo</button>
                     </div>
@@ -121,6 +130,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
+    const isEditingEnabled = config.isEditingEnabled === true;
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
     const subTargetIndicatorIcon = hasSubTargets ? `<span class="sub-target-indicator" title="Este alvo contém sub-alvos">🔗</span>` : '';
 
@@ -129,7 +139,10 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
     const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
 
-    const detailsPara = config.showDetails ? `<p class="target-details">${target.details || 'Sem Detalhes'} <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span></p>` : '';
+    const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span>` : '';
+    const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span>` : '';
+
+    const detailsPara = config.showDetails ? `<p class="target-details">${target.details || 'Sem Detalhes'}${editDetailsIcon}</p>` : '';
     const elapsedTimePara = config.showElapsedTime ? `<p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>` : '';
     const archivedDatePara = config.showArchivedDate && target.archivedDate ? `<p><strong>Data Arquivamento:</strong> ${formatDateForDisplay(target.archivedDate)}</p>` : '';
     const timeToResolutionPara = config.showTimeToResolution && target.date && target.resolutionDate ? `<p><strong>Tempo para Resposta:</strong> ${timeElapsed(target.date, target.resolutionDate)}</p>` : '';
@@ -170,7 +183,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         </div>`;
     }
 
-    const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData) : '';
+    const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
     
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
@@ -180,7 +193,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         <div id="editDetailsForm-${target.id}" class="inline-edit-form" style="display:none;"></div>` : '';
 
     return `
-        <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'} <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span></h3>
+        <h3>${subTargetIndicatorIcon} ${creationTag} ${categoryTag} ${deadlineTag} ${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
         ${detailsPara}
         ${mainActionHTML}
         ${elapsedTimePara}
@@ -219,7 +232,8 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
         showActions: true,
         showPrayButton: true,
         isPriorityPanel: true,
-        showForms: true
+        showForms: true,
+        isEditingEnabled: false
     };
     
     priorityTargets.forEach(target => {
@@ -243,7 +257,8 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
             showDownloadButton: true,
-            showForms: true, showPrayButton: false
+            showForms: true, showPrayButton: false,
+            isEditingEnabled: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -279,7 +294,8 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
                 showAddObservationButton: true,
                 showDeleteButton: true,
                 showDownloadButton: true,
-                showForms: true
+                showForms: true,
+                isEditingEnabled: true
             };
             div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
             container.appendChild(div);
@@ -301,7 +317,8 @@ export function renderResolvedTargets(targets, total, page, perPage) {
             showObservations: true,
             showActions: true,
             showDownloadButton: true,
-            showForms: true
+            showForms: true,
+            isEditingEnabled: true
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -326,7 +343,8 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     if (pending.length > 0) {
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
-            showObservations: true, showActions: true, showPrayButton: true, showForms: true
+            showObservations: true, showActions: true, showPrayButton: true, showForms: true,
+            isEditingEnabled: false
         };
         pending.forEach(target => {
             const div = document.createElement("div");
