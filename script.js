@@ -1,4 +1,4 @@
-// script.js (Orquestrador Principal da Aplicação - Versão com Edição Corrigida e Melhorias)
+// script.js (Orquestrador Principal da Aplicação - Versão Aprimorada)
 // ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados e notificação para promover observações.
 
 // --- MÓDULOS ---
@@ -624,9 +624,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!action || !id) {
             // Exceção para o botão de cancelar edição, que não precisa de ID
             if (action === 'cancel-edit') {
-                const form = e.target.closest('.inline-edit-form-container');
+                const form = e.target.closest('.inline-edit-form');
                 if (form) {
-                    form.remove();
+                    form.style.display = 'none';
+                    form.innerHTML = '';
                 }
             }
             return;
@@ -659,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
 
             // ================================================================================================
-            // ===== INÍCIO DA MODIFICAÇÃO: Lógica de edição refatorada e com melhorias de UX. =====
+            // ===== INÍCIO DA MODIFICAÇÃO: Lógica de edição refatorada e desmembrada. =====
             // ================================================================================================
             case 'edit-title': {
                 if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title' });
@@ -718,144 +719,157 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             case 'save-title': {
-                const formContainer = e.target.closest('.inline-edit-form-container');
-                const newTitle = formContainer?.querySelector('input')?.value.trim();
-                if (!target || !newTitle) break;
-                
-                // Melhoria de UX: Feedback de salvamento
-                const saveButton = e.target;
-                saveButton.disabled = true;
-                saveButton.textContent = 'Salvando...';
+                const form = e.target.closest('.inline-edit-form');
+                if (!form) break;
+                const inputField = form.querySelector('input');
+                const saveButton = form.querySelector('.save-btn');
+                if (!target || !inputField || !saveButton) break;
 
+                const newTitle = inputField.value.trim();
+                if (newTitle === '') break;
+                
+                saveButton.textContent = 'Salvando...';
+                saveButton.disabled = true;
+                
                 const oldTitle = target.title;
-                target.title = newTitle; // UI Otimista
-                applyFiltersAndRender(panelId);
+                target.title = newTitle;
                 
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
                     showToast("Título atualizado com sucesso!", "success");
                 } catch (error) {
                     target.title = oldTitle; // Reverte em caso de erro
-                    applyFiltersAndRender(panelId);
                     showToast("Falha ao atualizar o título.", "error");
+                    console.error("Erro ao salvar título:", error);
+                } finally {
+                    applyFiltersAndRender(panelId);
                 }
                 break;
             }
 
             case 'save-details': {
-                const formContainer = e.target.closest('.inline-edit-form-container');
-                const newDetails = formContainer?.querySelector('textarea')?.value.trim();
-                if (!target) break;
-                
-                // Melhoria de UX: Feedback de salvamento
-                const saveButton = e.target;
-                saveButton.disabled = true;
+                const form = e.target.closest('.inline-edit-form');
+                if (!form) break;
+                const inputField = form.querySelector('textarea');
+                const saveButton = form.querySelector('.save-btn');
+                if (!target || !inputField || !saveButton) break;
+
+                const newDetails = inputField.value.trim();
                 saveButton.textContent = 'Salvando...';
+                saveButton.disabled = true;
 
                 const oldDetails = target.details;
-                target.details = newDetails; // UI Otimista
-                applyFiltersAndRender(panelId);
+                target.details = newDetails;
 
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
                     showToast("Detalhes atualizados com sucesso!", "success");
                 } catch (error) {
                     target.details = oldDetails; // Reverte
-                    applyFiltersAndRender(panelId);
                     showToast("Falha ao atualizar os detalhes.", "error");
+                    console.error("Erro ao salvar detalhes:", error);
+                } finally {
+                    applyFiltersAndRender(panelId);
                 }
                 break;
             }
             
             case 'save-observation': {
-                const formContainer = e.target.closest('.inline-edit-form-container');
-                const newText = formContainer?.querySelector('textarea')?.value.trim();
-                if (!target || newText === '') break;
+                const form = e.target.closest('.inline-edit-form');
+                if (!form) break;
+                const inputField = form.querySelector('textarea');
+                const saveButton = form.querySelector('.save-btn');
+                if (!target || !inputField || !saveButton) break;
 
-                // Melhoria de UX: Feedback de salvamento
-                const saveButton = e.target;
-                saveButton.disabled = true;
+                const newText = inputField.value.trim();
+                if (newText === '') break;
+
                 saveButton.textContent = 'Salvando...';
+                saveButton.disabled = true;
 
                 const oldText = target.observations[obsIndex].text;
-                target.observations[obsIndex].text = newText; // UI Otimista
-                applyFiltersAndRender(panelId);
+                target.observations[obsIndex].text = newText;
                 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
                     showToast("Observação atualizada!", "success");
                 } catch (error) {
                     target.observations[obsIndex].text = oldText; // Reverte
-                    applyFiltersAndRender(panelId);
                     showToast("Falha ao atualizar a observação.", "error");
+                    console.error("Erro ao salvar observação:", error);
+                } finally {
+                    applyFiltersAndRender(panelId);
                 }
                 break;
             }
 
             case 'save-sub-target-title':
             case 'save-sub-target-details': {
-                const formContainer = e.target.closest('.inline-edit-form-container');
-                const input = formContainer?.querySelector('input, textarea');
-                const newText = input ? input.value.trim() : '';
-                if (!target || newText === '') break;
-                
-                // Melhoria de UX: Feedback de salvamento
-                const saveButton = e.target;
-                saveButton.disabled = true;
-                saveButton.textContent = 'Salvando...';
+                const form = e.target.closest('.inline-edit-form');
+                if (!form) break;
+                const inputField = form.querySelector('input, textarea');
+                const saveButton = form.querySelector('.save-btn');
+                if (!target || !inputField || !saveButton) break;
 
+                const newText = inputField.value.trim();
+                if (newText === '') break;
+                
+                saveButton.textContent = 'Salvando...';
+                saveButton.disabled = true;
+                
                 const obsToUpdate = target.observations[obsIndex];
                 const isTitle = action === 'save-sub-target-title';
                 const fieldToUpdate = isTitle ? 'subTargetTitle' : 'text';
                 const oldText = obsToUpdate[fieldToUpdate];
                 
-                obsToUpdate[fieldToUpdate] = newText; // UI Otimista
-                applyFiltersAndRender(panelId);
+                obsToUpdate[fieldToUpdate] = newText;
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
                     showToast("Sub-alvo atualizado!", "success");
                 } catch (error) {
                     obsToUpdate[fieldToUpdate] = oldText; // Reverte
-                    applyFiltersAndRender(panelId);
                     showToast("Falha ao atualizar sub-alvo.", "error");
+                    console.error("Erro ao salvar sub-alvo:", error);
+                } finally {
+                    applyFiltersAndRender(panelId);
                 }
                 break;
             }
 
             case 'save-sub-observation': {
-                const formContainer = e.target.closest('.inline-edit-form-container');
-                const newText = formContainer?.querySelector('textarea')?.value.trim();
-                if (!target || newText === '') break;
+                const form = e.target.closest('.inline-edit-form');
+                if (!form) break;
+                const inputField = form.querySelector('textarea');
+                const saveButton = form.querySelector('.save-btn');
+                if (!target || !inputField || !saveButton) break;
 
-                // Melhoria de UX: Feedback de salvamento
-                const saveButton = e.target;
-                saveButton.disabled = true;
+                const newText = inputField.value.trim();
+                if (newText === '') break;
+
                 saveButton.textContent = 'Salvando...';
+                saveButton.disabled = true;
 
                 const subObs = target.observations[obsIndex].subObservations[subObsIndex];
                 const oldText = subObs.text;
 
-                subObs.text = newText; // UI Otimista
-                applyFiltersAndRender(panelId);
+                subObs.text = newText;
 
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
                     showToast("Observação do sub-alvo atualizada!", "success");
                 } catch (error) {
                     subObs.text = oldText; // Reverte
-                    applyFiltersAndRender(panelId);
                     showToast("Falha ao atualizar observação.", "error");
+                    console.error("Erro ao salvar sub-observação:", error);
+                } finally {
+                    applyFiltersAndRender(panelId);
                 }
                 break;
             }
             // ================================================================================================
             // ===== FIM DA MODIFICAÇÃO =====
             // ================================================================================================
-
-            case 'save-observation': // Este case agora é redundante devido ao acima, mas mantido para segurança.
-                await handleAddObservation(target, isArchived, panelId);
-                break;
 
             case 'edit-deadline': 
                 UI.toggleEditDeadlineForm(id, target?.deadlineDate); 
