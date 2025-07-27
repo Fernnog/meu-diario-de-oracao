@@ -1,4 +1,4 @@
-// script.js (Orquestrador Principal da Aplicação - Versão Aprimorada)
+// script.js (Orquestrador Principal da Aplicação - Versão com Edição Corrigida e Melhorias)
 // ARQUITETURA REVISADA: Inclui gestão de prazos, handlers de ação refatorados e notificação para promover observações.
 
 // --- MÓDULOS ---
@@ -624,10 +624,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!action || !id) {
             // Exceção para o botão de cancelar edição, que não precisa de ID
             if (action === 'cancel-edit') {
-                const form = e.target.closest('.inline-edit-form');
+                const form = e.target.closest('.inline-edit-form-container');
                 if (form) {
-                    form.style.display = 'none';
-                    form.innerHTML = '';
+                    form.remove();
                 }
             }
             return;
@@ -660,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
 
             // ================================================================================================
-            // ===== INÍCIO DA MODIFICAÇÃO: Lógica de edição refatorada e desmembrada. =====
+            // ===== INÍCIO DA MODIFICAÇÃO: Lógica de edição refatorada e com melhorias de UX. =====
             // ================================================================================================
             case 'edit-title': {
                 if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title' });
@@ -719,9 +718,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             case 'save-title': {
-                const newTitle = document.getElementById(`input-editForm-${id}`).value.trim();
+                const formContainer = e.target.closest('.inline-edit-form-container');
+                const newTitle = formContainer?.querySelector('input')?.value.trim();
                 if (!target || !newTitle) break;
                 
+                // Melhoria de UX: Feedback de salvamento
+                const saveButton = e.target;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
+
                 const oldTitle = target.title;
                 target.title = newTitle; // UI Otimista
                 applyFiltersAndRender(panelId);
@@ -738,8 +743,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             case 'save-details': {
-                const newDetails = document.getElementById(`input-editForm-${id}`).value.trim();
+                const formContainer = e.target.closest('.inline-edit-form-container');
+                const newDetails = formContainer?.querySelector('textarea')?.value.trim();
                 if (!target) break;
+                
+                // Melhoria de UX: Feedback de salvamento
+                const saveButton = e.target;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
 
                 const oldDetails = target.details;
                 target.details = newDetails; // UI Otimista
@@ -757,9 +768,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             case 'save-observation': {
-                const input = document.getElementById(`input-editForm-${id}-${obsIndex}`);
-                const newText = input ? input.value.trim() : '';
+                const formContainer = e.target.closest('.inline-edit-form-container');
+                const newText = formContainer?.querySelector('textarea')?.value.trim();
                 if (!target || newText === '') break;
+
+                // Melhoria de UX: Feedback de salvamento
+                const saveButton = e.target;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
 
                 const oldText = target.observations[obsIndex].text;
                 target.observations[obsIndex].text = newText; // UI Otimista
@@ -778,10 +794,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'save-sub-target-title':
             case 'save-sub-target-details': {
-                const input = document.getElementById(`input-editForm-${id}-${obsIndex}`);
+                const formContainer = e.target.closest('.inline-edit-form-container');
+                const input = formContainer?.querySelector('input, textarea');
                 const newText = input ? input.value.trim() : '';
                 if (!target || newText === '') break;
                 
+                // Melhoria de UX: Feedback de salvamento
+                const saveButton = e.target;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
+
                 const obsToUpdate = target.observations[obsIndex];
                 const isTitle = action === 'save-sub-target-title';
                 const fieldToUpdate = isTitle ? 'subTargetTitle' : 'text';
@@ -802,9 +824,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             case 'save-sub-observation': {
-                const input = document.getElementById(`input-editForm-${id}-${obsIndex}-${subObsIndex}`);
-                const newText = input ? input.value.trim() : '';
+                const formContainer = e.target.closest('.inline-edit-form-container');
+                const newText = formContainer?.querySelector('textarea')?.value.trim();
                 if (!target || newText === '') break;
+
+                // Melhoria de UX: Feedback de salvamento
+                const saveButton = e.target;
+                saveButton.disabled = true;
+                saveButton.textContent = 'Salvando...';
 
                 const subObs = target.observations[obsIndex].subObservations[subObsIndex];
                 const oldText = subObs.text;
