@@ -22,7 +22,6 @@ function isDateExpired(date) {
 }
 
 /**
- * (VERSÃO COM EDIÇÃO CORRIGIDA)
  * Gera o HTML para a lista de observações de um alvo,
  * incluindo ícones e placeholders para edição, controlados por uma flag.
  * @param {Array<object>} observations - O array de observações.
@@ -62,9 +61,8 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 <button class="btn-small resolve" data-action="resolve-sub-target" data-id="${parentTargetId}" data-obs-index="${originalIndex}">Marcar Respondido</button>
             ` : `<span class="resolved-tag">Respondido</span>`;
 
-            // ALTERAÇÃO: Ícones de edição agora são condicionais
-            const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
-            const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            const editTitleIcon = isEditingEnabled && !isResolved ? ` <span class="edit-icon" data-action="edit-sub-target-title" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
+            const editDetailsIcon = isEditingEnabled && !isResolved ? ` <span class="edit-icon" data-action="edit-sub-target-details" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
 
             let subObservationsHTML = '';
             if (hasSubObservations) {
@@ -74,8 +72,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 sortedSubObs.forEach(subObs => {
                     const originalSubObsIndex = obs.subObservations.indexOf(subObs);
                     const sanitizedSubText = (subObs.text || '').replace(/</g, "<").replace(/>/g, ">");
-                    // ALTERAÇÃO: Ícone de edição para sub-observação agora é condicional
-                    const editSubObsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
+                    const editSubObsIcon = isEditingEnabled && !isResolved ? ` <span class="edit-icon" data-action="edit-sub-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}" data-sub-obs-index="${originalSubObsIndex}">✏️</span>` : '';
                     subObservationsHTML += `
                         <div class="sub-observation-item">
                             <strong>${formatDateForDisplay(subObs.date)}:</strong> ${sanitizedSubText}${editSubObsIcon}
@@ -101,7 +98,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 </div>`;
         } else {
             // ----- RENDERIZA COMO UMA OBSERVAÇÃO NORMAL COM ÍCONE DE EDIÇÃO -----
-            // ALTERAÇÃO: Ícone de edição agora é condicional
             const editIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
             html += `
                 <div class="observation-item">
@@ -116,10 +112,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
     return html + `</div>`;
 }
 
-// --- Template Engine de Alvos (Refatoração Arquitetônica) ---
-
 /**
- * (VERSÃO COM EDIÇÃO CORRIGIDA)
  * Cria o HTML para um único alvo com base em uma configuração,
  * incluindo ícones e placeholders para edição, controlados por uma flag.
  * @param {object} target - O objeto do alvo de oração.
@@ -128,7 +121,6 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
  * @returns {string} - O HTML do elemento do alvo.
  */
 function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
-    // ALTERAÇÃO: Adiciona a flag de controle de edição a partir da configuração
     const isEditingEnabled = config.isEditingEnabled === true;
     
     const hasSubTargets = Array.isArray(target.observations) && target.observations.some(obs => obs.isSubTarget);
@@ -139,7 +131,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     const deadlineTag = config.showDeadline && target.hasDeadline && target.deadlineDate ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
     const resolvedTag = config.showResolvedDate && target.resolved && target.resolutionDate ? `<span class="resolved-tag">Respondido em: ${formatDateForDisplay(target.resolutionDate)}</span>` : '';
 
-    // ALTERAÇÃO: Ícones de edição agora são condicionais
     const editTitleIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-title" data-id="${target.id}">✏️</span>` : '';
     const editDetailsIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-details" data-id="${target.id}">✏️</span>` : '';
     
@@ -184,10 +175,8 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         </div>`;
     }
 
-    // ALTERAÇÃO: Passa a flag 'isEditingEnabled' para a função que renderiza as observações
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
     
-    // Removidos os placeholders de edição inline de 'formsHTML', pois o novo 'toggleEditForm' cria o formulário dinamicamente.
     const formsHTML = config.showForms ? `
         <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
         <div id="editDeadlineForm-${target.id}" class="edit-deadline-form" style="display:none;"></div>
@@ -206,9 +195,6 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     `;
 }
 
-
-// --- Funções de Renderização de Listas de Alvos (Refatoradas) ---
-
 export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     const container = document.getElementById('priorityTargetsList');
     const section = document.getElementById('prioritySection');
@@ -225,11 +211,10 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     section.style.display = 'block';
     container.innerHTML = ''; 
 
-    // ALTERAÇÃO: Edição desabilitada neste painel
     const config = {
         showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
         showObservations: true, showActions: false, showPrayButton: true,
-        isPriorityPanel: true, showForms: true, isEditingEnabled: false
+        isPriorityPanel: true, showForms: true, isEditingEnabled: false // Edição desabilitada neste painel
     };
     
     priorityTargets.forEach(target => {
@@ -247,13 +232,12 @@ export function renderTargets(targets, total, page, perPage, dailyTargetsData) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo de oração encontrado com os filtros atuais.</p>';
     } else {
-        // ALTERAÇÃO: Edição habilitada neste painel
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showElapsedTime: true, showObservations: true, showActions: true,
             showResolveButton: true, showArchiveButton: true, showTogglePriorityButton: true,
             showAddObservationButton: true, showEditDeadlineButton: true, showEditCategoryButton: true,
-            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true
+            showDownloadButton: true, showForms: true, showPrayButton: false, isEditingEnabled: true // Edição habilitada
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -277,13 +261,12 @@ export function renderArchivedTargets(targets, total, page, perPage, dailyTarget
             div.className = `target archived ${target.resolved ? 'resolved' : ''}`;
             div.dataset.targetId = target.id;
             
-            // ALTERAÇÃO: Edição habilitada neste painel
             const config = {
                 showCreationDate: true, showCategory: true, showResolvedDate: true,
                 showDetails: true, showArchivedDate: true, showObservations: true,
                 showActions: true, showResolveArchivedButton: !target.resolved,
                 showAddObservationButton: true, showDeleteButton: true,
-                showDownloadButton: true, showForms: true, isEditingEnabled: true
+                showDownloadButton: true, showForms: true, isEditingEnabled: true // Edição habilitada
             };
             div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
             container.appendChild(div);
@@ -298,11 +281,10 @@ export function renderResolvedTargets(targets, total, page, perPage) {
     if (targets.length === 0) {
         container.innerHTML = '<p>Nenhum alvo respondido encontrado.</p>';
     } else {
-        // ALTERAÇÃO: Edição habilitada neste painel
         const config = {
             showCategory: true, showResolvedDate: true, showTimeToResolution: true,
             showObservations: true, showActions: false, showDownloadButton: true,
-            showForms: true, isEditingEnabled: true
+            showForms: true, isEditingEnabled: true // Edição habilitada
         };
         targets.forEach(target => {
             const div = document.createElement("div");
@@ -325,11 +307,10 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     }
 
     if (pending.length > 0) {
-        // ALTERAÇÃO: Edição desabilitada neste painel
         const config = {
             showCreationDate: true, showCategory: true, showDeadline: true, showDetails: true,
             showObservations: true, showActions: false, showPrayButton: true, 
-            showForms: true, isEditingEnabled: false
+            showForms: true, isEditingEnabled: false // Edição desabilitada
         };
         pending.forEach(target => {
             const div = document.createElement("div");
@@ -362,8 +343,6 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
         });
     }
 }
-
-// --- Funções de Componentes de UI ---
 
 export function renderPagination(panelId, currentPage, totalItems, itemsPerPage) {
     const paginationDiv = document.getElementById(`pagination-${panelId}`);
@@ -601,7 +580,6 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
 }
 
 /**
- * (FUNÇÃO REFINADA - CORREÇÃO PRIORIDADE 1)
  * Alterna a visibilidade e o conteúdo do formulário de edição para um campo específico.
  * @param {'Title'|'Details'|'Observation'|'SubTargetTitle'|'SubTargetDetails'|'SubObservation'} type - O tipo de campo a ser editado.
  * @param {string} targetId - O ID do alvo.
@@ -610,30 +588,31 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
 export function toggleEditForm(type, targetId, options = {}) {
     const { currentValue = '', obsIndex = -1, subObsIndex = -1, saveAction } = options;
 
-    // Primeiro, fecha qualquer outro formulário de edição inline para evitar conflitos
+    // Fecha qualquer outro formulário de edição inline para evitar conflitos
     document.querySelectorAll('.inline-edit-form-container').forEach(container => container.remove());
 
     // Determina o elemento pai onde o formulário será injetado
     let parentElement;
     if (type === 'SubObservation') {
         parentElement = document.querySelector(`[data-action="edit-sub-observation"][data-id="${targetId}"][data-obs-index="${obsIndex}"][data-sub-obs-index="${subObsIndex}"]`).closest('.sub-observation-item');
-    } else if (type === 'SubTargetTitle' || type === 'SubTargetDetails' || type === 'Observation') {
-        parentElement = document.querySelector(`[data-action*="edit-"][data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
+    } else if (type === 'SubTargetTitle' || type === 'SubTargetDetails') {
+        parentElement = document.querySelector(`[data-action="edit-sub-target-details"][data-id="${targetId}"][data-obs-index="${obsIndex}"]`)?.closest('.observation-item') || document.querySelector(`[data-action="edit-sub-target-title"][data-id="${targetId}"][data-obs-index="${obsIndex}"]`)?.closest('.observation-item');
+    } else if (type === 'Observation') {
+        parentElement = document.querySelector(`[data-action="edit-observation"][data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
     } else if (type === 'Title' || type === 'Details') {
         parentElement = document.querySelector(`[data-target-id="${targetId}"]`);
     }
 
     if (!parentElement) {
-        console.error("Não foi possível encontrar o elemento pai para anexar o formulário para o tipo:", type);
         return;
     }
-
+    
     // Cria um novo container para o formulário
     const formContainer = document.createElement('div');
     formContainer.className = 'inline-edit-form-container';
 
-    const inputElement = (type.includes('Title'))
-        ? `<input type="text" class="inline-edit-input" value="${currentValue}" placeholder="Novo texto">`
+    const inputElement = (type.includes('Title') || type.includes('Observation'))
+        ? `<input type="text" class="inline-edit-input" value="${currentValue.replace(/"/g, '"')}" placeholder="Novo texto">`
         : `<textarea rows="4" class="inline-edit-textarea" placeholder="Novos detalhes...">${currentValue}</textarea>`;
 
     const finalSaveAction = saveAction || `save-${type.toLowerCase()}`;
@@ -657,11 +636,10 @@ export function toggleEditForm(type, targetId, options = {}) {
     inputField.select(); // Seleciona o texto para fácil substituição
 
     // Adiciona atalhos de teclado para uma melhor UX
-    const saveButton = formContainer.querySelector('.save-btn');
     inputField.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (inputField.tagName === 'INPUT' || !e.shiftKey)) {
             e.preventDefault();
-            saveButton.click();
+            formContainer.querySelector('.save-btn').click();
         }
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -669,7 +647,6 @@ export function toggleEditForm(type, targetId, options = {}) {
         }
     });
 }
-
 
 export function showExpiredTargetsToast(expiredTargets) {
     const toast = document.getElementById('expiredToast');
