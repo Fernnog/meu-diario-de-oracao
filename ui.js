@@ -1,12 +1,65 @@
 // ui.js
 // Responsável por toda a manipulação do DOM e renderização da interface.
-// ARQUITETURA REVISADA: Inclui formulários inline para todas as observações e sub-observações.
+// ARQUITETURA REVISADA: Inclui formulários inline e sistema de notificações toast.
 
 // --- MÓDULOS ---
 import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js';
 import { MILESTONES } from './config.js';
 
 // --- Funções Utilitárias Específicas da UI ---
+
+/**
+ * Exibe uma notificação toast na tela, com opção de fechamento para erros.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
+ */
+export function showToast(message, type = 'success') {
+    // Remove qualquer toast existente para evitar sobreposição
+    const existingToast = document.querySelector('.app-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Cria o elemento toast
+    const toast = document.createElement('div');
+    toast.className = 'app-toast';
+    toast.textContent = message;
+
+    // Adiciona uma classe de modificador para o tipo
+    toast.classList.add(`toast--${type}`);
+
+    // Adiciona o botão de fechar para erros
+    if (type === 'error') {
+        const closeButton = document.createElement('button');
+        closeButton.className = 'toast-close-btn';
+        closeButton.innerHTML = '×'; // Entidade HTML para o 'X'
+        closeButton.title = 'Fechar';
+        closeButton.onclick = () => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 300);
+        };
+        toast.appendChild(closeButton);
+    }
+
+    // Adiciona ao corpo e anima a entrada
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('is-visible');
+    }, 10);
+
+    // Remove o toast automaticamente, a menos que seja um erro
+    if (type !== 'error') {
+        setTimeout(() => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }, 3500);
+    }
+}
+
 
 /**
  * Verifica se uma data de prazo já expirou.
@@ -489,24 +542,30 @@ export function resetWeeklyChart() {
 }
 
 export function showPanel(panelId) {
-    const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'authSection', 'prioritySection'];
+    const allPanels = ['appContent', 'dailySection', 'mainPanel', 'archivedPanel', 'resolvedPanel', 'prioritySection'];
     const mainMenuElements = ['mainMenu', 'secondaryMenu'];
     const dailyRelatedElements = ['weeklyPerseveranceChart', 'perseveranceSection', 'sectionSeparator'];
 
+    // Oculta todos os painéis e elementos de menu/diários
     [...allPanels, ...mainMenuElements, ...dailyRelatedElements].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
 
+    // A seção de autenticação é tratada separadamente pela função updateAuthUI.
+    // Mostra o painel solicitado
     const panelEl = document.getElementById(panelId);
     if (panelEl) panelEl.style.display = 'block';
 
-    if (panelId !== 'authSection') {
+    // Mostra os menus se não estivermos na tela de autenticação
+    const authSection = document.getElementById('authSection');
+    if (!authSection || authSection.classList.contains('hidden')) {
         mainMenuElements.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'block';
         });
     }
+
     if (panelId === 'dailySection') {
         dailyRelatedElements.forEach(id => {
             const el = document.getElementById(id);
@@ -516,6 +575,7 @@ export function showPanel(panelId) {
         if(priorityEl) priorityEl.style.display = 'block';
     }
 }
+
 
 export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
@@ -985,28 +1045,41 @@ export function displayCompletionPopup() {
 }
 
 export function updateAuthUI(user, message = '', isError = false) {
-    const authStatus = document.getElementById('authStatus');
-    const btnLogout = document.getElementById('btnLogout');
-    const emailPasswordAuthForm = document.getElementById('emailPasswordAuthForm');
-    const authStatusContainer = document.querySelector('.auth-status-container');
+    const authSection = document.getElementById('authSection');
+    const userStatusTop = document.getElementById('userStatusTop');
     const passwordResetMessageDiv = document.getElementById('passwordResetMessage');
 
+    // Elementos do formulário de auth que precisam ser limpos no logout
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
     if (user) {
-        authStatusContainer.style.display = 'flex';
-        btnLogout.style.display = 'inline-block';
-        emailPasswordAuthForm.style.display = 'none';
-        authStatus.textContent = `Autenticado: ${user.email}`;
-        passwordResetMessageDiv.style.display = 'none';
-    } else {
-        authStatusContainer.style.display = 'none';
-        btnLogout.style.display = 'none';
-        emailPasswordAuthForm.style.display = 'block';
+        // Esconde a seção de autenticação e mostra o status no topo
+        authSection.classList.add('hidden');
+        userStatusTop.textContent = `Logado: ${user.email}`;
+        userStatusTop.style.display = 'inline-block';
         
-        if (message) {
+        // Garante que a mensagem de reset de senha seja limpa
+        if(passwordResetMessageDiv) passwordResetMessageDiv.style.display = 'none';
+
+    } else {
+        // Mostra a seção de autenticação e esconde o status no topo
+        authSection.classList.remove('hidden');
+        if(userStatusTop) {
+            userStatusTop.style.display = 'none';
+            userStatusTop.textContent = '';
+        }
+        
+        // Limpa os campos de input no logout
+        if(emailInput) emailInput.value = '';
+        if(passwordInput) passwordInput.value = '';
+
+        // Lógica para exibir mensagens de erro ou de reset
+        if (message && passwordResetMessageDiv) {
             passwordResetMessageDiv.textContent = message;
             passwordResetMessageDiv.style.color = isError ? "red" : "green";
             passwordResetMessageDiv.style.display = "block";
-        } else {
+        } else if (passwordResetMessageDiv) {
             passwordResetMessageDiv.style.display = 'none';
         }
     }
