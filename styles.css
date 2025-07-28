@@ -19,6 +19,20 @@
     clear: right;
 }
 
+/* ==== USER STATUS (Barra Superior) - MELHORIA PRIORIDADE 1 ==== */
+.user-status-top {
+    float: right;
+    padding: 5px 15px;
+    font-size: 0.9em;
+    color: #555;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    margin-left: 15px;
+    display: none; /* Oculto por padrão, ativado via JS */
+}
+
+
 /* ==== LOGO STYLES ==== */
 .logo-container {
     text-align: center;
@@ -1020,6 +1034,10 @@ input[type="date"] {
     margin-left: auto;
     margin-right: auto;
 }
+/* Adicionado para ocultar a seção de autenticação após o login - MELHORIA PRIORIDADE 1 */
+.auth-section.hidden {
+    display: none;
+}
 .auth-section .auth-form {
      width: 100%;
 }
@@ -1595,7 +1613,7 @@ input[type="date"] {
 }
 
 
-/* ==== TOAST NOTIFICATION STYLES ==== */
+/* ==== TOAST NOTIFICATION (Prazos Vencidos) ==== */
 .toast-notification {
     position: fixed;
     bottom: 20px;
@@ -1621,7 +1639,7 @@ input[type="date"] {
     transform: translateX(-50%) translateY(calc(100% + 20px));
 }
 
-.toast-close-btn {
+.toast-notification .toast-close-btn {
     background: none;
     border: none;
     color: white;
@@ -1632,12 +1650,62 @@ input[type="date"] {
     padding: 0 5px;
 }
 
-.toast-close-btn:hover {
+.toast-notification .toast-close-btn:hover {
     opacity: 1;
 }
 
-/* ==== NOVOS ESTILOS (MELHORIA ARQUITETURAL) ==== */
+/* ==== APP TOAST NOTIFICATIONS (Genérico) - MELHORIAS PRIORIDADE 2 e 3 ==== */
+.app-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 5px;
+    color: white;
+    z-index: 1051; /* Acima do outro toast */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
+    transform: translateY(20px);
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 
+.app-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Variações de Cor */
+.app-toast.success { background-color: #28a745; } /* Verde */
+.app-toast.error   { background-color: #dc3545; } /* Vermelho */
+.app-toast.info    { background-color: #17a2b8; } /* Azul Info */
+
+.app-toast-message {
+    flex-grow: 1; /* Permite que a mensagem ocupe o espaço */
+}
+
+/* Botão de Fechar para Toasts (Prioridade 3) */
+.app-toast .toast-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 0 0 0 15px; /* Espaço entre a mensagem e o botão */
+    margin-left: auto; /* Garante alinhamento à direita */
+}
+
+.app-toast .toast-close-btn:hover {
+    opacity: 1;
+}
+
+
+/* ==== NOVOS ESTILOS (MELHORIA ARQUITETURAL) ==== */
 .target-main-action {
     margin-top: 15px;
     margin-bottom: 10px;
