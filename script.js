@@ -31,6 +31,59 @@ let state = {
 };
 
 // =================================================================
+// === MELHORIA DE UX: Notificações Toast Não-Bloqueantes ===
+// =================================================================
+
+/**
+ * Exibe uma notificação toast na tela.
+ * @param {string} message - A mensagem a ser exibida.
+ * @param {'success' | 'error' | 'info'} type - O tipo de notificação, que define a cor.
+ */
+function showToast(message, type = 'success') {
+    // Cria o elemento toast
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    
+    // Estilos base (injeta o CSS para não depender de alterações no arquivo .css)
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.padding = '12px 20px';
+    toast.style.borderRadius = '5px';
+    toast.style.color = 'white';
+    toast.style.zIndex = '1050';
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s, transform 0.3s';
+    toast.style.transform = 'translateY(20px)';
+    
+    // Estilos baseados no tipo
+    if (type === 'success') {
+        toast.style.backgroundColor = '#28a745'; // Verde
+    } else if (type === 'error') {
+        toast.style.backgroundColor = '#dc3545'; // Vermelho
+    } else { // 'info' e outros
+        toast.style.backgroundColor = '#17a2b8'; // Azul (pode ser trocado por amarelo se desejado)
+    }
+
+    // Adiciona ao corpo e anima a entrada
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 10);
+
+    // Remove o toast após 3 segundos
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+
+// =================================================================
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
 // =================================================================
 
@@ -38,44 +91,43 @@ async function handleSignUp() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     if (!email || !password) {
-        UI.showToast("Por favor, preencha e-mail e senha.", "error");
+        showToast("Por favor, preencha e-mail e senha.", "error");
         return;
     }
     try {
         await createUserWithEmailAndPassword(auth, email, password);
-        // O sucesso é tratado pelo onAuthStateChanged que exibirá o toast de boas-vindas
+        // O toast de sucesso agora é acionado pelo onAuthStateChanged
     } catch (error) {
         console.error("Erro ao cadastrar:", error);
-        UI.showToast("Erro ao cadastrar: " + error.message, "error");
+        UI.updateAuthUI(null, "Erro ao cadastrar: " + error.message, true);
     }
 }
 async function handleSignIn() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     if (!email || !password) {
-        UI.showToast("Por favor, preencha e-mail e senha.", "error");
+        showToast("Por favor, preencha e-mail e senha.", "error");
         return;
     }
     try {
         await signInWithEmailAndPassword(auth, email, password);
-         // O sucesso é tratado pelo onAuthStateChanged que exibirá o toast de boas-vindas
     } catch (error) {
         console.error("Erro ao entrar:", error);
-        UI.showToast("Erro ao entrar: " + error.message, "error");
+        UI.updateAuthUI(null, "Erro ao entrar: " + error.message, true);
     }
 }
 async function handlePasswordReset() {
     const email = document.getElementById('email').value.trim();
     if (!email) {
-        UI.showToast("Por favor, insira seu e-mail para redefinir a senha.", "error");
+        showToast("Por favor, insira seu e-mail para redefinir a senha.", "error");
         return;
     }
     try {
         await sendPasswordResetEmail(auth, email);
-        UI.showToast("Um e-mail de redefinição de senha foi enviado para " + email + ".", "success");
+        UI.updateAuthUI(null, "Um e-mail de redefinição de senha foi enviado para " + email + ".");
     } catch (error) {
         console.error("Erro ao redefinir senha:", error);
-        UI.showToast("Erro ao redefinir senha: " + error.message, "error");
+        UI.updateAuthUI(null, "Erro ao redefinir senha: " + error.message, true);
     }
 }
 
@@ -173,7 +225,7 @@ async function loadDataForUser(user) {
 
     } catch (error) {
         console.error("[App] Error during data loading process:", error);
-        UI.showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
+        showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
         handleLogoutState();
     }
 }
@@ -185,12 +237,12 @@ function handleLogoutState() {
 
 async function handleAddNewTarget(event) {
     event.preventDefault();
-    if (!state.user) return UI.showToast("Você precisa estar logado.", "error");
+    if (!state.user) return showToast("Você precisa estar logado.", "error");
     const title = document.getElementById('title').value.trim();
-    if (!title) return UI.showToast("O título é obrigatório.", "error");
+    if (!title) return showToast("O título é obrigatório.", "error");
     const hasDeadline = document.getElementById('hasDeadline').checked;
     const deadlineValue = document.getElementById('deadlineDate').value;
-    if (hasDeadline && !deadlineValue) return UI.showToast("Selecione uma data para o prazo.", "error");
+    if (hasDeadline && !deadlineValue) return showToast("Selecione uma data para o prazo.", "error");
     const isPriority = document.getElementById('isPriority').checked;
 
     const newTarget = { 
@@ -206,14 +258,14 @@ async function handleAddNewTarget(event) {
     };
     try {
         await Service.addNewPrayerTarget(state.user.uid, newTarget);
-        UI.showToast("Alvo adicionado com sucesso!", "success");
+        showToast("Alvo adicionado com sucesso!", "success");
         document.getElementById('prayerForm').reset();
         document.getElementById('deadlineContainer').style.display = 'none';
         await loadDataForUser(state.user);
         UI.showPanel('mainPanel');
     } catch (error) {
         console.error("Erro ao adicionar novo alvo:", error);
-        UI.showToast("Falha ao adicionar alvo: " + error.message, "error");
+        showToast("Falha ao adicionar alvo: " + error.message, "error");
     }
 }
 
@@ -237,7 +289,8 @@ async function handlePray(targetId) {
     UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     
-    UI.showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
+    // MELHORIA APLICADA: Feedback visual imediato e personalizado
+    showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
 
     try {
         await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
@@ -251,6 +304,7 @@ async function handlePray(targetId) {
         UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
         UI.updateWeeklyChart(state.weeklyPrayerData);
 
+        // MELHORIA APLICADA: Verifica se todos os alvos prioritários foram concluídos
         if (targetToPray.isPriority) {
             const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
             const allPriorityPrayed = priorityTargets.every(p => 
@@ -258,14 +312,15 @@ async function handlePray(targetId) {
             );
 
             if (allPriorityPrayed) {
+                // Atraso para não sobrepor o toast de sucesso
                 setTimeout(() => {
-                    UI.showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
+                    showToast("Parabéns! Você orou por todos os seus alvos prioritários de hoje!", "info");
                 }, 500);
             }
         }
     } catch (error) {
         console.error("Erro ao processar 'Orei!':", error);
-        UI.showToast("Erro ao registrar oração. Desfazendo.", "error");
+        showToast("Erro ao registrar oração. Desfazendo.", "error");
         // Reverte a UI
         const completedIndex = state.dailyTargets.completed.findIndex(t => t.id === targetId);
         if (completedIndex > -1) {
@@ -294,9 +349,9 @@ async function handleResolveTarget(target, panelId) {
 
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
-        UI.showToast("Alvo marcado como respondido!", "success");
+        showToast("Alvo marcado como respondido!", "success");
     } catch (error) {
-        UI.showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.resolvedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToResolve);
         applyFiltersAndRender('mainPanel');
@@ -319,9 +374,9 @@ async function handleArchiveTarget(target, panelId) {
 
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
-        UI.showToast("Alvo arquivado.", "info");
+        showToast("Alvo arquivado.", "info");
     } catch (error) {
-        UI.showToast("Erro ao sincronizar. A ação será desfeita.", "error");
+        showToast("Erro ao sincronizar. A ação será desfeita.", "error");
         state.archivedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToArchive);
         applyFiltersAndRender('mainPanel');
@@ -340,9 +395,9 @@ async function handleDeleteArchivedTarget(targetId) {
 
     try {
         await Service.deleteArchivedTarget(state.user.uid, targetId);
-        UI.showToast("Alvo excluído permanentemente.", "info");
+        showToast("Alvo excluído permanentemente.", "info");
     } catch (error) {
-        UI.showToast("Erro ao sincronizar. O item será restaurado.", "error");
+        showToast("Erro ao sincronizar. O item será restaurado.", "error");
         state.archivedTargets.splice(index, 0, deletedTarget);
         applyFiltersAndRender('archivedPanel');
     }
@@ -351,7 +406,7 @@ async function handleDeleteArchivedTarget(targetId) {
 async function handleAddObservation(target, isArchived, panelId) {
     const text = document.getElementById(`observationText-${target.id}`).value.trim(); 
     const dateStr = document.getElementById(`observationDate-${target.id}`).value; 
-    if (!text || !dateStr) return UI.showToast("Preencha o texto e a data.", "error"); 
+    if (!text || !dateStr) return showToast("Preencha o texto e a data.", "error"); 
     
     const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false }; 
     
@@ -363,9 +418,9 @@ async function handleAddObservation(target, isArchived, panelId) {
 
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation); 
-        UI.showToast("Observação adicionada.", "success");
+        showToast("Observação adicionada.", "success");
     } catch(error) {
-        UI.showToast("Falha ao salvar. A alteração será desfeita.", "error");
+        showToast("Falha ao salvar. A alteração será desfeita.", "error");
         target.observations.pop();
         applyFiltersAndRender(panelId);
     }
@@ -382,9 +437,9 @@ async function handleSaveCategory(target, isArchived, panelId) {
 
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory }); 
-        UI.showToast("Categoria atualizada.", "success");
+        showToast("Categoria atualizada.", "success");
     } catch(error) {
-        UI.showToast("Falha ao salvar. A alteração foi desfeita.", "error");
+        showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
         applyFiltersAndRender(panelId);
     }
@@ -400,9 +455,9 @@ async function handleTogglePriority(target) {
 
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
-        UI.showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
+        showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
     } catch (error) {
-        UI.showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
+        showToast("Erro ao sincronizar. A alteração foi desfeita.", "error");
         target.isPriority = !newStatus;
         applyFiltersAndRender('mainPanel');
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
@@ -416,7 +471,8 @@ async function handleTogglePriority(target) {
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, user => {
         if (user) { 
-            UI.showToast(`Bem-vindo(a), ${user.email}!`, 'success');
+            // MELHORIA APLICADA: Toast de sucesso no login
+            showToast(`Bem-vindo(a), ${user.email}!`, 'success');
             UI.updateAuthUI(user);
             loadDataForUser(user);
         } else { 
@@ -438,8 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
     
     // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
-    document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); UI.showToast("Nova lista gerada!", "success"); } });
-    document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); UI.showToast("Alvos pendentes copiados!", "success"); });
+    document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
+    document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true); });
     document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
@@ -491,11 +547,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
-    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
+    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender(panelId); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
 
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA (VERSÃO CORRIGIDA) ---
     document.body.addEventListener('click', async e => {
         const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
         if (!state.user && action) return;
@@ -520,19 +576,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return { target: null, isArchived: null, panelId: null };
         };
         
-        if (!action || !id) {
-            // Exceção para o botão de cancelar edição, que não precisa de ID
-            if (action === 'cancel-edit') {
-                const form = e.target.closest('.inline-edit-form');
-                if (form) {
-                    form.remove();
-                }
+        // Exceção para o botão de cancelar edição
+        if (action === 'cancel-edit') {
+            const form = e.target.closest('.inline-edit-form');
+            if (form) {
+                form.remove();
             }
+            return;
+        }
+        
+        if (!action || !id) {
             return;
         }
 
         const { target, isArchived, panelId } = findTargetInState(id);
-        if (!target && !['select-manual-target', 'cancel-edit', 'add-new-observation'].includes(action)) return;
+        if (!target && !['select-manual-target', 'add-new-observation'].includes(action)) return;
 
         // --- Switch de Ações ---
         switch(action) {
@@ -557,75 +615,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.toggleAddObservationForm(id);
                 break;
 
-            case 'add-new-observation': {
+            case 'add-new-observation':
                 if (target) {
                     await handleAddObservation(target, isArchived, panelId);
                 }
                 break;
-            }
 
-            case 'edit-title': {
-                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title' });
+            case 'edit-title':
+                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: e.target });
                 break;
-            }
 
-            case 'edit-details': {
-                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details' });
+            case 'edit-details':
+                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details', eventTarget: e.target });
                 break;
-            }
 
-            case 'edit-observation': {
+            case 'edit-observation':
                 if (target && target.observations[obsIndex]) {
                     UI.toggleEditForm('Observation', id, { 
                         currentValue: target.observations[obsIndex].text, 
                         obsIndex, 
-                        saveAction: 'save-observation' 
+                        saveAction: 'save-observation',
+                        eventTarget: e.target
                     });
                 }
                 break;
-            }
             
-            case 'edit-sub-target-title': {
+            case 'edit-sub-target-title':
                 if (target && target.observations[obsIndex]) {
                     UI.toggleEditForm('SubTargetTitle', id, {
                         currentValue: target.observations[obsIndex].subTargetTitle,
                         obsIndex,
-                        saveAction: 'save-sub-target-title'
+                        saveAction: 'save-sub-target-title',
+                        eventTarget: e.target
                     });
                 }
                 break;
-            }
 
-            case 'edit-sub-target-details': {
+            case 'edit-sub-target-details':
                 if (target && target.observations[obsIndex]) {
                     UI.toggleEditForm('SubTargetDetails', id, {
                         currentValue: target.observations[obsIndex].text,
                         obsIndex,
-                        saveAction: 'save-sub-target-details'
+                        saveAction: 'save-sub-target-details',
+                        eventTarget: e.target
                     });
                 }
                 break;
-            }
 
-            case 'edit-sub-observation': {
+            case 'edit-sub-observation':
                 const subObs = target?.observations[obsIndex]?.subObservations?.[subObsIndex];
                 if (subObs) {
                     UI.toggleEditForm('SubObservation', id, {
                         currentValue: subObs.text,
                         obsIndex,
                         subObsIndex,
-                        saveAction: 'save-sub-observation'
+                        saveAction: 'save-sub-observation',
+                        eventTarget: e.target
                     });
                 }
                 break;
-            }
 
             case 'save-title': {
                 const form = e.target.closest('.inline-edit-form');
-                if (!form) break;
+                if (!form || !target) break;
                 const inputField = form.querySelector('input');
                 const saveButton = form.querySelector('.save-btn');
-                if (!target || !inputField || !saveButton) break;
+                if (!inputField || !saveButton) break;
 
                 const newTitle = inputField.value.trim();
                 if (newTitle === '') break;
@@ -638,10 +693,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
-                    UI.showToast("Título atualizado com sucesso!", "success");
+                    showToast("Título atualizado com sucesso!", "success");
                 } catch (error) {
-                    target.title = oldTitle; // Reverte em caso de erro
-                    UI.showToast("Falha ao atualizar o título.", "error");
+                    target.title = oldTitle;
+                    showToast("Falha ao atualizar o título.", "error");
                     console.error("Erro ao salvar título:", error);
                 } finally {
                     applyFiltersAndRender(panelId);
@@ -651,10 +706,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'save-details': {
                 const form = e.target.closest('.inline-edit-form');
-                if (!form) break;
+                if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
                 const saveButton = form.querySelector('.save-btn');
-                if (!target || !inputField || !saveButton) break;
+                if (!inputField || !saveButton) break;
 
                 const newDetails = inputField.value.trim();
                 saveButton.textContent = 'Salvando...';
@@ -665,10 +720,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
-                    UI.showToast("Detalhes atualizados com sucesso!", "success");
+                    showToast("Detalhes atualizados com sucesso!", "success");
                 } catch (error) {
-                    target.details = oldDetails; // Reverte
-                    UI.showToast("Falha ao atualizar os detalhes.", "error");
+                    target.details = oldDetails;
+                    showToast("Falha ao atualizar os detalhes.", "error");
                     console.error("Erro ao salvar detalhes:", error);
                 } finally {
                     applyFiltersAndRender(panelId);
@@ -678,10 +733,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             case 'save-observation': {
                 const form = e.target.closest('.inline-edit-form');
-                if (!form) break;
+                if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
                 const saveButton = form.querySelector('.save-btn');
-                if (!target || !inputField || !saveButton) break;
+                if (!inputField || !saveButton) break;
 
                 const newText = inputField.value.trim();
                 if (newText === '') break;
@@ -694,10 +749,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
-                    UI.showToast("Observação atualizada!", "success");
+                    showToast("Observação atualizada!", "success");
                 } catch (error) {
-                    target.observations[obsIndex].text = oldText; // Reverte
-                    UI.showToast("Falha ao atualizar a observação.", "error");
+                    target.observations[obsIndex].text = oldText;
+                    showToast("Falha ao atualizar a observação.", "error");
                     console.error("Erro ao salvar observação:", error);
                 } finally {
                     applyFiltersAndRender(panelId);
@@ -708,10 +763,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'save-sub-target-title':
             case 'save-sub-target-details': {
                 const form = e.target.closest('.inline-edit-form');
-                if (!form) break;
+                if (!form || !target) break;
                 const inputField = form.querySelector('input, textarea');
                 const saveButton = form.querySelector('.save-btn');
-                if (!target || !inputField || !saveButton) break;
+                if (!inputField || !saveButton) break;
 
                 const newText = inputField.value.trim();
                 if (newText === '') break;
@@ -728,10 +783,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
-                    UI.showToast("Sub-alvo atualizado!", "success");
+                    showToast("Sub-alvo atualizado!", "success");
                 } catch (error) {
-                    obsToUpdate[fieldToUpdate] = oldText; // Reverte
-                    UI.showToast("Falha ao atualizar sub-alvo.", "error");
+                    obsToUpdate[fieldToUpdate] = oldText;
+                    showToast("Falha ao atualizar sub-alvo.", "error");
                     console.error("Erro ao salvar sub-alvo:", error);
                 } finally {
                     applyFiltersAndRender(panelId);
@@ -741,10 +796,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'save-sub-observation': {
                 const form = e.target.closest('.inline-edit-form');
-                if (!form) break;
+                if (!form || !target) break;
                 const inputField = form.querySelector('textarea');
                 const saveButton = form.querySelector('.save-btn');
-                if (!target || !inputField || !saveButton) break;
+                if (!inputField || !saveButton) break;
 
                 const newText = inputField.value.trim();
                 if (newText === '') break;
@@ -752,17 +807,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveButton.textContent = 'Salvando...';
                 saveButton.disabled = true;
 
-                const subObs = target.observations[obsIndex].subObservations[subObsIndex];
-                const oldText = subObs.text;
+                const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
+                const oldText = subObsToUpdate.text;
 
-                subObs.text = newText;
+                subObsToUpdate.text = newText;
 
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
-                    UI.showToast("Observação do sub-alvo atualizada!", "success");
-                } catch (error)
-                    subObs.text = oldText; // Reverte
-                    UI.showToast("Falha ao atualizar observação.", "error");
+                    showToast("Observação do sub-alvo atualizada!", "success");
+                } catch (error) {
+                    subObsToUpdate.text = oldText;
+                    showToast("Falha ao atualizar observação.", "error");
                     console.error("Erro ao salvar sub-observação:", error);
                 } finally {
                     applyFiltersAndRender(panelId);
@@ -770,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             }
             
-            case 'edit-deadline': {
+            case 'edit-deadline':
                 if (target) {
                     UI.toggleEditForm('Deadline', id, {
                         currentValue: target.deadlineDate,
@@ -779,7 +834,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 break;
-            }
 
             case 'save-deadline': {
                 const form = e.target.closest('.inline-edit-form');
@@ -788,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const inputField = form.querySelector('input[type="date"]');
                 const newDeadlineStr = inputField.value;
                 if (!newDeadlineStr) {
-                    UI.showToast("Selecione a nova data de prazo.", "error");
+                    showToast("Selecione a nova data de prazo.", "error");
                     break;
                 }
 
@@ -802,9 +856,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
-                    UI.showToast("Prazo atualizado com sucesso!", "success");
+                    showToast("Prazo atualizado com sucesso!", "success");
                 } catch(error) {
-                    UI.showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
+                    showToast("Falha ao salvar prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
                     applyFiltersAndRender(panelId);
@@ -825,9 +879,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
-                    UI.showToast("Prazo removido.", "info");
+                    showToast("Prazo removido.", "info");
                 } catch(error) {
-                    UI.showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
+                    showToast("Falha ao remover prazo. A alteração foi desfeita.", "error");
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
                     applyFiltersAndRender(panelId);
@@ -847,22 +901,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 await handleTogglePriority(target);
                 break;
 
-            case 'download-target-pdf': { 
-                if (!target) return;
-                generateAndDownloadPdf(target);
-                UI.showToast(`Gerando PDF para "${target.title}"...`, 'success');
+            case 'download-target-pdf':
+                if (target) {
+                    generateAndDownloadPdf(target);
+                    showToast(`Gerando PDF para "${target.title}"...`, 'success');
+                }
                 break;
-            }
             
             case 'select-manual-target':
                 try {
                     await Service.addManualTargetToDailyList(state.user.uid, id);
                     UI.toggleManualTargetModal(false);
                     await loadDataForUser(state.user);
-                    UI.showToast("Alvo adicionado à lista do dia!", "success");
+                    showToast("Alvo adicionado à lista do dia!", "success");
                 } catch (error) {
                     console.error(error);
-                    UI.showToast(error.message, "error");
+                    showToast(error.message, "error");
                 }
                 break;
 
@@ -872,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const obs = target.observations[parseInt(obsIndex)];
                 const newTitle = prompt("Qual será o título deste novo sub-alvo?", obs.text.substring(0, 50));
                 if (!newTitle || newTitle.trim() === '') {
-                    UI.showToast("A promoção foi cancelada pois o título é inválido.", "info");
+                    showToast("A promoção foi cancelada pois o título é inválido.", "info");
                     return;
                 }
 
@@ -890,10 +944,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
-                    UI.showToast("Observação promovida a sub-alvo com sucesso!", "success");
+                    showToast("Observação promovida a sub-alvo com sucesso!", "success");
                 } catch (error) {
                     console.error("Erro ao promover observação:", error);
-                    UI.showToast("Falha ao salvar. A alteração foi desfeita.", "error");
+                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalObservation;
                     applyFiltersAndRender(panelId);
                 }
@@ -902,24 +956,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             case 'pray-sub-target': {
                 try {
-                    // UI Otimista: desabilita o botão imediatamente
                     e.target.disabled = true;
                     e.target.textContent = '✓ Orado!';
                     e.target.classList.add('prayed');
                     
                     const subTargetId = `${id}_${obsIndex}`;
                     
-                    // Atualiza o estado localmente para refletir a oração
                     const { target: parentTarget } = findTargetInState(id);
                     if (parentTarget) {
-                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true });
+                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true, title: parentTarget.observations[obsIndex].subTargetTitle });
                     }
                     
-                    // Chama os serviços de back-end
                     await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
                     const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
                     
-                    // Recarrega os dados de perseverança para manter a UI sincronizada
                     const [perseveranceData, weeklyData] = await Promise.all([
                         Service.loadPerseveranceData(state.user.uid),
                         Service.loadWeeklyPrayerData(state.user.uid)
@@ -929,12 +979,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
                     UI.updateWeeklyChart(state.weeklyPrayerData);
 
-                    UI.showToast("Interação com sub-alvo registrada!", "success");
+                    showToast("Interação com sub-alvo registrada!", "success");
 
                 } catch (error) {
                     console.error("Erro ao registrar interação com sub-alvo:", error);
-                    UI.showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    // Reverte a UI em caso de erro
+                    showToast("Falha ao registrar interação. Tente novamente.", "error");
+                    
                     e.target.disabled = false;
                     e.target.textContent = 'Orei!';
                     e.target.classList.remove('prayed');
@@ -958,9 +1008,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    UI.showToast("Sub-alvo revertido para observação.", "info");
+                    showToast("Sub-alvo revertido para observação.", "info");
                 } catch (error) {
-                    UI.showToast("Erro ao reverter. A alteração foi desfeita.", "error");
+                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
                     applyFiltersAndRender(panelId);
                 }
@@ -977,9 +1027,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    UI.showToast("Sub-alvo marcado como respondido!", "success");
+                    showToast("Sub-alvo marcado como respondido!", "success");
                 } catch (error) {
-                    UI.showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
                     applyFiltersAndRender(panelId);
                 }
@@ -1001,9 +1051,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
-                    UI.showToast("Observação adicionada ao sub-alvo.", "success");
+                    showToast("Observação adicionada ao sub-alvo.", "success");
                 } catch (error) {
-                    UI.showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                     subTarget.subObservations.pop();
                     applyFiltersAndRender(panelId);
                 }
