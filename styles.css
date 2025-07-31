@@ -47,6 +47,23 @@
     display: none;
 }
 
+/* Estilo para o novo botão de conexão com o Drive na barra superior */
+.drive-connect-btn {
+    float: right;
+    margin-right: 10px;
+    padding: 5px 15px;
+    font-size: 0.9em;
+    background-color: #4285F4; /* Azul do Google */
+    color: white;
+    border: 1px solid #357ae8;
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: 'Playfair Display', serif;
+}
+.drive-connect-btn:hover {
+    background-color: #357ae8;
+}
+
 /* ==== TOP BAR (Optional Backup Info) ==== */
 .top-bar {
     padding: 10px 20px;
