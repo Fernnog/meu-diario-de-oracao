@@ -947,35 +947,44 @@ export function updateAuthUI(user, message = '', isError = false) {
     }
 }
 
+// Em ui.js, substitua a função updateDriveStatusUI existente por esta versão
 
 /**
- * NOVO: Atualiza o indicador de status global do Google Drive.
+ * ATUALIZADO: Atualiza o indicador de status global do Google Drive e o botão de conexão.
  * @param {'connected' | 'error' | 'syncing' | 'disconnected'} status - O estado da conexão.
  * @param {string} [message] - Uma mensagem opcional.
  */
 export function updateDriveStatusUI(status, message) {
     const driveStatusTop = document.getElementById('driveStatusTop');
-    if (!driveStatusTop) return;
+    const btnConnectDrive = document.getElementById('btnConnectDrive');
+    if (!driveStatusTop || !btnConnectDrive) return;
+
+    // Esconde ambos os elementos por padrão para depois exibir o correto
+    driveStatusTop.style.display = 'none';
+    btnConnectDrive.style.display = 'none';
 
     switch (status) {
         case 'connected':
             driveStatusTop.textContent = message || 'Drive Conectado ✓';
-            driveStatusTop.style.backgroundColor = '#0f9d58';
+            driveStatusTop.className = 'drive-status-top'; // Reseta para a classe base
             driveStatusTop.style.display = 'inline-block';
             break;
         case 'error':
             driveStatusTop.textContent = message || 'Erro no Drive ✗';
-            driveStatusTop.style.backgroundColor = '#dc3545';
+            driveStatusTop.className = 'drive-status-top error';
             driveStatusTop.style.display = 'inline-block';
+            // Em caso de erro, permite que o usuário tente reconectar
+            btnConnectDrive.style.display = 'inline-block';
             break;
         case 'syncing':
             driveStatusTop.textContent = message || 'Sincronizando...';
-            driveStatusTop.style.backgroundColor = '#f4b400';
+            driveStatusTop.className = 'drive-status-top syncing'; // Classe para feedback visual
             driveStatusTop.style.display = 'inline-block';
             break;
         case 'disconnected':
         default:
-            driveStatusTop.style.display = 'none';
+            // Se desconectado, mostra o botão para iniciar a conexão
+            btnConnectDrive.style.display = 'inline-block';
             break;
     }
 }
