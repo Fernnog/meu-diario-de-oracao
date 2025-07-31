@@ -915,11 +915,9 @@ export function displayCompletionPopup() {
 }
 
 /**
- * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
- * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
- * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
- * @param {boolean} isError - Se a mensagem é um erro.
- */
+// Em ui.js, encontre a função 'updateAuthUI' e substitua-a por esta versão.
+// A única mudança real é que a linha "authSection.classList.add('hidden');" foi removida.
+
 export function updateAuthUI(user, message = '', isError = false) {
     const authSection = document.getElementById('authSection');
     if (!authSection) return;
@@ -929,21 +927,31 @@ export function updateAuthUI(user, message = '', isError = false) {
     const authStatusP = document.getElementById('authStatus');
     const btnLogout = document.getElementById('btnLogout');
     const userStatusTop = document.getElementById('userStatusTop');
-    
+    const btnLogoutTop = document.getElementById('btnLogoutTop');
+
     if (user) {
-        // Oculta a seção inteira, pois a informação principal estará na barra superior
-        authSection.classList.add('hidden');
+        // A LINHA QUE ESCONDIA A SEÇÃO FOI REMOVIDA DAQUI.
+        // authSection.classList.add('hidden'); <-- ESTA LINHA FOI APAGADA.
+
         if (userStatusTop) {
             userStatusTop.textContent = `Logado: ${user.email}`;
             userStatusTop.style.display = 'inline-block';
         }
+        if (btnLogoutTop) {
+             btnLogoutTop.style.display = 'inline-block';
+        }
+
+        // Gerencia a visibilidade DENTRO da seção de autenticação
+        if (googleAuthContainer) googleAuthContainer.style.display = 'block'; // Garante que o botão de login fique visível
+        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Esconde o status antigo
 
     } else {
         // Garante que o estado de logout esteja correto
         authSection.classList.remove('hidden');
         if (googleAuthContainer) googleAuthContainer.style.display = 'block';
-        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
+        if (authStatusContainer) authStatusContainer.style.display = 'none'; 
         if (userStatusTop) userStatusTop.style.display = 'none';
+        if (btnLogoutTop) btnLogoutTop.style.display = 'none';
     }
 }
 
