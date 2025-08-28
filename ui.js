@@ -496,18 +496,23 @@ export function updatePerseveranceUI(data, isNewRecord = false) {
 export function updateWeeklyChart(data) {
     const { interactions = {} } = data;
     const now = new Date();
-    const localDayOfWeek = now.getDay(); 
+    const localDayOfWeek = now.getDay();
+
+    // CORREÇÃO: Cria uma referência para o início do dia de hoje em UTC.
+    // Isso é crucial para a comparação correta.
+    const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
     const firstDayOfWeek = new Date(now);
     firstDayOfWeek.setDate(now.getDate() - localDayOfWeek);
     firstDayOfWeek.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 7; i++) { 
+    for (let i = 0; i < 7; i++) {
         const dayTick = document.getElementById(`day-${i}`);
         if (!dayTick) continue;
 
         const dayContainer = dayTick.parentElement;
         if (dayContainer) dayContainer.classList.remove('current-day-container');
-        dayTick.className = 'day-tick'; 
+        dayTick.className = 'day-tick';
 
         if (i === localDayOfWeek) {
             dayTick.classList.add('current-day');
@@ -516,13 +521,14 @@ export function updateWeeklyChart(data) {
 
         const currentTickDate = new Date(firstDayOfWeek);
         currentTickDate.setDate(firstDayOfWeek.getDate() + i);
-        
+
         const dateStringUTC = `${currentTickDate.getUTCFullYear()}-${String(currentTickDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentTickDate.getUTCDate()).padStart(2, '0')}`;
 
         if (interactions[dateStringUTC]) {
-            dayTick.classList.add('active'); 
-        } else if (new Date() > currentTickDate) { 
-            dayTick.classList.add('inactive'); 
+            dayTick.classList.add('active');
+        } else if (currentTickDate.getTime() < todayUTCStart.getTime()) {
+            // CORREÇÃO: A condição agora verifica se o dia do 'tick' é estritamente anterior ao início do dia de hoje.
+            dayTick.classList.add('inactive');
         }
     }
 }
