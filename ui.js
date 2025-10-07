@@ -1019,26 +1019,37 @@ export function toggleChangelogModal(show) {
 }
 
 /**
- * Preenche e exibe o modal com as informações do changelog.
- * @param {string} version - A versão atual.
+ * Preenche e exibe o modal com o histórico completo de novidades.
+ * @param {string} currentVersion - A versão atual da aplicação.
  * @param {object} changelogObject - O objeto completo com o histórico de alterações.
  */
-export function showChangelogModal(version, changelogObject = {}) {
+export function showChangelogModal(currentVersion, changelogObject = {}) {
     const titleEl = document.getElementById('changelogModalTitle');
     const bodyEl = document.getElementById('changelogModalBody');
     
     if (titleEl && bodyEl) {
-        titleEl.textContent = `Novidades da Versão ${version}`;
+        // O título do modal agora é mais genérico para refletir o conteúdo.
+        titleEl.textContent = `Histórico de Novidades`;
         
-        // LÓGICA CORRIGIDA: Acessa as alterações da versão específica.
-        const changesForVersion = changelogObject[version];
+        // Pega todas as chaves (versões) do objeto e as ordena em ordem decrescente.
+        const sortedVersions = Object.keys(changelogObject).sort().reverse();
         
-        // Verifica se existe uma entrada para a versão e se ela é um array com conteúdo.
-        if (Array.isArray(changesForVersion) && changesForVersion.length > 0) {
-            const listHTML = '<ul>' + changesForVersion.map(change => `<li>${change}</li>`).join('') + '</ul>';
-            bodyEl.innerHTML = listHTML;
+        let fullHistoryHtml = '';
+        
+        if (sortedVersions.length > 0) {
+            // Itera sobre cada versão para construir o HTML
+            sortedVersions.forEach(version => {
+                const changes = changelogObject[version];
+                if (Array.isArray(changes) && changes.length > 0) {
+                    // Adiciona um subtítulo para a versão
+                    fullHistoryHtml += `<h3>Versão ${version}</h3>`;
+                    // Adiciona a lista de alterações
+                    fullHistoryHtml += '<ul>' + changes.map(change => `<li>${change}</li>`).join('') + '</ul>';
+                }
+            });
+            bodyEl.innerHTML = fullHistoryHtml;
         } else {
-            bodyEl.innerHTML = '<p>Nenhuma alteração específica registrada para esta versão.</p>';
+            bodyEl.innerHTML = `<p>Nenhum histórico de alterações foi encontrado.</p>`;
         }
         
         toggleChangelogModal(true);
