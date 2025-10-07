@@ -16,5 +16,18 @@ export const MILESTONES = [
     { name: 'Semente',  days: 7,    icon: '🌱', type: 'etapa'     }
 ];
 
-// Outras configurações futuras podem ser adicionadas aqui.
-// Ex: export const DAILY_TARGETS_COUNT = 10;
+// --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
+
+export const APP_VERSION = '1.0.2';
+
+export const CHANGELOG = {
+  '1.0.2': [
+    'MELHORIA: A aparência do botão "Conectar ao Drive" e dos indicadores na barra superior foi unificada para maior consistência visual.',
+    'ARQUITETURA: As informações de versão e changelog foram centralizadas neste arquivo (config.js), melhorando a organização e manutenção do código.',
+    'UX: O modal de novidades agora suporta a visualização do histórico de versões anteriores.'
+  ],
+  '1.0.1': [
+    'FUNCIONALIDADE: Adicionado indicador de versão e janela de novidades (changelog).',
+    'CORREÇÃO: A sequência de perseverança agora é zerada corretamente após um dia de inatividade.'
+  ]
+};
