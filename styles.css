@@ -3,8 +3,6 @@
 /* ==== GOOGLE FONTS ==== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
-/* Cole no início de styles.css */
-
 /* ==== TOP BAR (Optional Backup Info) ==== */
 .top-bar {
     padding: 10px 20px;
@@ -12,29 +10,32 @@
     overflow: auto;
 }
 
-/* ==== USER AND DRIVE STATUS (Barra Superior) ==== */
-.user-status-top {
+/* ==== USER AND DRIVE STATUS (Barra Superior) - REVISED ==== */
+.user-status-top,
+.drive-status-top,
+.version-info,
+.drive-connect-btn {
     float: right;
     padding: 5px 15px;
     font-size: 0.9em;
+    border: 1px solid transparent; /* Borda base para consistência de tamanho */
+    border-radius: 15px;
+    margin-left: 10px;
+    display: none; /* A visibilidade é controlada via JS */
+    font-family: 'Playfair Display', serif; /* Garante a mesma fonte */
+}
+
+/* Cores e bordas específicas */
+.user-status-top {
     color: #555;
     background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 15px;
-    margin-left: 15px;
-    display: none; /* Oculto por padrão, ativado via JS */
+    border-color: #ddd;
 }
 
 .drive-status-top {
-    float: right;
-    padding: 5px 15px;
-    font-size: 0.9em;
     color: #fff;
     background-color: #0f9d58; /* Verde do Google Drive */
-    border: 1px solid #0a8f4c;
-    border-radius: 15px;
-    margin-left: 10px;
-    display: none; /* Ativado via JS após login */
+    border-color: #0a8f4c;
 }
 
 .drive-status-top.error {
@@ -42,33 +43,36 @@
     border-color: #c5372c;
 }
 
-/* Adicione esta regra para ocultar a seção de autenticação */
-.auth-section.hidden {
-    display: none;
+.drive-status-top.syncing {
+    background-color: #f4b400; /* Amarelo Google */
+    border-color: #f1a900;
 }
 
-/* Estilo para o novo botão de conexão com o Drive na barra superior */
+.version-info {
+    color: #607D8B;
+    background-color: #ECEFF1;
+    border-color: #CFD8DC;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.version-info:hover {
+    background-color: #CFD8DC;
+}
+
 .drive-connect-btn {
-    float: right;
-    margin-right: 10px;
-    padding: 5px 15px;
-    font-size: 0.9em;
     background-color: #4285F4; /* Azul do Google */
     color: white;
-    border: 1px solid #357ae8;
-    border-radius: 15px;
+    border-color: #357ae8;
     cursor: pointer;
-    font-family: 'Playfair Display', serif;
+    transition: background-color 0.3s;
 }
 .drive-connect-btn:hover {
     background-color: #357ae8;
 }
 
-/* ==== TOP BAR (Optional Backup Info) ==== */
-.top-bar {
-    padding: 10px 20px;
-    text-align: right;
-    overflow: auto;
+/* Adicione esta regra para ocultar a seção de autenticação */
+.auth-section.hidden {
+    display: none;
 }
 
 .ultimo-backup {
@@ -81,37 +85,6 @@
     float: right;
     clear: right;
 }
-
-/* ==== USER AND DRIVE STATUS (Barra Superior) ==== */
-.user-status-top {
-    float: right;
-    padding: 5px 15px;
-    font-size: 0.9em;
-    color: #555;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 15px;
-    margin-left: 15px;
-    display: none; /* Oculto por padrão, ativado via JS */
-}
-
-.drive-status-top {
-    float: right;
-    padding: 5px 15px;
-    font-size: 0.9em;
-    color: #fff;
-    background-color: #0f9d58; /* Verde do Google Drive */
-    border: 1px solid #0a8f4c;
-    border-radius: 15px;
-    margin-left: 10px;
-    display: none; /* Ativado via JS após login */
-}
-
-.drive-status-top.error {
-    background-color: #db4437; /* Vermelho Google */
-    border-color: #c5372c;
-}
-
 
 /* ==== LOGO STYLES ==== */
 .logo-container {
@@ -1831,25 +1804,6 @@ input[type="date"] {
     font-size: 12px;
     white-space: nowrap;
     transform: translateY(-120%);
-}
-
-/* ==== ESTILO PARA O INDICADOR DE VERSÃO ==== */
-.version-info {
-    float: right;
-    padding: 5px 15px;
-    font-size: 0.9em;
-    color: #607D8B; /* Cor azul-cinza para diferenciar */
-    background-color: #ECEFF1;
-    border: 1px solid #CFD8DC;
-    border-radius: 15px;
-    margin-left: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    display: none; /* Ativado via JS */
-}
-
-.version-info:hover {
-    background-color: #CFD8DC;
 }
 
 /* ==== ESTILO PARA O CORPO DO MODAL DE CHANGELOG ==== */
