@@ -1818,6 +1818,8 @@ input[type="date"] {
     text-align: left;
     max-height: 400px;
     overflow-y: auto;
+    position: relative;  /* <-- A CORREÇÃO PRINCIPAL: Garante que o conteúdo seja "clipado" pela caixa. */
+    padding-right: 15px; /* <-- MELHORIA DE UX: Adiciona espaço para a barra de rolagem não sobrepor o texto. */
 }
 
 .changelog-body ul {
