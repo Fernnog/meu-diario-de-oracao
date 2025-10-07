@@ -10,15 +10,7 @@ import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
 // NOVO: Módulos para a funcionalidade do Google Drive
 import * as GoogleDriveService from './google-drive-service.js';
 import { updateDriveStatusUI } from './ui.js';
-
-// --- CONFIGURAÇÃO DA VERSÃO E CHANGELOG ---
-const APP_VERSION = '1.0.1';
-const CHANGELOG = {
-  '1.0.1': [
-    'FUNCIONALIDADE: Adicionado indicador de versão e janela de novidades (changelog).',
-    'CORREÇÃO: A sequência de perseverança agora é zerada corretamente após um dia de inatividade.'
-  ]
-};
+import { APP_VERSION, CHANGELOG } from './config.js';
 
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
@@ -744,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Listeners para o Modal de Changelog ---
     document.getElementById('versionInfo').addEventListener('click', () => {
-        UI.showChangelogModal(APP_VERSION, CHANGELOG[APP_VERSION]);
+        UI.showChangelogModal(APP_VERSION, CHANGELOG);
     });
     document.getElementById('closeChangelogModal').addEventListener('click', () => UI.toggleChangelogModal(false));
 
