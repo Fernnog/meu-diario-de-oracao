@@ -1,7 +1,7 @@
 // script.js (Orquestrador Principal da Aplicação - Versão Final com Sincronização Google Drive)
 // ARQUITETURA ATUALIZADA: Implementa o fluxo de autenticação com Google e sincronização de alvos.
 
-// --- MÓDULOS ---
+// --- MÓDulos ---
 import * as Auth from './auth.js';
 import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
@@ -969,127 +969,24 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'download-target-pdf':
                 if (target) { generateAndDownloadPdf(target); showToast(`Gerando PDF para "${target.title}"...`, 'success'); }
                 break;
+            
+            // ===== CÓDIGO MODIFICADO PARA A SOLICITAÇÃO ATUAL =====
             case 'select-manual-target':
                 try {
-                    await Service.addManualTargetToDailyList(state.user.uid, id);
-                    UI.toggleManualTargetModal(false);
-                    await loadDataForUser(state.user);
-                    showToast("Alvo adicionado à lista do dia!", "success");
-                } catch (error) {
-                    showToast(error.message, "error");
-                }
-                break;
-
-            case 'promote-observation': {
-                if (!confirm("Deseja promover esta observação a um sub-alvo?")) break;
-                const newTitle = prompt("Qual será o título deste novo sub-alvo?", target.observations[parseInt(obsIndex)].text.substring(0, 50));
-                if (!newTitle || newTitle.trim() === '') break;
-
-                const updatedObservationData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
-                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
-                    showToast("Observação promovida a sub-alvo!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalObservation;
-                    applyFiltersAndRender(panelId);
-                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-            
-            case 'pray-sub-target': {
-                try {
-                    e.target.disabled = true;
-                    e.target.textContent = '✓ Orado!';
-                    e.target.classList.add('prayed');
-                    
-                    const subTargetId = `${id}_${obsIndex}`;
-                    
-                    const { target: parentTarget } = findTargetInState(id);
-                    if (parentTarget) {
-                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true, title: parentTarget.observations[obsIndex].subTargetTitle });
+                    // Passo 1: Encontra o objeto completo do alvo que foi selecionado.
+                    const targetToAdd = state.prayerTargets.find(t => t.id === id);
+                    if (!targetToAdd) {
+                        throw new Error("Alvo selecionado não foi encontrado nos dados locais.");
                     }
+
+                    // Passo 2: Fecha o modal imediatamente para uma melhor experiência.
+                    UI.toggleManualTargetModal(false);
+                    showToast("Adicionando alvo à lista do dia...", "info");
+
+                    // Passo 3: Atualiza o banco de dados em segundo plano.
+                    await Service.addManualTargetToDailyList(state.user.uid, id);
+
+                    // Passo 4: ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL (A MUDANÇA PRINCIPAL)
+                    // Em vez de recarregar tudo, manipulamos o estado local para performance e controle.
                     
-                    await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
-                    const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
-                    
-                    const [perseveranceData, weeklyData] = await Promise.all([ Service.loadPerseveranceData(state.user.uid), Service.loadWeeklyPrayerData(state.user.uid) ]);
-                    state.perseveranceData = perseveranceData;
-                    state.weeklyPrayerData = weeklyData;
-                    UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
-                    UI.updateWeeklyChart(state.weeklyPrayerData);
-                    showToast("Interação com sub-alvo registrada!", "success");
-                } catch (error) {
-                    showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    e.target.disabled = false;
-                    e.target.textContent = 'Orei!';
-                    e.target.classList.remove('prayed');
-                }
-                break;
-            }
-
-            case 'demote-sub-target': {
-                if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) break;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
-                delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
-                target.observations[parseInt(obsIndex)] = updatedObservation;
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo revertido para observação.", "info");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-
-            case 'resolve-sub-target': {
-                if (!confirm("Marcar este sub-alvo como respondido?")) break;
-                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
-                const updatedObservation = { subTargetStatus: 'resolved' };
-                Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
-                    showToast("Sub-alvo marcado como respondido!", "success");
-                    requestSync(id);
-                } catch (error) {
-                    target.observations[parseInt(obsIndex)] = originalSubTarget;
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-
-            case 'add-sub-observation': {
-                const text = prompt("Digite a nova observação para este sub-alvo:");
-                if (!text || text.trim() === '') break;
-                const newSubObservation = { text: text.trim(), date: new Date() };
-                const subTarget = target.observations[parseInt(obsIndex)];
-                if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
-                subTarget.subObservations.push(newSubObservation);
-                applyFiltersAndRender(panelId);
-                try {
-                    await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
-                    showToast("Observação adicionada ao sub-alvo.", "success");
-                    requestSync(id);
-                } catch (error) {
-                    subTarget.subObservations.pop();
-                    applyFiltersAndRender(panelId);
-                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
-                }
-                break;
-            }
-        }
-    });
-
-    initializeFloatingNav(state);
-});
+                    // Adiciona o ID 
