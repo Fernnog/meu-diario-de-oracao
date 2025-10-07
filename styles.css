@@ -1836,3 +1836,16 @@ input[type="date"] {
     content: '✨'; /* Adiciona um ícone sutil */
     margin-right: 8px;
 }
+
+.changelog-body h3 {
+    font-size: 1.1em;
+    color: #654321;
+    border-bottom: 1px solid #e29420;
+    padding-bottom: 5px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.changelog-body h3:first-of-type {
+    margin-top: 0;
+}
