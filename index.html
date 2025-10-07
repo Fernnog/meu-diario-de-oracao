@@ -14,14 +14,11 @@
 
 <!-- Na parte superior do body -->
 <div class="top-bar">
-    <div class="top-bar">
     <button id="btnConnectDrive" class="btn drive-connect-btn" style="display: none;">Conectar ao Drive</button>
     <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
     <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
-    </div>
-    <!-- MODIFICADO: Adicionado o span para o status do Google Drive -->
-    <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
-    <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
+    <!-- NOVO ELEMENTO DE VERSÃO -->
+    <span id="versionInfo" class="version-info" style="display: none;"></span>
 </div>
 
 <div class="logo-container">
@@ -297,6 +294,17 @@
                 <button id="confirmCategoryView" class="btn modal-action-btn">Gerar Visualização</button>
                 <button id="cancelCategoryView" class="btn modal-cancel-btn">Cancelar</button>
            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Changelog -->
+    <div id="changelogModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeChangelogModal">×</span>
+            <h2 id="changelogModalTitle">Novidades da Versão</h2>
+            <div id="changelogModalBody" class="changelog-body">
+                <!-- Conteúdo será inserido via JavaScript -->
+            </div>
         </div>
     </div>
 
