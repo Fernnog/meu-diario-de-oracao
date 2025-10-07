@@ -53,10 +53,6 @@
     background-color: #ECEFF1;
     border-color: #CFD8DC;
     cursor: pointer;
-    transition: background-color 0.3s;
-}
-.version-info:hover {
-    background-color: #CFD8DC;
 }
 
 .drive-connect-btn {
