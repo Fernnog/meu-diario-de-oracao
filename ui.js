@@ -1021,17 +1021,21 @@ export function toggleChangelogModal(show) {
 /**
  * Preenche e exibe o modal com as informações do changelog.
  * @param {string} version - A versão atual.
- * @param {Array<string>} changes - Um array com as strings das alterações.
+ * @param {object} changelogObject - O objeto completo com o histórico de alterações.
  */
-export function showChangelogModal(version, changes = []) {
+export function showChangelogModal(version, changelogObject = {}) {
     const titleEl = document.getElementById('changelogModalTitle');
     const bodyEl = document.getElementById('changelogModalBody');
     
     if (titleEl && bodyEl) {
         titleEl.textContent = `Novidades da Versão ${version}`;
         
-        if (changes.length > 0) {
-            const listHTML = '<ul>' + changes.map(change => `<li>${change}</li>`).join('') + '</ul>';
+        // LÓGICA CORRIGIDA: Acessa as alterações da versão específica.
+        const changesForVersion = changelogObject[version];
+        
+        // Verifica se existe uma entrada para a versão e se ela é um array com conteúdo.
+        if (Array.isArray(changesForVersion) && changesForVersion.length > 0) {
+            const listHTML = '<ul>' + changesForVersion.map(change => `<li>${change}</li>`).join('') + '</ul>';
             bodyEl.innerHTML = listHTML;
         } else {
             bodyEl.innerHTML = '<p>Nenhuma alteração específica registrada para esta versão.</p>';
