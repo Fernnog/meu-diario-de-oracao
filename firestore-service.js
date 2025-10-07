@@ -2,7 +2,7 @@
 // Responsabilidade: Conter todas as funções que interagem com o banco de dados Firestore.
 // Este módulo é a "Camada de Acesso a Dados" da aplicação.
 
-// --- MÓDULOS ---
+// --- MÓDulos ---
 import { db } from './firebase-config.js';
 import {
     collection,
@@ -81,7 +81,7 @@ function rehydrateTargets(rawData) {
  * @param {Date} date - O objeto de data a ser formatado.
  * @returns {string} - A data formatada.
  */
-function getISODateString(date) {
+export function getISODateString(date) {
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
@@ -316,6 +316,19 @@ export async function recordUserInteraction(uid, currentPerseveranceData, curren
     }
 
     return { isNewRecord };
+}
+
+/**
+ * Zera a contagem de dias consecutivos de um usuário no Firestore.
+ * @param {string} uid - ID do usuário.
+ * @returns {Promise<void>}
+ */
+export async function resetConsecutiveDays(uid) {
+    console.log(`[Service] Zerando dias consecutivos para o usuário ${uid}`);
+    const perseveranceRef = doc(db, "perseveranceData", uid);
+    await updateDoc(perseveranceRef, {
+        consecutiveDays: 0
+    });
 }
 
 /**
