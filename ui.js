@@ -994,3 +994,49 @@ export function updateDriveStatusUI(status, message) {
             break;
     }
 }
+
+/**
+ * Exibe o número da versão na barra superior.
+ * @param {string} version - A string da versão (ex: "1.0.1").
+ */
+export function updateVersionInfo(version) {
+    const versionEl = document.getElementById('versionInfo');
+    if (versionEl) {
+        versionEl.textContent = `v${version}`;
+        versionEl.style.display = 'inline-block';
+    }
+}
+
+/**
+ * Controla a visibilidade do modal de changelog.
+ * @param {boolean} show - True para exibir, false para ocultar.
+ */
+export function toggleChangelogModal(show) {
+    const modal = document.getElementById('changelogModal');
+    if (modal) {
+        modal.style.display = show ? 'flex' : 'none';
+    }
+}
+
+/**
+ * Preenche e exibe o modal com as informações do changelog.
+ * @param {string} version - A versão atual.
+ * @param {Array<string>} changes - Um array com as strings das alterações.
+ */
+export function showChangelogModal(version, changes = []) {
+    const titleEl = document.getElementById('changelogModalTitle');
+    const bodyEl = document.getElementById('changelogModalBody');
+    
+    if (titleEl && bodyEl) {
+        titleEl.textContent = `Novidades da Versão ${version}`;
+        
+        if (changes.length > 0) {
+            const listHTML = '<ul>' + changes.map(change => `<li>${change}</li>`).join('') + '</ul>';
+            bodyEl.innerHTML = listHTML;
+        } else {
+            bodyEl.innerHTML = '<p>Nenhuma alteração específica registrada para esta versão.</p>';
+        }
+        
+        toggleChangelogModal(true);
+    }
+}
