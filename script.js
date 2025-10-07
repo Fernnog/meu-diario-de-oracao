@@ -970,7 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (target) { generateAndDownloadPdf(target); showToast(`Gerando PDF para "${target.title}"...`, 'success'); }
                 break;
             
-            // ===== CÓDIGO MODIFICADO PARA A SOLICITAÇÃO ATUAL =====
             case 'select-manual-target':
                 try {
                     // Passo 1: Encontra o objeto completo do alvo que foi selecionado.
@@ -989,4 +988,133 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Passo 4: ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL (A MUDANÇA PRINCIPAL)
                     // Em vez de recarregar tudo, manipulamos o estado local para performance e controle.
                     
-                    // Adiciona o ID 
+                    // Adiciona o ID à lista de IDs do dia para consistência.
+                    state.dailyTargets.targetIds.push(id); 
+                    
+                    // Usa 'unshift' para adicionar o alvo NO INÍCIO do array de pendentes.
+                    state.dailyTargets.pending.unshift(targetToAdd);
+
+                    // Passo 5: Renderiza novamente apenas a lista de alvos do dia com o estado atualizado.
+                    UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+                    
+                    showToast(`"${targetToAdd.title}" foi adicionado ao topo da lista!`, "success");
+
+                } catch (error) {
+                    console.error("Erro ao adicionar alvo manualmente:", error);
+                    showToast(error.message, "error");
+                }
+                break;
+
+            case 'promote-observation': {
+                if (!confirm("Deseja promover esta observação a um sub-alvo?")) break;
+                const newTitle = prompt("Qual será o título deste novo sub-alvo?", target.observations[parseInt(obsIndex)].text.substring(0, 50));
+                if (!newTitle || newTitle.trim() === '') break;
+
+                const updatedObservationData = { isSubTarget: true, subTargetTitle: newTitle.trim(), subTargetStatus: 'active', interactionCount: 0, subObservations: [] };
+                const originalObservation = { ...target.observations[parseInt(obsIndex)] };
+                Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
+                applyFiltersAndRender(panelId);
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
+                    showToast("Observação promovida a sub-alvo!", "success");
+                    requestSync(id);
+                } catch (error) {
+                    target.observations[parseInt(obsIndex)] = originalObservation;
+                    applyFiltersAndRender(panelId);
+                    showToast("Falha ao salvar. A alteração foi desfeita.", "error");
+                }
+                break;
+            }
+            
+            case 'pray-sub-target': {
+                try {
+                    e.target.disabled = true;
+                    e.target.textContent = '✓ Orado!';
+                    e.target.classList.add('prayed');
+                    
+                    const subTargetId = `${id}_${obsIndex}`;
+                    
+                    const { target: parentTarget } = findTargetInState(id);
+                    if (parentTarget) {
+                        state.dailyTargets.completed.push({ targetId: subTargetId, isSubTarget: true, title: parentTarget.observations[obsIndex].subTargetTitle });
+                    }
+                    
+                    await Service.recordInteractionForSubTarget(state.user.uid, subTargetId);
+                    const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
+                    
+                    const [perseveranceData, weeklyData] = await Promise.all([ Service.loadPerseveranceData(state.user.uid), Service.loadWeeklyPrayerData(state.user.uid) ]);
+                    state.perseveranceData = perseveranceData;
+                    state.weeklyPrayerData = weeklyData;
+                    UI.updatePerseveranceUI(state.perseveranceData, isNewRecord);
+                    UI.updateWeeklyChart(state.weeklyPrayerData);
+                    showToast("Interação com sub-alvo registrada!", "success");
+                } catch (error) {
+                    showToast("Falha ao registrar interação. Tente novamente.", "error");
+                    e.target.disabled = false;
+                    e.target.textContent = 'Orei!';
+                    e.target.classList.remove('prayed');
+                }
+                break;
+            }
+
+            case 'demote-sub-target': {
+                if (!confirm("Tem certeza que deseja reverter este sub-alvo para uma observação comum?")) break;
+                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
+                const updatedObservation = { ...originalSubTarget, isSubTarget: false };
+                delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
+                target.observations[parseInt(obsIndex)] = updatedObservation;
+                applyFiltersAndRender(panelId);
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
+                    showToast("Sub-alvo revertido para observação.", "info");
+                    requestSync(id);
+                } catch (error) {
+                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    applyFiltersAndRender(panelId);
+                    showToast("Erro ao reverter. A alteração foi desfeita.", "error");
+                }
+                break;
+            }
+
+            case 'resolve-sub-target': {
+                if (!confirm("Marcar este sub-alvo como respondido?")) break;
+                const originalSubTarget = { ...target.observations[parseInt(obsIndex)] };
+                const updatedObservation = { subTargetStatus: 'resolved' };
+                Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
+                applyFiltersAndRender(panelId);
+                try {
+                    await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
+                    showToast("Sub-alvo marcado como respondido!", "success");
+                    requestSync(id);
+                } catch (error) {
+                    target.observations[parseInt(obsIndex)] = originalSubTarget;
+                    applyFiltersAndRender(panelId);
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                }
+                break;
+            }
+
+            case 'add-sub-observation': {
+                const text = prompt("Digite a nova observação para este sub-alvo:");
+                if (!text || text.trim() === '') break;
+                const newSubObservation = { text: text.trim(), date: new Date() };
+                const subTarget = target.observations[parseInt(obsIndex)];
+                if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
+                subTarget.subObservations.push(newSubObservation);
+                applyFiltersAndRender(panelId);
+                try {
+                    await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
+                    showToast("Observação adicionada ao sub-alvo.", "success");
+                    requestSync(id);
+                } catch (error) {
+                    subTarget.subObservations.pop();
+                    applyFiltersAndRender(panelId);
+                    showToast("Erro ao salvar. A alteração foi desfeita.", "error");
+                }
+                break;
+            }
+        }
+    });
+
+    initializeFloatingNav(state);
+});
