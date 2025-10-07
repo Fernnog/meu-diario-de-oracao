@@ -18,16 +18,16 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.0.2';
+export const APP_VERSION = '1.0.3';
 
 export const CHANGELOG = {
+ '1.0.3': [
+    'UX: Alvos adicionados manualmente à lista do dia agora aparecem em primeiro lugar, permitindo um acesso mais rápido e focado.',
+    'ARQUITETURA: O processo de adicionar um alvo manual à lista diária foi otimizado, tornando a ação instantânea e evitando recarregar todos os dados do usuário.'
+  ],
   '1.0.2': [
     'MELHORIA: A aparência do botão "Conectar ao Drive" e dos indicadores na barra superior foi unificada para maior consistência visual.',
     'ARQUITETURA: As informações de versão e changelog foram centralizadas neste arquivo (config.js), melhorando a organização e manutenção do código.',
     'UX: O modal de novidades agora suporta a visualização do histórico de versões anteriores.'
-  ],
-  '1.0.1': [
-    'FUNCIONALIDADE: Adicionado indicador de versão e janela de novidades (changelog).',
-    'CORREÇÃO: A sequência de perseverança agora é zerada corretamente após um dia de inatividade.'
   ]
 };
