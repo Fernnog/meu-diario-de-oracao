@@ -1832,3 +1832,46 @@ input[type="date"] {
     white-space: nowrap;
     transform: translateY(-120%);
 }
+
+/* ==== ESTILO PARA O INDICADOR DE VERSÃO ==== */
+.version-info {
+    float: right;
+    padding: 5px 15px;
+    font-size: 0.9em;
+    color: #607D8B; /* Cor azul-cinza para diferenciar */
+    background-color: #ECEFF1;
+    border: 1px solid #CFD8DC;
+    border-radius: 15px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: none; /* Ativado via JS */
+}
+
+.version-info:hover {
+    background-color: #CFD8DC;
+}
+
+/* ==== ESTILO PARA O CORPO DO MODAL DE CHANGELOG ==== */
+.changelog-body {
+    text-align: left;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.changelog-body ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.changelog-body li {
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border-left: 3px solid #e29420;
+    background-color: #fdfaf6;
+}
+
+.changelog-body li::before {
+    content: '✨'; /* Adiciona um ícone sutil */
+    margin-right: 8px;
+}
