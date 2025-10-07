@@ -11,6 +11,15 @@ import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
 import * as GoogleDriveService from './google-drive-service.js';
 import { updateDriveStatusUI } from './ui.js';
 
+// --- CONFIGURAÇÃO DA VERSÃO E CHANGELOG ---
+const APP_VERSION = '1.0.1';
+const CHANGELOG = {
+  '1.0.1': [
+    'FUNCIONALIDADE: Adicionado indicador de versão e janela de novidades (changelog).',
+    'CORREÇÃO: A sequência de perseverança agora é zerada corretamente após um dia de inatividade.'
+  ]
+};
+
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
     user: null,
@@ -33,6 +42,19 @@ let state = {
     // NOVO: Flag para controlar a funcionalidade do Drive
     isDriveEnabled: false
 };
+
+// --- FUNÇÃO AUXILIAR DE DATA ---
+/**
+ * Obtém a data no formato string YYYY-MM-DD, utilizando o padrão UTC.
+ * @param {Date} date - O objeto de data a ser formatado.
+ * @returns {string} - A data formatada.
+ */
+function getISODateString(date) {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 // --- MELHORIA DE UX: Notificações Toast Não-Bloqueantes ---
 function showToast(message, type = 'success') {
@@ -320,6 +342,25 @@ async function loadDataForUser(user) {
             Service.loadWeeklyPrayerData(user.uid)
         ]);
 
+        // --- NOVA LÓGICA DE VERIFICAÇÃO DE PERSEVERANÇA ---
+        if (perseveranceData.lastInteractionDate) {
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setUTCDate(today.getUTCDate() - 1);
+
+            const todayStr = getISODateString(today);
+            const yesterdayStr = getISODateString(yesterday);
+            const lastDateStr = getISODateString(perseveranceData.lastInteractionDate);
+
+            // Se a última interação não foi nem hoje nem ontem, a sequência foi quebrada.
+            if (lastDateStr !== todayStr && lastDateStr !== yesterdayStr) {
+                await Service.resetConsecutiveDays(user.uid);
+                perseveranceData.consecutiveDays = 0; // Atualiza o estado local para renderização imediata
+                showToast("Sua sequência de perseverança foi reiniciada por inatividade.", "info");
+            }
+        }
+        // --- FIM DA NOVA LÓGICA ---
+
         state.user = user;
         state.prayerTargets = prayerData.map(t => ({ ...t, driveStatus: 'pending' }));
         const allArchived = archivedData.map(t => ({ ...t, driveStatus: 'pending' }));
@@ -358,6 +399,8 @@ async function loadDataForUser(user) {
             UI.showExpiredTargetsToast(expiredTargets);
         }
         updateFloatingNavVisibility(state);
+
+        UI.updateVersionInfo(APP_VERSION);
 
     } catch (error) {
         console.error("[App] Error during data loading process:", error);
@@ -698,6 +741,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
+
+    // --- Listeners para o Modal de Changelog ---
+    document.getElementById('versionInfo').addEventListener('click', () => {
+        UI.showChangelogModal(APP_VERSION, CHANGELOG[APP_VERSION]);
+    });
+    document.getElementById('closeChangelogModal').addEventListener('click', () => UI.toggleChangelogModal(false));
 
     // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
     document.body.addEventListener('click', async e => {
