@@ -85,6 +85,16 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
+/**
+ * Oculta a splash screen com uma animação de fade-out.
+ */
+function hideSplashScreen() {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+        splash.classList.add('hidden');
+    }
+}
+
 // --- LÓGICA DE SINCRONIZAÇÃO COM GOOGLE DRIVE (COM DEBOUNCE) ---
 
 // Mapa para guardar os temporizadores do debounce para cada alvo
@@ -398,6 +408,9 @@ async function loadDataForUser(user) {
         console.error("[App] Error during data loading process:", error);
         showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
         handleLogoutState();
+    } finally {
+        // CORREÇÃO ESSENCIAL: Garante que a splash screen seja sempre ocultada.
+        hideSplashScreen();
     }
 }
 
