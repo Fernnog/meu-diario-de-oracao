@@ -1852,3 +1852,44 @@ input[type="date"] {
 .changelog-body h3:first-of-type {
     margin-top: 0;
 }
+
+/* ==== SPLASH SCREEN STYLES ==== */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f9f9f9; /* Mesma cor de fundo do body */
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.7s ease-out, visibility 0.7s ease-out;
+    visibility: visible;
+}
+
+.splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.splash-logo {
+    max-width: 180px;
+    height: auto;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+.splash-text {
+    margin-top: 20px;
+    font-size: 1.2em;
+    color: #654321;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
