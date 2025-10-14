@@ -667,14 +667,22 @@ async function handleTogglePriority(target) {
 // === PONTO DE ENTRADA DA APLICAÇÃO E EVENTOS ===
 // ===============================================
 document.addEventListener('DOMContentLoaded', () => {
-    Auth.initializeAuth(user => {
+    Auth.initializeAuth(async (user) => {
         if (user) {
-            showToast(`Bem-vindo(a), ${user.email || user.displayName}!`, 'success');
             UI.updateAuthUI(user);
-            loadDataForUser(user);
+            try {
+                await loadDataForUser(user);
+            } catch (error) {
+                console.error("[App] Erro crítico durante o carregamento dos dados. Revertendo para o estado de logout.", error);
+                // O `finally` em `loadDataForUser` já vai esconder a splash screen, mas
+                // o `handleLogoutState` garante que a UI fique limpa.
+                handleLogoutState();
+            }
         } else {
             UI.updateAuthUI(null);
             handleLogoutState();
+            // Garante que a splash screen seja escondida se o usuário não estiver logado.
+            hideSplashScreen();
         }
     });
 
