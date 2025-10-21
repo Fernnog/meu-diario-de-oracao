@@ -703,7 +703,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
     document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
-    document.getElementById('addManualTargetButton').addEventListener('click', () => { UI.renderManualSearchResults([], state.prayerTargets); UI.toggleManualTargetModal(true); });
+    
+    // MODIFICAÇÃO (PRIORIDADE 3): Lógica para exibir sugestões ao abrir o modal
+    document.getElementById('addManualTargetButton').addEventListener('click', () => {
+        const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
+        const suggestedTargets = state.prayerTargets
+            .filter(target => !dailyTargetIds.has(target.id))
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 3);
+        
+        // Passa as sugestões para a função de renderização da UI
+        UI.renderManualSearchResults([], state.prayerTargets, '', suggestedTargets);
+        UI.toggleManualTargetModal(true);
+    });
+
     document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
     document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
@@ -753,7 +766,33 @@ document.addEventListener('DOMContentLoaded', () => {
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
-    document.getElementById('manualTargetSearchInput').addEventListener('input', e => { const searchTerm = e.target.value.toLowerCase(); const filtered = state.prayerTargets.filter(t => t.title.toLowerCase().includes(searchTerm) || (t.details && t.details.toLowerCase().includes(searchTerm))); UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm); });
+    
+    // MODIFICAÇÃO (PRIORIDADE 2): Lógica de debounce para a busca manual
+    let manualSearchDebounceTimer;
+    document.getElementById('manualTargetSearchInput').addEventListener('input', e => {
+        clearTimeout(manualSearchDebounceTimer);
+
+        manualSearchDebounceTimer = setTimeout(() => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            // Se o campo estiver vazio, mostramos as sugestões novamente
+            if (searchTerm.trim() === '') {
+                const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
+                const suggestedTargets = state.prayerTargets
+                    .filter(target => !dailyTargetIds.has(target.id))
+                    .sort((a, b) => b.date.getTime() - a.date.getTime())
+                    .slice(0, 3);
+                UI.renderManualSearchResults([], state.prayerTargets, '', suggestedTargets);
+            } else {
+                // Caso contrário, filtramos e mostramos os resultados
+                const filtered = state.prayerTargets.filter(t => 
+                    t.title.toLowerCase().includes(searchTerm) || 
+                    (t.details && t.details.toLowerCase().includes(searchTerm))
+                );
+                UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm);
+            }
+        }, 300); // Atraso de 300ms
+    });
 
     // --- Listeners para o Modal de Changelog ---
     document.getElementById('versionInfo').addEventListener('click', () => {

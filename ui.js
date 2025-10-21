@@ -718,19 +718,10 @@ export function toggleManualTargetModal(show) {
 
 export function renderManualSearchResults(results, allTargets, searchTerm = '') {
     const container = document.getElementById('manualTargetSearchResults');
-    container.innerHTML = '';
+    container.innerHTML = ''; // Limpa o conteúdo anterior
 
-    if (searchTerm.trim() === '' && allTargets.length > 0) {
-        container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
-        return;
-    }
-    
-    if (results.length === 0) {
-        container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
-        return;
-    }
-
-    results.forEach(target => {
+    // Função auxiliar para renderizar um item da lista
+    const renderItem = (target) => {
         const item = document.createElement('div');
         item.className = 'manual-target-item';
         item.dataset.action = 'select-manual-target'; 
@@ -740,8 +731,27 @@ export function renderManualSearchResults(results, allTargets, searchTerm = '') 
             <span data-action="select-manual-target" data-id="${target.id}">${target.details || 'Sem detalhes.'}</span>
         `;
         container.appendChild(item);
-    });
+    };
+
+    // Estado 1: Usuário está buscando ativamente
+    if (searchTerm.trim() !== '') {
+        if (results.length === 0) {
+            container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
+        } else {
+            container.innerHTML = '<h3>Resultados da Busca:</h3>';
+            results.forEach(renderItem);
+        }
+    // Estado 2: Modal aberto, sem busca (exibe sugestões se houver)
+    } else {
+        if (results.length > 0) {
+            container.innerHTML = '<h3>Sugestões Recentes:</h3>';
+            results.forEach(renderItem);
+        } else {
+            container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
+        }
+    }
 }
+
 
 export function toggleDateRangeModal(show) {
     const modal = document.getElementById('dateRangeModal');

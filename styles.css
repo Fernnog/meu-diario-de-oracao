@@ -849,15 +849,36 @@ input[type="date"] {
 
 #manualTargetModal .modal-content {
     max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .manual-search-results {
-    max-height: 300px;
-    overflow-y: auto;
     border: 1px solid #eee;
     padding: 5px;
     background-color: #fdfdfd;
     min-height: 50px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.manual-search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.manual-search-results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.manual-search-results::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.manual-search-results::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
 }
 
 .manual-search-results p {
