@@ -18,9 +18,13 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.0.6';
+export const APP_VERSION = '1.0.7';
 
 export const CHANGELOG = {
+ '1.0.7': [
+    'ARQUITETURA: A estrutura dos arquivos de estilo (CSS) foi completamente reorganizada. O código foi dividido em `styles/base.css` (estilos globais) e `styles/components.css` (elementos específicos), melhorando a organização, performance e facilitando futuras manutenções.',
+    'CORREÇÃO (Layout): Corrigido um desalinhamento visual na página principal, garantindo que o painel de "Alvos Prioritários" tenha a mesma largura dos demais painéis, como o de "Alvos do Dia".'
+  ],
  '1.0.6': [
     'MELHORIA (UX): Os campos de texto longos (como "Observações") agora crescem automaticamente para se ajustar ao conteúdo, facilitando a digitação e a visualização de textos extensos.',
     'CORREÇÃO (Mobile): A barra de rolagem nos campos de texto foi otimizada para dispositivos móveis, tornando-se mais espessa e fácil de usar com o toque, resolvendo a dificuldade de rolagem em telas pequenas.'
@@ -36,10 +40,5 @@ export const CHANGELOG = {
  '1.0.3': [
     'UX: Alvos adicionados manualmente à lista do dia agora aparecem em primeiro lugar, permitindo um acesso mais rápido e focado.',
     'ARQUITETURA: O processo de adicionar um alvo manual à lista diária foi otimizado, tornando a ação instantânea e evitando recarregar todos os dados do usuário.'
-  ], // <-- A VÍRGULA FALTANTE FOI ADICIONADA AQUI
-  '1.0.2': [
-    'MELHORIA: A aparência do botão "Conectar ao Drive" e dos indicadores na barra superior foi unificada para maior consistência visual.',
-    'ARQUITETURA: As informações de versão e changelog foram centralizadas neste arquivo (config.js), melhorando a organização e manutenção do código.',
-    'UX: O modal de novidades agora suporta a visualização do histórico de versões anteriores.'
   ]
 };
