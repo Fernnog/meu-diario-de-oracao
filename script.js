@@ -12,6 +12,29 @@ import * as GoogleDriveService from './google-drive-service.js';
 import { updateDriveStatusUI } from './ui.js';
 import { APP_VERSION, CHANGELOG } from './config.js';
 
+/**
+ * Configura um ou mais textareas para crescerem automaticamente em altura.
+ * @param {string} selector - Um seletor CSS para os textareas.
+ */
+function setupAutoGrowTextarea(selector) {
+    document.body.addEventListener('input', (event) => {
+        if (event.target.matches(selector)) {
+            const textarea = event.target;
+            textarea.style.height = 'auto'; // Reseta a altura para recalcular
+            textarea.style.overflowY = 'hidden'; // Oculta a barra de rolagem temporariamente
+            
+            // Define a nova altura com base no conteúdo
+            const newHeight = textarea.scrollHeight;
+            textarea.style.height = `${newHeight}px`;
+
+            // Mostra a barra de rolagem apenas se a altura máxima for atingida
+            if (textarea.scrollHeight > textarea.clientHeight) {
+                textarea.style.overflowY = 'auto';
+            }
+        }
+    });
+}
+
 // --- ESTADO DA APLICAÇÃO ---
 let state = {
     user: null,
@@ -799,6 +822,9 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.showChangelogModal(APP_VERSION, CHANGELOG);
     });
     document.getElementById('closeChangelogModal').addEventListener('click', () => UI.toggleChangelogModal(false));
+
+    // Ativa a funcionalidade de auto-crescimento para todos os textareas da aplicação.
+    setupAutoGrowTextarea('textarea');
 
     // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
     document.body.addEventListener('click', async e => {
