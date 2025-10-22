@@ -18,9 +18,13 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.0.7';
+export const APP_VERSION = '1.0.8';
 
 export const CHANGELOG = {
+ '1.0.8': [
+    'MELHORIA (UX): A visualização de observações foi otimizada para uma interface mais limpa. Agora, são exibidas por padrão apenas as 3 mais recentes e os sub-alvos, focando no conteúdo mais relevante.',
+    'FUNCIONALIDADE: Adicionado um sistema "Ver Mais/Ver Menos" nas observações. Um novo botão permite expandir e recolher o histórico de anotações mais antigas, melhorando a navegação em alvos com muitos registros.'
+  ],
  '1.0.7': [
     'ARQUITETURA: A estrutura dos arquivos de estilo (CSS) foi completamente reorganizada. O código foi dividido em `styles/base.css` (estilos globais) e `styles/components.css` (elementos específicos), melhorando a organização, performance e facilitando futuras manutenções.',
     'CORREÇÃO (Layout): Corrigido um desalinhamento visual na página principal, garantindo que o painel de "Alvos Prioritários" tenha a mesma largura dos demais painéis, como o de "Alvos do Dia".'

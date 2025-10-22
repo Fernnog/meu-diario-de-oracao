@@ -66,7 +66,7 @@ function isDateExpired(date) {
 }
 
 /**
- * Gera o HTML para a lista de observações de um alvo.
+ * Gera o HTML para a lista de observações de um alvo, com lógica de "Ver Mais/Menos".
  * @param {Array<object>} observations - O array de observações.
  * @param {string} parentTargetId - O ID do alvo principal.
  * @param {object} dailyTargetsData - Dados dos alvos diários para verificar status.
@@ -76,11 +76,19 @@ function isDateExpired(date) {
 function createObservationsHTML(observations, parentTargetId, dailyTargetsData = {}, isEditingEnabled = false) {
     if (!Array.isArray(observations) || observations.length === 0) return '';
     
-    const sorted = [...observations].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
-    
+    // Separa as observações: sub-alvos ficam sempre visíveis.
+    const alwaysVisibleItems = observations.filter(obs => obs.isSubTarget);
+    const collapsibleItems = observations
+        .filter(obs => !obs.isSubTarget)
+        .sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)); // Garante a ordem da mais nova para a mais antiga
+
+    const recentVisibleItems = collapsibleItems.slice(0, 3);
+    const olderHiddenItems = collapsibleItems.slice(3);
+
     let html = `<div class="observations">`;
 
-    sorted.forEach((obs) => {
+    // Função auxiliar interna para renderizar uma única observação (evita repetição de código)
+    const renderObservation = (obs) => {
         const originalIndex = observations.indexOf(obs);
         const sanitizedText = (obs.text || '').replace(/</g, "<").replace(/>/g, ">");
         
@@ -121,7 +129,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 subObservationsHTML += '</div>';
             }
 
-            html += `
+            return `
                 <div class="observation-item sub-target ${isResolved ? 'resolved' : ''}">
                     <div class="sub-target-header">
                         <span class="sub-target-title">${obs.subTargetTitle}${editTitleIcon}</span>
@@ -138,7 +146,7 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                 </div>`;
         } else {
             const editIcon = isEditingEnabled ? ` <span class="edit-icon" data-action="edit-observation" data-id="${parentTargetId}" data-obs-index="${originalIndex}">✏️</span>` : '';
-            html += `
+            return `
                 <div class="observation-item">
                     <p><strong>${formatDateForDisplay(obs.date)}:</strong> ${sanitizedText}${editIcon}</p>
                     <div class="observation-actions">
@@ -146,7 +154,18 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
                     </div>
                 </div>`;
         }
-    });
+    };
+
+    // Renderiza sub-alvos e as 3 observações mais recentes
+    [...alwaysVisibleItems, ...recentVisibleItems].forEach(obs => html += renderObservation(obs));
+    
+    // Se houver observações mais antigas, cria o contêiner recolhido e o botão
+    if (olderHiddenItems.length > 0) {
+        html += `<div id="hidden-obs-${parentTargetId}" class="hidden-observations">`;
+        olderHiddenItems.forEach(obs => html += renderObservation(obs));
+        html += `</div>`;
+        html += `<button class="toggle-observations-btn" data-action="toggle-observations" data-id="${parentTargetId}">Ver mais ${olderHiddenItems.length} antigas</button>`;
+    }
 
     return html + `</div>`;
 }

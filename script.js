@@ -867,6 +867,21 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'toggle-observation':
                 UI.toggleAddObservationForm(id);
                 break;
+            case 'toggle-observations': {
+                const button = e.target;
+                const hiddenContainer = document.getElementById(`hidden-obs-${id}`);
+                
+                if (hiddenContainer) {
+                    const isVisible = hiddenContainer.classList.toggle('visible');
+                    if (isVisible) {
+                        button.textContent = 'Ver menos';
+                    } else {
+                        const count = hiddenContainer.children.length;
+                        button.textContent = `Ver mais ${count} antigas`;
+                    }
+                }
+                break;
+            }
             case 'add-new-observation':
                 if (target) await handleAddObservation(target, isArchived, panelId);
                 break;
