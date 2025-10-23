@@ -421,6 +421,38 @@
     margin-bottom: 5px;
 }
 
+/* ==== INÍCIO: NOVOS ESTILOS PARA OBSERVAÇÕES RECOLHIDAS ==== */
+.hidden-observations {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+    opacity: 0;
+}
+
+.hidden-observations.visible {
+    max-height: 2000px; /* Um valor alto para garantir que todo o conteúdo seja exibido */
+    opacity: 1;
+}
+
+.toggle-observations-btn {
+    background: none;
+    border: 1px solid #e29420;
+    color: #654321;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: 'Playfair Display', serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.toggle-observations-btn:hover {
+    background-color: #fff0db;
+    color: #4a301a;
+}
+/* ==== FIM: NOVOS ESTILOS PARA OBSERVAÇÕES RECOLHIDAS ==== */
+
 .observation-item.sub-target.resolved .sub-target-title {
     text-decoration: line-through;
     text-decoration-thickness: 2px;
