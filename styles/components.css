@@ -60,6 +60,98 @@
     text-align: center;
 }
 
+/* ==== INÍCIO: NOVOS ESTILOS PARA PAINEL DE PRIORIDADES CONCLUÍDO ==== */
+
+/* ESTILOS PARA A MENSAGEM DE CONCLUSÃO */
+.priority-completion-message {
+    padding: 20px;
+    background-color: #e8f5e9; /* Verde claro sutil */
+    border: 1px dashed #a5d6a7;
+    border-radius: 5px;
+    text-align: center;
+    margin-top: 15px;
+    animation: fadeInItem 0.5s ease-out forwards;
+}
+
+.priority-completion-message h3 {
+    margin-top: 0;
+    color: #2e7d32; /* Verde escuro */
+}
+
+.priority-completion-message p {
+    color: #388e3c;
+    margin-bottom: 0;
+}
+
+/* CLASSE DE ESTADO PARA O PAINEL CONCLUÍDO (RECOLHIMENTO) */
+.priority-section.completed #priorityTargetsList {
+    display: none; /* Esconde a lista de alvos */
+}
+
+.priority-section.completed #priorityCompletionMessage {
+    display: block; /* Mostra a mensagem de conclusão */
+}
+
+/* ESTILOS PARA O CABEÇALHO DO PAINEL */
+.priority-title-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Espaço entre o título e o badge */
+}
+
+/* ESTILOS PARA O BADGE DE CONCLUSÃO */
+.priority-title-badge {
+    background-color: #2e7d32; /* Verde escuro, para combinar com a mensagem */
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: bold;
+    opacity: 0; /* Começa invisível */
+    transform: scale(0.8);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    visibility: hidden;
+    position: relative; /* Necessário para o efeito de brilho */
+    overflow: hidden;   /* Garante que o brilho não vaze */
+}
+
+/* REGRA DE VISIBILIDADE: MOSTRA O BADGE QUANDO O PAINEL ESTÁ COMPLETO */
+.priority-section.completed .priority-title-badge {
+    opacity: 1;
+    transform: scale(1);
+    visibility: visible;
+}
+
+/* EFEITO DE BRILHO (SHINE EFFECT) */
+.priority-title-badge::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 20%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: rotate(35deg);
+    animation: shine-badge 2.5s infinite linear;
+    animation-delay: 1s; /* Um pequeno atraso para começar após o fade-in */
+}
+
+/* ANIMAÇÃO KEYFRAMES PARA O BRILHO */
+@keyframes shine-badge {
+    0% {
+        left: -60%;
+    }
+    40% {
+        left: 140%;
+    }
+    100% {
+        left: 140%;
+    }
+}
+/* ==== FIM: NOVOS ESTILOS PARA PAINEL DE PRIORIDADES CONCLUÍDO ==== */
+
+
 /* ==== TARGET STYLES ==== */
 .target {
     border-bottom: 1px solid #ddd;
