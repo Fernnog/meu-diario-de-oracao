@@ -257,6 +257,31 @@ async function handleForceSync() {
     }
 }
 
+/**
+ * Verifica se todos os alvos prioritários foram concluídos e atualiza a UI.
+ */
+function checkAndCollapsePriorityPanel() {
+    if (!state.user || !state.prayerTargets.length) {
+        UI.updatePriorityPanelState(false);
+        return;
+    }
+
+    const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
+    if (priorityTargets.length === 0) {
+        UI.updatePriorityPanelState(false); // Não há prioridades, então não há o que recolher.
+        return;
+    }
+
+    // Cria um conjunto de IDs dos alvos já completados hoje para busca rápida
+    const completedTargetIds = new Set(state.dailyTargets.completed.map(t => t.id || t.targetId));
+    
+    // Verifica se TODOS os alvos prioritários estão no conjunto de completados
+    const allPrioritiesCompleted = priorityTargets.every(pTarget => 
+        completedTargetIds.has(pTarget.id)
+    );
+
+    UI.updatePriorityPanelState(allPrioritiesCompleted);
+}
 
 // =================================================================
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
@@ -426,6 +451,9 @@ async function loadDataForUser(user) {
         updateFloatingNavVisibility(state);
 
         UI.updateVersionInfo(APP_VERSION);
+
+        // VERIFICAÇÃO INICIAL: Recolhe o painel se já estiver tudo concluído ao carregar
+        checkAndCollapsePriorityPanel();
 
     } catch (error) {
         console.error("[App] Error during data loading process:", error);
@@ -854,6 +882,8 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'pray':
             case 'pray-priority':
                 await handlePray(id);
+                // VERIFICAÇÃO PÓS-AÇÃO: Recolhe o painel se a oração completou a lista
+                checkAndCollapsePriorityPanel();
                 break;
             case 'resolve':
                 await handleResolveTarget(target);

@@ -18,9 +18,13 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.0.8';
+export const APP_VERSION = '1.0.9';
 
 export const CHANGELOG = {
+ '1.0.9': [
+    'FUNCIONALIDADE: O painel "Alvos Prioritários" agora se torna inteligente! Ao concluir a intercessão por todos os alvos prioritários do dia, ele se recolhe automaticamente, exibindo uma mensagem de parabéns e otimizando a interface.',
+    'MELHORIA (UX): Para celebrar sua disciplina, um novo badge "✓ Concluído" com um sutil efeito de brilho agora aparece no título do painel de prioridades concluído, tornando a experiência mais recompensadora.'
+  ],
  '1.0.8': [
     'MELHORIA (UX): A visualização de observações foi otimizada para uma interface mais limpa. Agora, são exibidas por padrão apenas as 3 mais recentes e os sub-alvos, focando no conteúdo mais relevante.',
     'FUNCIONALIDADE: Adicionado um sistema "Ver Mais/Ver Menos" nas observações. Um novo botão permite expandir e recolher o histórico de anotações mais antigas, melhorando a navegação em alvos com muitos registros.'

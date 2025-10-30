@@ -593,6 +593,21 @@ export function showPanel(panelId) {
     }
 }
 
+/**
+ * Atualiza o estado visual do painel de prioridades (expandido ou concluído).
+ * @param {boolean} isCompleted - True se todos os alvos prioritários foram orados.
+ */
+export function updatePriorityPanelState(isCompleted) {
+    const section = document.getElementById('prioritySection');
+    if (!section) return;
+
+    if (isCompleted) {
+        section.classList.add('completed');
+    } else {
+        section.classList.remove('completed');
+    }
+}
+
 export function toggleAddObservationForm(targetId) {
     const formDiv = document.getElementById(`observationForm-${targetId}`);
     if (!formDiv) return;
