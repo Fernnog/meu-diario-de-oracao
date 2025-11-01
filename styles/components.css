@@ -590,11 +590,14 @@
     height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.4);
+    /* ADIÇÃO: Garante o centramento vertical e horizontal */
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
+    margin: auto; /* ALTERAÇÃO: Garante centramento com flexbox */
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
@@ -666,6 +669,38 @@
     max-height: 85vh;
     display: flex;
     flex-direction: column;
+    overflow-y: auto; /* ADIÇÃO: Controla o overflow do modal como um todo */
+}
+
+/* NOVO: Estilo para o container dos filtros de categoria */
+.manual-category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* NOVO: Estilo para cada botão (pill) de filtro de categoria */
+.category-filter-pill {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.category-filter-pill:hover {
+    background-color: #e0e0e0;
+}
+
+.category-filter-pill.active {
+    background-color: #654321;
+    color: white;
+    border-color: #4a301a;
 }
 
 .manual-search-results {
@@ -674,7 +709,7 @@
     background-color: #fdfdfd;
     min-height: 50px;
     flex-grow: 1;
-    overflow-y: auto;
+    /* overflow-y: auto; foi removido para evitar rolagem interna */
 }
 
 .manual-search-results::-webkit-scrollbar {
@@ -725,6 +760,16 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* NOVO: Estilo para a etiqueta de categoria dentro do resultado da busca */
+.manual-target-item .category-tag {
+    display: inline-block;
+    float: right; /* Alinha a tag à direita */
+    font-size: 0.75em; /* Usa o mesmo tamanho das outras tags */
+    margin-top: 2px;
+    background-color: #C71585;
+    color: #FFFFFF;
 }
 
 #categorySelectionModal .modal-content {
@@ -1356,6 +1401,13 @@
 
 
 /* ==== RESPONSIVENESS (Components) ==== */
+@media (min-width: 768px) {
+  #manualTargetModal .modal-content {
+    max-width: 700px;
+    min-height: 500px; /* AUMENTA A ALTURA MÍNIMA DO MODAL */
+  }
+}
+
 @media (max-width: 768px) {
     .target { padding: 10px 5px; }
     .target-actions { gap: 3px; }
