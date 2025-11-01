@@ -9,7 +9,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
 -   **Gerenciamento Completo de Alvos**:
     -   Adicione novos alvos com título, detalhes, data de criação, categoria e prazo.
     -   Arquive, marque como "Respondido" e adicione observações a qualquer alvo.
-    -   Visualize alvos ativos, arquivados ou respondidos em painéis separados com busca, filtros e paginação.
+    -   Visualize alvos ativos, arquivados ou respondidos em painéis separados com busca, **filtros rápidos por categoria** e paginação.
 
 -   **Promoção de Observações a Sub-Alvos**:
     -   Promova uma observação importante a um "sub-alvo", tratando-a como um desdobramento do alvo principal.
@@ -31,7 +31,7 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   **Relatório por Alvo (`orei.html`)**: Uma página dedicada que apresenta um relatório detalhado de todos os alvos (ativos, arquivados e respondidos), exibindo a contagem total de interações para cada um.
 
 -   **Autenticação e Sincronização**:
-    -   Login, cadastro e redefinição de senha seguros via Firebase Authentication.
+    -   Login seguro via Google Authentication, com sincronização automática com o Google Drive.
     -   Todos os dados são salvos no Firebase Firestore, garantindo sincronização entre dispositivos.
 
 ## Tecnologias Utilizadas
@@ -43,8 +43,9 @@ Este projeto foi construído com HTML, CSS e JavaScript (ES Modules), utilizando
     -   Interface responsiva
 
 -   **Backend**:
-    -   Firebase Authentication (autenticação de usuários)
+    -   Firebase Authentication (autenticação de usuários com Google)
     -   Firebase Firestore (banco de dados NoSQL)
+    -   Google Drive API (para backup e sincronização de alvos)
 
 ## Arquitetura do Código
 
@@ -54,7 +55,9 @@ A arquitetura do código foi modularizada para garantir a separação de respons
 -   `ui.js`: A **camada de visualização**. Responsável por toda a manipulação do DOM e renderização da interface na página principal.
 -   `firestore-service.js`: A **camada de acesso a dados**. Contém todas as funções que interagem com o Firestore e prepara os dados para a aplicação. É consumido por `script.js` e `orei.js`.
 -   `auth.js`: O **módulo de autenticação**. Contém as funções que interagem com o Firebase Authentication.
+-   `google-drive-service.js`: O **módulo de integração**. Lida com a comunicação com a API do Google Drive para backup de alvos.
 -   `utils.js`: Funções utilitárias puras (formatação de data, etc.) reutilizadas em todo o projeto.
+-   `config.js`: Centraliza as configurações, regras de negócio e o changelog da aplicação.
 -   `firebase-config.js`: Onde as credenciais do seu projeto Firebase são configuradas e exportadas.
 -   `orei.js`: O orquestrador da página de relatório (`orei.html`).
 
@@ -62,7 +65,7 @@ A arquitetura do código foi modularizada para garantir a separação de respons
 
 ### Pré-requisitos
 
--   Conta no Firebase
+-   Conta no Google Firebase e Google Cloud Platform
 -   Um editor de código (ex.: VS Code)
 -   Um servidor web local (a extensão "Live Server" para VS Code é recomendada)
 
@@ -73,29 +76,19 @@ A arquitetura do código foi modularizada para garantir a separação de respons
 
 2.  **Configure o Firebase**:
     -   Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
-    -   No seu projeto, vá para **Authentication** e habilite o provedor de **E-mail/senha**.
+    -   No seu projeto, vá para **Authentication** e habilite o provedor de **Google**.
     -   Vá para **Firestore Database** e crie um banco de dados no **modo de produção**.
     -   Nas **Configurações do Projeto**, registre um novo aplicativo da web para obter o objeto `firebaseConfig`.
 
-3.  **Adicione as Credenciais do Firebase**:
-    -   Abra o arquivo `firebase-config.js` e cole o objeto `firebaseConfig` que você obteve.
-        ```javascript
-        // firebase-config.js
-        const firebaseConfig = {
-          apiKey: "SUA_API_KEY",
-          authDomain: "SEU_AUTH_DOMAIN",
-          // ...outras chaves
-        };
-        ```
-    -   **Atenção:** Você só precisa fazer isso no arquivo `firebase-config.js`.
+3.  **Configure a API do Google Drive**:
+    -   No [Google Cloud Console](https://console.cloud.google.com/), certifique-se de que o projeto do Firebase está selecionado.
+    -   Vá para "APIs e Serviços" > "Tela de permissão OAuth" e configure-a, adicionando o escopo `.../auth/drive.file`.
+    -   Vá para "APIs e Serviços" > "Credenciais", crie um "ID do cliente OAuth" do tipo "Aplicativo da Web" e adicione seu domínio de desenvolvimento (ex: `http://127.0.0.1:5500`) aos "URIs de origem JavaScript autorizados".
+    -   Habilite a API do Google Drive para o seu projeto.
 
-4.  **Estrutura do Firestore**:
-    O projeto utiliza as seguintes coleções principais no Firestore:
-    -   `users/{userId}/prayerTargets`: Armazena os alvos de oração ativos.
-    -   `users/{userId}/archivedTargets`: Armazena os alvos arquivados/respondidos.
-    -   `dailyPrayerTargets/{userId_YYYY-MM-DD}`: Armazena a lista diária de alvos.
-    -   `perseveranceData/{userId}`: Armazena os dados de dias consecutivos.
-    -   `weeklyInteractions/{userId}`: Armazena as interações da semana.
+4.  **Adicione as Credenciais**:
+    -   Abra o arquivo `firebase-config.js` e cole o objeto `firebaseConfig`.
+    -   Abra o arquivo `google-drive-service.js` e insira o `CLIENT_ID` obtido no passo anterior.
 
 5.  **Execute Localmente**:
     -   Use a extensão "Live Server" no VS Code (ou um servidor similar) para servir os arquivos a partir da raiz do projeto. Abrir o `index.html` diretamente no navegador não funcionará devido ao uso de Módulos JavaScript (ESM).
@@ -103,14 +96,14 @@ A arquitetura do código foi modularizada para garantir a separação de respons
 
 ## Como Usar
 
-1.  **Faça Login/Cadastre-se**:
-    -   Use seu e-mail e senha para acessar a aplicação.
+1.  **Faça Login**:
+    -   Use sua conta Google para acessar a aplicação.
 
 2.  **Navegue pelos Painéis**:
     -   Use os botões do menu principal para alternar entre:
         -   **Página Inicial**: Exibe os painéis de prioridades e alvos do dia.
         -   **Novo Alvo**: Exibe o formulário para adicionar um novo alvo.
-        -   **Ver Todos os Alvos / Arquivados / Respondidos**: Listagens dos seus alvos.
+        -   **Ver Todos os Alvos / Arquivados / Respondidos**: Listagens dos seus alvos, agora com a opção de filtrar por categoria diretamente na tela.
 
 3.  **Interaja com os Alvos**:
     -   Clique em **"Orei!"** para registrar sua intercessão e atualizar as estatísticas de perseverança.

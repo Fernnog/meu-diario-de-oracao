@@ -50,7 +50,7 @@ let state = {
         resolvedPanel: { currentPage: 1, targetsPerPage: 10 },
     },
     filters: {
-        mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null },
+        mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null, activeCategory: null },
         archivedPanel: { searchTerm: '', startDate: null, endDate: null },
         resolvedPanel: { searchTerm: '' },
     },
@@ -350,6 +350,11 @@ function applyFiltersAndRender(panelId) {
         if (!matchesSearch) return false;
 
         if (panelId === 'mainPanel') {
+            const activeCategory = panelFilters.activeCategory;
+            if (activeCategory && target.category !== activeCategory) {
+                return false;
+            }
+            
             const now = new Date();
             const todayUTCStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
             if (panelFilters.showDeadlineOnly && !target.hasDeadline) return false;
@@ -417,6 +422,9 @@ async function loadDataForUser(user) {
         state.archivedTargets = allArchived.filter(t => !t.resolved);
         state.resolvedTargets = allArchived.filter(t => t.resolved);
         
+        const activeCategories = [...new Set(state.prayerTargets.map(t => t.category).filter(Boolean))];
+        UI.renderCategoryFilters('mainCategoryFilters', activeCategories);
+        
         state.perseveranceData = perseveranceData;
         state.weeklyPrayerData = weeklyData;
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
@@ -466,7 +474,7 @@ async function loadDataForUser(user) {
 }
 
 function handleLogoutState() {
-    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
+    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null, activeCategory: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
     // **MELHORIA APLICADA:** Garante que a UI de conexão seja redefinida no logout
     UI.updateDriveStatusUI('disconnected');
@@ -755,16 +763,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     
-    // MODIFICAÇÃO (PRIORIDADE 3): Lógica para exibir sugestões ao abrir o modal
+    // MODIFICAÇÃO (PRIORIDADE 1): Lógica para exibir sugestões e filtros de categoria ao abrir o modal
     document.getElementById('addManualTargetButton').addEventListener('click', () => {
         const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
-        const suggestedTargets = state.prayerTargets
-            .filter(target => !dailyTargetIds.has(target.id))
+        const availableTargets = state.prayerTargets.filter(target => !dailyTargetIds.has(target.id));
+        
+        const suggestedTargets = [...availableTargets]
             .sort((a, b) => b.date.getTime() - a.date.getTime())
             .slice(0, 3);
         
-        // Passa as sugestões para a função de renderização da UI
-        UI.renderManualSearchResults([], state.prayerTargets, '', suggestedTargets);
+        // Extrai as categorias únicas dos alvos disponíveis para criar os filtros
+        const categories = [...new Set(availableTargets.map(t => t.category).filter(Boolean))];
+        
+        // Passa as categorias e as sugestões para a função de renderização da UI
+        UI.renderManualSearchResults([], '', suggestedTargets, categories);
         UI.toggleManualTargetModal(true);
     });
 
@@ -818,29 +830,30 @@ document.addEventListener('DOMContentLoaded', () => {
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     
-    // MODIFICAÇÃO (PRIORIDADE 2): Lógica de debounce para a busca manual
+    // MODIFICAÇÃO (PRIORIDADE 1): Lógica de debounce para a busca manual com filtro de categoria
     let manualSearchDebounceTimer;
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => {
         clearTimeout(manualSearchDebounceTimer);
 
         manualSearchDebounceTimer = setTimeout(() => {
             const searchTerm = e.target.value.toLowerCase();
+            const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
+            const availableTargets = state.prayerTargets.filter(target => !dailyTargetIds.has(target.id));
+            const categories = [...new Set(availableTargets.map(t => t.category).filter(Boolean))];
             
-            // Se o campo estiver vazio, mostramos as sugestões novamente
             if (searchTerm.trim() === '') {
-                const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
-                const suggestedTargets = state.prayerTargets
-                    .filter(target => !dailyTargetIds.has(target.id))
+                const suggestedTargets = availableTargets
                     .sort((a, b) => b.date.getTime() - a.date.getTime())
                     .slice(0, 3);
-                UI.renderManualSearchResults([], state.prayerTargets, '', suggestedTargets);
+                UI.renderManualSearchResults([], searchTerm, suggestedTargets, categories);
             } else {
-                // Caso contrário, filtramos e mostramos os resultados
-                const filtered = state.prayerTargets.filter(t => 
+                // LÓGICA DE FILTRO CORRIGIDA E AMPLIADA
+                const filtered = availableTargets.filter(t => 
                     t.title.toLowerCase().includes(searchTerm) || 
-                    (t.details && t.details.toLowerCase().includes(searchTerm))
+                    (t.details && t.details.toLowerCase().includes(searchTerm)) ||
+                    (t.category && t.category.toLowerCase().includes(searchTerm))
                 );
-                UI.renderManualSearchResults(filtered, state.prayerTargets, searchTerm);
+                UI.renderManualSearchResults(filtered, searchTerm, [], categories);
             }
         }, 300); // Atraso de 300ms
     });
@@ -870,6 +883,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'cancel-edit') {
             const form = e.target.closest('.inline-edit-form');
             if (form) form.remove();
+            return;
+        }
+
+        // MODIFICAÇÃO (PRIORIDADE 1): Handler para os filtros de categoria
+        if (action === 'filter-manual-by-category') {
+            const category = e.target.dataset.category;
+            const searchInput = document.getElementById('manualTargetSearchInput');
+            searchInput.value = category;
+            // Dispara o evento de input para reusar a lógica de busca existente
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            return;
+        }
+
+        if (action === 'filter-main-by-category') {
+            const category = e.target.dataset.category;
+            const currentFilter = state.filters.mainPanel.activeCategory;
+
+            if (category === currentFilter) {
+                state.filters.mainPanel.activeCategory = null;
+                e.target.classList.remove('active');
+            } else {
+                state.filters.mainPanel.activeCategory = category;
+                document.querySelectorAll('#mainCategoryFilters .category-filter-pill').forEach(pill => pill.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+            
+            state.pagination.mainPanel.currentPage = 1;
+            applyFiltersAndRender('mainPanel');
             return;
         }
         

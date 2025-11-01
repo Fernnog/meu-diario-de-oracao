@@ -2,7 +2,7 @@
 // Responsável por toda a manipulação do DOM e renderização da interface.
 // ARQUITETURA REVISADA: Inclui formulários inline, sistema de notificações e integração visual com Google Drive.
 
-// --- MÓDULOS ---
+// --- MÓDulos ---
 import { formatDateForDisplay, formatDateToISO, timeElapsed, calculateMilestones } from './utils.js';
 import { MILESTONES } from './config.js';
 
@@ -750,9 +750,18 @@ export function toggleManualTargetModal(show) {
     }
 }
 
-export function renderManualSearchResults(results, allTargets, searchTerm = '') {
+export function renderManualSearchResults(results, searchTerm = '', suggestions = [], categories = []) {
     const container = document.getElementById('manualTargetSearchResults');
-    container.innerHTML = ''; // Limpa o conteúdo anterior
+    const filtersContainer = document.getElementById('manualTargetCategoryFilters');
+    container.innerHTML = ''; // Limpa resultados anteriores
+    filtersContainer.innerHTML = ''; // Limpa filtros anteriores
+
+    // Renderiza os filtros de categoria clicáveis
+    if (categories.length > 0) {
+        filtersContainer.innerHTML = categories.map(cat => 
+            `<span class="category-filter-pill" data-action="filter-manual-by-category" data-category="${cat}">${cat}</span>`
+        ).join('');
+    }
 
     // Função auxiliar para renderizar um item da lista
     const renderItem = (target) => {
@@ -760,32 +769,33 @@ export function renderManualSearchResults(results, allTargets, searchTerm = '') 
         item.className = 'manual-target-item';
         item.dataset.action = 'select-manual-target'; 
         item.dataset.id = target.id;
+        
+        // Adiciona a tag de categoria se ela existir
+        const categoryTag = target.category ? `<span class="category-tag">${target.category}</span>` : '';
+
         item.innerHTML = `
+            ${categoryTag}
             <h4 data-action="select-manual-target" data-id="${target.id}">${target.title}</h4>
             <span data-action="select-manual-target" data-id="${target.id}">${target.details || 'Sem detalhes.'}</span>
         `;
         container.appendChild(item);
     };
 
-    // Estado 1: Usuário está buscando ativamente
     if (searchTerm.trim() !== '') {
         if (results.length === 0) {
             container.innerHTML = '<p>Nenhum alvo encontrado com esse termo.</p>';
         } else {
-            container.innerHTML = '<h3>Resultados da Busca:</h3>';
             results.forEach(renderItem);
         }
-    // Estado 2: Modal aberto, sem busca (exibe sugestões se houver)
     } else {
-        if (results.length > 0) {
+        if (suggestions.length > 0) {
             container.innerHTML = '<h3>Sugestões Recentes:</h3>';
-            results.forEach(renderItem);
+            suggestions.forEach(renderItem);
         } else {
-            container.innerHTML = '<p>Digite para buscar entre seus alvos ativos.</p>';
+            container.innerHTML = '<p>Digite para buscar ou selecione uma categoria acima.</p>';
         }
     }
 }
-
 
 export function toggleDateRangeModal(show) {
     const modal = document.getElementById('dateRangeModal');
@@ -823,6 +833,23 @@ export function toggleCategoryModal(show, allTargets = []) {
                 });
             }
         }
+    }
+}
+
+/**
+ * Renderiza os botões de filtro de categoria em um contêiner específico.
+ * @param {string} containerId - O ID do elemento que abrigará os filtros.
+ * @param {string[]} categories - Um array com os nomes das categorias.
+ */
+export function renderCategoryFilters(containerId, categories = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = ''; // Limpa filtros anteriores
+    if (categories.length > 0) {
+        container.innerHTML = categories.sort().map(cat => 
+            `<span class="category-filter-pill" data-action="filter-main-by-category" data-category="${cat}">${cat}</span>`
+        ).join('');
     }
 }
 

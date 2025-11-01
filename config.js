@@ -18,9 +18,14 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.0.9';
+export const APP_VERSION = '1.1.0';
 
 export const CHANGELOG = {
+ '1.1.0': [
+    'FUNCIONALIDADE: Adicionados filtros de categoria diretamente na tela "Ver Todos os Alvos". Agora você pode encontrar alvos específicos de forma muito mais rápida, clicando nas categorias desejadas para filtrar a lista instantaneamente.',
+    'CORREÇÃO (Layout): O título do painel "Alvos Prioritários" agora permanece perfeitamente centralizado, com ou sem o badge de "Concluído", garantindo uma interface mais consistente e agradável visualmente.',
+    'MELHORIA (UI/UX): A legibilidade das etiquetas de categoria na janela "Adicionar Alvo Manualmente" foi aprimorada. A cor da fonte agora é branca, proporcionando um contraste ideal e facilitando a leitura.'
+  ],
  '1.0.9': [
     'FUNCIONALIDADE: O painel "Alvos Prioritários" agora se torna inteligente! Ao concluir a intercessão por todos os alvos prioritários do dia, ele se recolhe automaticamente, exibindo uma mensagem de parabéns e otimizando a interface.',
     'MELHORIA (UX): Para celebrar sua disciplina, um novo badge "✓ Concluído" com um sutil efeito de brilho agora aparece no título do painel de prioridades concluído, tornando a experiência mais recompensadora.'
