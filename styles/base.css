@@ -1,16 +1,61 @@
 /* styles/base.css */
 
-/* ==== GOOGLE FONTS ==== */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+/* ==== DESIGN SYSTEM: CORES E FONTES ==== */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
 
-/* ==== TOP BAR (Optional Backup Info) ==== */
+:root {
+    --color-background: #FDFCFB; /* Um branco mais quente e suave */
+    --color-surface: #FFFFFF;    /* Cor para os cards e painéis */
+    --color-primary: #D4AF37;   /* Um tom dourado/ocre para ações principais */
+    --color-primary-dark: #B8860B;
+    --color-secondary: #6D4C41;  /* Marrom escuro para ações secundárias */
+    --color-secondary-dark: #4E342E;
+    --color-text-primary: #3D3D3D;
+    --color-text-secondary: #757575;
+    --color-border-soft: #EDEAE5;
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --font-title: 'Playfair Display', serif;
+    --font-body: 'Lato', sans-serif;
+}
+
+/* ==== REFINAMENTO DE ESTILOS GLOBAIS ==== */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    scroll-padding-top: 20px;
+}
+
+body {
+    font-family: var(--font-body);
+    line-height: 1.6;
+    margin: 0;
+    padding: 10px;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+}
+
+.main-title {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-title);
+    color: var(--color-text-primary);
+    line-height: 1.3;
+}
+
+h1 {
+    font-size: 2.5em;
+}
+
+/* ==== TOP BAR ==== */
 .top-bar {
     padding: 10px 20px;
     text-align: right;
     overflow: auto;
 }
 
-/* ==== USER AND DRIVE STATUS (Barra Superior) - REVISED ==== */
 .top-bar .user-status-top,
 .top-bar .drive-status-top,
 .top-bar .version-info,
@@ -21,39 +66,32 @@
     border: 1px solid transparent;
     border-radius: 15px;
     margin-left: 10px;
-    display: none; /* Visibilidade controlada via JS */
-    font-family: 'Playfair Display', serif;
-    line-height: normal; /* Reseta o line-height para alinhamento vertical */
-    box-sizing: border-box; /* Garante que padding não afete a largura total */
-    /* Remove a margem vertical herdada da classe .btn */
+    display: none;
+    font-family: var(--font-title);
+    line-height: normal;
+    box-sizing: border-box;
     margin-top: 0;
     margin-bottom: 0;
 }
-
-/* REGRAS ESPECÍFICAS DE COR E ESTILO */
 
 .top-bar .user-status-top {
     color: #555;
     background-color: #f5f5f5;
     border-color: #ddd;
 }
-
 .top-bar .drive-status-top {
     color: #fff;
     background-color: #0f9d58;
     border-color: #0a8f4c;
 }
-
 .top-bar .drive-status-top.error {
     background-color: #db4437;
     border-color: #c5372c;
 }
-
 .top-bar .drive-status-top.syncing {
     background-color: #f4b400;
     border-color: #f1a900;
 }
-
 .top-bar .version-info {
     color: #607D8B;
     background-color: #ECEFF1;
@@ -64,8 +102,6 @@
 .top-bar .version-info:hover {
     background-color: #CFD8DC;
 }
-
-/* Regra específica e corrigida para o botão de conexão */
 .top-bar .drive-connect-btn {
     background-color: #4285F4;
     color: white;
@@ -77,56 +113,19 @@
     background-color: #357ae8;
 }
 
-.ultimo-backup {
-    font-size: 0.8em;
-    color: #666;
-    padding: 5px 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f5f5f5;
-    float: right;
-    clear: right;
-}
-
 /* ==== LOGO STYLES ==== */
 .logo-container {
     text-align: center;
     margin-top: 20px;
     margin-bottom: 30px;
 }
-
 .logo {
     max-width: 100%;
     height: auto;
     max-height: 150px;
 }
 
-/* ==== GENERAL STYLES ==== */
-html, body {
-    max-width: 100%;
-    overflow-x: hidden;
-    scroll-padding-top: 20px;
-}
-
-body {
-    font-family: 'Playfair Display', serif;
-    margin: 0;
-    padding: 10px;
-    background-color: #f9f9f9;
-    color: #333;
-}
-
-.main-title {
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-h1 {
-    color: #333;
-    font-size: 2.5em;
-}
-
-/* ==== BUTTON STYLES ==== */
+/* ==== BUTTON STYLES (ATUALIZADO) ==== */
 .main-menu {
     text-align: center;
     margin-bottom: 20px;
@@ -136,21 +135,24 @@ h1 {
     margin: 10px 5px;
     padding: 10px 20px;
     color: #fff;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
     border-radius: 5px;
     font-size: 14px;
-    font-family: 'Playfair Display', serif;
-    transition: background-color 0.3s, color 0.3s, box-shadow 0.3s;
+    font-family: var(--font-title);
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.main-menu button, .main-menu .btn {
-    background-color: #e29420;
+.main-menu .btn {
+    background-color: var(--color-primary);
+    font-weight: bold;
 }
-.main-menu button:hover, .main-menu .btn:hover {
-    background-color: #ca7d1b;
+.main-menu .btn:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
 }
-
 .google-btn {
     background-color: #4285F4;
     color: white;
@@ -158,14 +160,12 @@ h1 {
 .google-btn:hover {
     background-color: #357ae8;
 }
-
-.generate-view, .daily-view {
-    background-color: #7a5217;
+.generate-view, .daily-view, .main-menu .action-btn, .submit-btn, .daily-action-btn {
+    background-color: var(--color-secondary);
 }
-.generate-view:hover, .daily-view:hover {
-    background-color: #5f4012;
+.generate-view:hover, .daily-view:hover, .main-menu .action-btn:hover, .submit-btn:hover, .daily-action-btn:hover {
+    background-color: var(--color-secondary-dark);
 }
-
 .archived-resolved {
     background-color: #948484;
 }
@@ -173,71 +173,41 @@ h1 {
     background-color: #756b6b;
 }
 
-.main-menu .action-btn {
-    background-color: #654321;
-}
-.main-menu .action-btn:hover {
-    background-color: #4a301a;
-}
-
-.daily-action-btn {
-    background-color: #654321;
-    color: #fff;
-}
-.daily-action-btn:hover {
-    background-color: #4a301a;
-}
-
-.submit-btn {
-     background-color: #654321;
-     color: #fff;
-}
-.submit-btn:hover {
-     background-color: #4a301a;
-}
-
-/* Separator Lines */
-hr.menu-separator {
+/* ==== LINHAS SEPARADORAS SUAVIZADAS ==== */
+hr.menu-separator, hr.menu-separator.dark, hr.section-separator, hr.title-separator, hr.search-separator, hr.filter-separator {
     border: none;
-    border-top: 2px solid #e29420;
+    border-top: 1px solid var(--color-border-soft);
     margin: 20px auto;
     width: 80%;
+}
+hr.menu-separator {
+    border-width: 2px;
 }
 hr.menu-separator.dark {
-    border-top: 2px solid #654321;
+    border-color: var(--color-secondary);
+    opacity: 0.5;
 }
-hr.section-separator {
-    border: none;
-    border-top: 1px solid #ddd;
-    margin: 30px auto;
-    width: 80%;
-}
-hr.title-separator, hr.search-separator, hr.filter-separator {
-     border: none;
-     border-top: 1px solid #eee;
-     margin: 15px auto;
-     width: 80%;
- }
 
-/* ==== SECTION STYLES ==== */
-.form-section, 
-.targets-section, 
-.daily-section, 
+/* ==== SECTION STYLES (ATUALIZADO) ==== */
+.form-section,
+.targets-section,
+.daily-section,
 .completed-daily-targets-section,
-.priority-section {
-    margin: 20px auto;
-    padding: 15px;
-    border-radius: 5px;
+.priority-section,
+.perseverance-section,
+.weekly-perseverance-chart { /* <- GARANTA QUE ESTE SELETOR ESTEJA AQUI */
+    margin: 30px auto;
+    padding: 25px;
+    border-radius: 8px;
     text-align: center;
     width: 95%;
     max-width: 800px;
-    /* Estilos visuais padrão que podem ser sobrescritos */
-    border: 1px solid #ddd;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    box-shadow: var(--shadow-soft);
 }
 
-/* ==== INPUT STYLES ==== */
+/* ==== INPUT STYLES (ATUALIZADO) ==== */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -252,8 +222,12 @@ select
     max-width: 400px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    font-family: 'Playfair Display', serif;
+    font-family: var(--font-body);
     box-sizing: border-box;
+}
+
+select {
+    font-family: var(--font-title);
 }
 
 textarea {
@@ -261,7 +235,6 @@ textarea {
     overflow-y: hidden;
     min-height: 70px;
 }
-
 .search-input {
     margin: 10px auto 15px auto;
     padding: 8px;
@@ -275,7 +248,7 @@ input[type="date"] {
     background-repeat: no-repeat;
     background-position: 5px center;
     background-size: 20px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="%23555"><path d="M464 64H48C21.49 64 0 85.49 0 112v336c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49-48-48V112c0-26.51-21.49-48-48-48zM48 96h416c8.822 0 16 7.178 16 16v48H32v-48c0-8.822 7.178-16 16-16zM464 480H48c-8.822 0-16-7.178-16-16v-288h448v288c0 8.822-7.178 16-16 16zM128 192h64v64h-64zM288 192h64v64h-64zM128 288h64v64h-64zM288 288h64v64h-64z"/></svg>');
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w.org/2000/svg" viewBox="0 0 512 512" fill="%23555"><path d="M464 64H48C21.49 64 0 85.49 0 112v336c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49-48-48V112c0-26.51-21.49-48-48-48zM48 96h416c8.822 0 16 7.178 16 16v48H32v-48c0-8.822 7.178-16 16-16zM464 480H48c-8.822 0-16-7.178-16-16v-288h448v288c0 8.822-7.178 16-16 16zM128 192h64v64h-64zM288 192h64v64h-64zM128 288h64v64h-64zM288 288h64v64h-64z"/></svg>');
 }
 
 .checkbox-container {
@@ -307,17 +280,14 @@ input[type="date"] {
 textarea::-webkit-scrollbar {
     width: 10px;
 }
-
 textarea::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
 }
-
 textarea::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 10px;
 }
-
 textarea::-webkit-scrollbar-thumb:hover {
     background: #aaa;
 }
@@ -341,16 +311,16 @@ textarea::-webkit-scrollbar-thumb:hover {
     input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, select, .search-input {
         width: 95%;
         padding: 10px;
-        max-width: none; 
+        max-width: none;
     }
-    .modal-content input[type="date"], 
+    .modal-content input[type="date"],
     .modal-content input[type="text"],
     .modal-content select {
-        width: 100%; 
+        width: 100%;
         max-width: none;
     }
 
-    .daily-buttons-container { flex-direction: column; gap: 5px; } 
+    .daily-buttons-container { flex-direction: column; gap: 5px; }
     .daily-buttons-container .btn { width: 80%; margin: 3px auto; }
 }
 
