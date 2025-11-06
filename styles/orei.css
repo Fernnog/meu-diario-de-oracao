@@ -1,0 +1,267 @@
+/* orei.css - Estilos completos para a página de relatório */
+
+/* Estilos Gerais da Página */
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centraliza containers principais */
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin: 0;
+    font-family: 'Playfair Display', serif; /* Garante a fonte base */
+    color: #333;
+}
+
+.report-container {
+    padding: 20px;
+    max-width: 960px; /* Limita largura máxima */
+    width: 95%; /* Usa a maior parte da largura disponível */
+    margin: 20px auto;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd; /* Adiciona uma borda sutil */
+}
+
+h1, h2 {
+     font-family: 'Playfair Display', serif; /* Garante a fonte nos títulos */
+     text-align: center;
+     color: #333;
+}
+
+h2 {
+    margin-bottom: 15px;
+    font-size: 1.8em;
+}
+
+/* Estilos para a lista de itens no relatório principal */
+.report-list {
+    margin-top: 15px;
+}
+
+.report-item {
+    border-bottom: 1px solid #eee; /* Linha separadora mais suave */
+    padding: 15px 5px; /* Mais padding vertical */
+    margin-bottom: 10px;
+    background-color: #fff; /* Cor de fundo padrão branca */
+}
+/* Adiciona uma cor de fundo sutil alternada para melhor legibilidade */
+.report-item:nth-child(even) {
+    background-color: #fafafa; /* Cinza bem claro para itens pares */
+}
+
+
+.report-item:last-child {
+    border-bottom: none;
+}
+
+.report-item h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.2em;
+    display: flex; /* Alinha status tag e título */
+    align-items: center;
+    flex-wrap: wrap; /* Permite que as tags quebrem a linha em telas pequenas */
+    gap: 8px;
+}
+
+.report-item p {
+    margin: 4px 0;
+    font-size: 0.95em;
+    color: #555;
+}
+.report-item p i { /* Estilo para detalhes em itálico */
+    color: #666;
+    display: block; /* Quebra linha se for longo */
+    margin-top: 5px;
+}
+
+
+/* Filtros e Busca */
+.search-input {
+    display: block;
+    margin: 0 auto 15px auto; /* Centraliza e adiciona espaço abaixo */
+    padding: 10px;
+    width: 80%;
+    max-width: 400px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: inherit; /* Usa a fonte do body */
+}
+
+.filter-options {
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.filter-options label {
+    margin: 0 12px;
+    cursor: pointer;
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 0.95em;
+}
+.filter-options label input[type="checkbox"] {
+    margin-right: 5px;
+    vertical-align: middle; /* Alinha checkbox com o texto */
+}
+
+.filter-separator {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 15px 0;
+    width: 100%;
+}
+
+/* Paginação */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 25px;
+    padding-bottom: 10px; /* Espaço extra no final */
+}
+
+.pagination a.page-link { /* Estilo específico para links de paginação */
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    color: #555;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s, border-color 0.3s;
+    font-size: 0.9em;
+}
+
+.pagination a.page-link:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+}
+
+.pagination a.page-link.active { /* Estilo da página ativa (se implementado) */
+    background-color: #f9a825;
+    color: white;
+    border-color: #f9a825;
+    cursor: default;
+}
+
+.pagination span { /* Estilo para o texto "Página X de Y" */
+     padding: 8px 10px;
+     color: #666;
+     font-size: 0.95em;
+}
+
+/* REMOVIDOS: Estilos para a seção "Sem Interação" */
+
+/* Tags de Status com Cores Suavizadas */
+.status-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    color: white; /* Cor padrão do texto */
+    font-weight: bold;
+    line-height: 1.5;
+    vertical-align: middle;
+    text-transform: uppercase;
+    border: 1px solid transparent; /* Adiciona borda transparente para consistência */
+}
+
+.status-ativo {
+    color: #388E3C; 
+    background-color: #E8F5E9; /* Fundo verde bem claro */
+    border: 1px solid #A5D6A7;
+}
+
+.status-arquivado {
+    background-color: #F5F5F5; 
+    border: 1px solid #E0E0E0;
+    color: #616161; 
+}
+
+.status-respondido {
+    background-color: #FFF8E1; 
+    border: 1px solid #FFECB3;
+    color: #6D4C41; 
+}
+
+/* Container de Autenticação */
+.auth-status-container-report {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px dashed #bdbdbd;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+    max-width: 960px;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.auth-status-container-report p {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+}
+
+/* Estilos para Estatísticas de Cliques Simplificado */
+.click-stats {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dotted #e0e0e0; /* Separador sutil */
+}
+.click-stats p {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9em !important; /* Garante tamanho menor */
+    color: #6D4C41; /* Tom marrom para o título */
+}
+.click-stats ul {
+    list-style: none;
+    padding-left: 0; /* Removido padding para alinhar com o 'p' */
+    margin: 0;
+}
+.click-stats ul li {
+    font-size: 0.9em;
+    color: #757575; /* Cinza mais suave para o texto */
+    margin-bottom: 3px;
+}
+.click-stats ul li span {
+    font-weight: bold;
+    color: #5D4037; /* Marrom um pouco mais escuro para o número */
+    min-width: 20px; /* Garante espaço mínimo para o número */
+    display: inline-block; /* Para aplicar min-width */
+    background-color: #EFEBE9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+
+/* Mensagem de erro */
+.error-message {
+    color: #D32F2F;
+    font-weight: bold;
+    text-align: center;
+    padding: 15px;
+    background-color: #FFCDD2;
+    border: 1px solid #E57373;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .report-container, .auth-status-container-report {
+        width: 98%;
+        padding: 15px;
+    }
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.5em; }
+    .report-item h3 { font-size: 1.1em; }
+    .filter-options label { margin: 0 8px; font-size: 0.9em;}
+    .pagination a.page-link { padding: 6px 10px; margin: 0 3px; font-size: 0.85em;}
+    .pagination span { font-size: 0.9em; }
+    .search-input { width: 90%; }
+    .click-stats ul { padding-left: 0; }
+}
