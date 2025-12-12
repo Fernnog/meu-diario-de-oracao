@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Logotipo do Plano de Leitura" width="150">
+</p>
+
 # Meus Alvos de Oração
 
 Bem-vindo ao **Meus Alvos de Oração**, uma aplicação web desenvolvida para ajudar usuários a gerenciar e acompanhar seus alvos de oração de forma organizada e espiritual. Com esta ferramenta, você pode adicionar, editar, arquivar e orar por seus alvos, acompanhar seu progresso diário e visualizar relatórios detalhados de perseverança.
