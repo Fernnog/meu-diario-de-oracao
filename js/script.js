@@ -1,5 +1,5 @@
-// script.js (Orquestrador Principal da Aplicação - Versão Final com Sincronização Google Drive)
-// ARQUITETURA ATUALIZADA: Implementa o fluxo de autenticação com Google e sincronização de alvos.
+// script.js (Orquestrador Principal da Aplicação - Versão Final com Sincronização Google Drive e Filtros Diários)
+// ARQUITETURA ATUALIZADA: Implementa o fluxo de autenticação, sincronização e filtragem avançada.
 
 // --- MÓDulos ---
 import * as Auth from './auth.js';
@@ -7,7 +7,6 @@ import * as Service from './firestore-service.js';
 import * as UI from './ui.js';
 import { initializeFloatingNav, updateFloatingNavVisibility } from './floating-nav.js';
 import { formatDateForDisplay, generateAndDownloadPdf } from './utils.js';
-// NOVO: Módulos para a funcionalidade do Google Drive
 import * as GoogleDriveService from './google-drive-service.js';
 import { updateDriveStatusUI } from './ui.js';
 import { APP_VERSION, CHANGELOG } from './config.js';
@@ -53,8 +52,10 @@ let state = {
         mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null, activeCategory: null },
         archivedPanel: { searchTerm: '', startDate: null, endDate: null },
         resolvedPanel: { searchTerm: '' },
+        // NOVO: Estado para filtros do dia
+        dailyPanel: { searchTerm: '', activeCategory: null }
     },
-    // NOVO: Flag para controlar a funcionalidade do Drive
+    // Flag para controlar a funcionalidade do Drive
     isDriveEnabled: false
 };
 
@@ -69,6 +70,27 @@ function getISODateString(date) {
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+// --- FUNÇÃO AUXILIAR DE FILTRO (REFATORAÇÃO - PRIORIDADE 3) ---
+/**
+ * Verifica se um alvo corresponde a um termo de busca.
+ * Centraliza a lógica para evitar repetição nos painéis principais e no diário.
+ * @param {object} target - O alvo a ser verificado.
+ * @param {string} searchTerm - O termo pesquisado.
+ * @returns {boolean} - True se corresponder.
+ */
+function checkSearchTermMatch(target, searchTerm) {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    
+    return (target.title && target.title.toLowerCase().includes(term)) ||
+           (target.details && target.details.toLowerCase().includes(term)) ||
+           (target.category && target.category.toLowerCase().includes(term)) ||
+           (target.observations && target.observations.some(obs =>
+               (obs.text && obs.text.toLowerCase().includes(term)) ||
+               (obs.subTargetTitle && obs.subTargetTitle.toLowerCase().includes(term))
+           ));
 }
 
 // --- MELHORIA DE UX: Notificações Toast Não-Bloqueantes ---
@@ -152,9 +174,10 @@ async function syncTarget(targetId) {
 
     try {
         target.driveStatus = 'syncing';
-        // Limpar mensagem de erro anterior antes de tentar novamente
         delete target.driveErrorMessage;
-        applyFiltersAndRender(panelId);
+        // Se a edição foi no painel diário, precisamos atualizar ele também
+        applyFiltersAndRender(panelId); 
+        applyDailyFiltersAndRender(); // Atualiza painel diário se necessário
 
         const result = await GoogleDriveService.backupTargetToDrive(target, target.googleDocId);
 
@@ -167,19 +190,18 @@ async function syncTarget(targetId) {
         console.log(`Alvo '${target.title}' sincronizado com sucesso.`);
 
     } catch (error) {
-    // LOG 5: Capturar o erro completo que vem do GoogleDriveService
     console.error(`%c[App] Erro CRÍTICO ao sincronizar o alvo '${target.title}'.`, 'color: red; font-weight: bold;');
-    console.error('Objeto do Erro:', error); // Mostra o erro completo no console
+    console.error('Objeto do Erro:', error);
     target.driveStatus = 'error';
     showToast(`Erro ao sincronizar "${target.title}" com o Drive.`, "error");
 } finally {
     applyFiltersAndRender(panelId);
+    applyDailyFiltersAndRender(); // Atualiza painel diário
 }
 }
 
 /**
  * Solicita uma sincronização para um alvo, aplicando um debounce.
- * Evita chamadas excessivas à API ao fazer edições rápidas.
  * @param {string} targetId - O ID do alvo a ser sincronizado.
  */
 function requestSync(targetId) {
@@ -192,13 +214,13 @@ function requestSync(targetId) {
         console.log(`[Debounce] Executando sincronização para o alvo ${targetId}.`);
         syncTarget(targetId);
         syncDebounceTimers.delete(targetId);
-    }, 2000); // Atraso de 2 segundos
+    }, 2000); 
 
     syncDebounceTimers.set(targetId, timer);
 }
 
 /**
- * (MELHORIA APLICADA) Handler para forçar a sincronização de todos os alvos com melhor feedback de UX.
+ * Handler para forçar a sincronização de todos os alvos.
  */
 async function handleForceSync() {
     if (!state.isDriveEnabled) {
@@ -223,6 +245,7 @@ async function handleForceSync() {
     applyFiltersAndRender('mainPanel');
     applyFiltersAndRender('archivedPanel');
     applyFiltersAndRender('resolvedPanel');
+    applyDailyFiltersAndRender();
 
     let hasErrors = false;
     try {
@@ -268,14 +291,12 @@ function checkAndCollapsePriorityPanel() {
 
     const priorityTargets = state.prayerTargets.filter(t => t.isPriority);
     if (priorityTargets.length === 0) {
-        UI.updatePriorityPanelState(false); // Não há prioridades, então não há o que recolher.
+        UI.updatePriorityPanelState(false);
         return;
     }
 
-    // Cria um conjunto de IDs dos alvos já completados hoje para busca rápida
     const completedTargetIds = new Set(state.dailyTargets.completed.map(t => t.id || t.targetId));
     
-    // Verifica se TODOS os alvos prioritários estão no conjunto de completados
     const allPrioritiesCompleted = priorityTargets.every(pTarget => 
         completedTargetIds.has(pTarget.id)
     );
@@ -326,6 +347,27 @@ async function handleGoogleSignIn() {
     }
 }
 
+// NOVO: Função para filtrar e renderizar o painel diário
+function applyDailyFiltersAndRender() {
+    const filters = state.filters.dailyPanel;
+    const searchTerm = filters.searchTerm;
+    const activeCategory = filters.activeCategory;
+
+    // Função local combinando filtro de texto e categoria
+    const filterFn = (target) => {
+        // 1. Filtro por Categoria
+        if (activeCategory && target.category !== activeCategory) return false;
+        
+        // 2. Filtro por Texto (usa o helper refatorado)
+        return checkSearchTermMatch(target, searchTerm);
+    };
+
+    const filteredPending = state.dailyTargets.pending.filter(filterFn);
+    const filteredCompleted = state.dailyTargets.completed.filter(filterFn);
+
+    UI.renderDailyTargets(filteredPending, filteredCompleted, state.dailyTargets);
+}
+
 function applyFiltersAndRender(panelId) {
     if (!panelId || !state.pagination[panelId] || !state.filters[panelId]) return;
 
@@ -338,16 +380,10 @@ function applyFiltersAndRender(panelId) {
     if (panelId === 'resolvedPanel') sourceData = state.resolvedTargets;
 
     let filteredData = sourceData.filter(target => {
-        const searchTerm = panelFilters.searchTerm.toLowerCase();
-        const matchesSearch = searchTerm === '' ||
-            (target.title && target.title.toLowerCase().includes(searchTerm)) ||
-            (target.details && target.details.toLowerCase().includes(searchTerm)) ||
-            (target.category && target.category.toLowerCase().includes(searchTerm)) ||
-            (target.observations && target.observations.some(obs =>
-                (obs.text && obs.text.toLowerCase().includes(searchTerm)) ||
-                (obs.subTargetTitle && obs.subTargetTitle.toLowerCase().includes(searchTerm))
-            ));
-        if (!matchesSearch) return false;
+        const searchTerm = panelFilters.searchTerm;
+        
+        // USO DA REFATORAÇÃO (PRIORIDADE 3): Usa helper para verificar correspondência de texto
+        if (!checkSearchTermMatch(target, searchTerm)) return false;
 
         if (panelId === 'mainPanel') {
             const activeCategory = panelFilters.activeCategory;
@@ -397,7 +433,6 @@ async function loadDataForUser(user) {
             Service.loadWeeklyPrayerData(user.uid)
         ]);
 
-        // --- NOVA LÓGICA DE VERIFICAÇÃO DE PERSEVERANÇA ---
         if (perseveranceData.lastInteractionDate) {
             const today = new Date();
             const yesterday = new Date();
@@ -407,14 +442,12 @@ async function loadDataForUser(user) {
             const yesterdayStr = getISODateString(yesterday);
             const lastDateStr = getISODateString(perseveranceData.lastInteractionDate);
 
-            // Se a última interação não foi nem hoje nem ontem, a sequência foi quebrada.
             if (lastDateStr !== todayStr && lastDateStr !== yesterdayStr) {
                 await Service.resetConsecutiveDays(user.uid);
-                perseveranceData.consecutiveDays = 0; // Atualiza o estado local para renderização imediata
+                perseveranceData.consecutiveDays = 0; 
                 showToast("Sua sequência de perseverança foi reiniciada por inatividade.", "info");
             }
         }
-        // --- FIM DA NOVA LÓGICA ---
 
         state.user = user;
         state.prayerTargets = prayerData.map(t => ({ ...t, driveStatus: 'pending' }));
@@ -430,10 +463,18 @@ async function loadDataForUser(user) {
         const dailyTargetsData = await Service.loadDailyTargets(user.uid, state.prayerTargets);
         state.dailyTargets = dailyTargetsData;
 
+        // NOVO: Gerar filtros de categoria para o painel do dia
+        const allDailyTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed];
+        const dailyCategories = [...new Set(allDailyTargets.map(t => t.category).filter(Boolean))];
+        UI.renderCategoryFilters('dailyCategoryFilters', dailyCategories);
+
         applyFiltersAndRender('mainPanel');
         applyFiltersAndRender('archivedPanel');
         applyFiltersAndRender('resolvedPanel');
-        UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+        
+        // Substituído renderização direta por chamada com filtro para inicializar corretamente
+        applyDailyFiltersAndRender();
+        
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
         UI.updatePerseveranceUI(state.perseveranceData);
         UI.updateWeeklyChart(state.weeklyPrayerData);
@@ -442,9 +483,8 @@ async function loadDataForUser(user) {
         if (state.isDriveEnabled) {
             console.log('[App] Iniciando sincronização em massa para todos os alvos...');
             showToast('Iniciando sincronização com o Google Drive...', 'info');
-            handleForceSync(); // Reutiliza a função de sincronização forçada que já tem bom feedback
+            handleForceSync();
         } else {
-            // Se o Drive não estiver habilitado, mostra o botão para conectar
             UI.updateDriveStatusUI('disconnected');
         }
         
@@ -459,8 +499,6 @@ async function loadDataForUser(user) {
         updateFloatingNavVisibility(state);
 
         UI.updateVersionInfo(APP_VERSION);
-
-        // VERIFICAÇÃO INICIAL: Recolhe o painel se já estiver tudo concluído ao carregar
         checkAndCollapsePriorityPanel();
 
     } catch (error) {
@@ -468,15 +506,13 @@ async function loadDataForUser(user) {
         showToast("Ocorreu um erro crítico ao carregar seus dados.", "error");
         handleLogoutState();
     } finally {
-        // CORREÇÃO ESSENCIAL: Garante que a splash screen seja sempre ocultada.
         hideSplashScreen();
     }
 }
 
 function handleLogoutState() {
-    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null, activeCategory: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }}, isDriveEnabled: false };
+    state = { user: null, prayerTargets: [], archivedTargets: [], resolvedTargets: [], perseveranceData: { consecutiveDays: 0, recordDays: 0, lastInteractionDate: null }, weeklyPrayerData: { weekId: null, interactions: {} }, dailyTargets: { pending: [], completed: [], targetIds: [] }, pagination: { mainPanel: { currentPage: 1, targetsPerPage: 10 }, archivedPanel: { currentPage: 1, targetsPerPage: 10 }, resolvedPanel: { currentPage: 1, targetsPerPage: 10 }}, filters: { mainPanel: { searchTerm: '', showDeadlineOnly: false, showExpiredOnly: false, startDate: null, endDate: null, activeCategory: null }, archivedPanel: { searchTerm: '', startDate: null, endDate: null }, resolvedPanel: { searchTerm: '' }, dailyPanel: { searchTerm: '', activeCategory: null } }, isDriveEnabled: false };
     UI.renderTargets([], 0, 1, 10); UI.renderArchivedTargets([], 0, 1, 10); UI.renderResolvedTargets([], 0, 1, 10); UI.renderDailyTargets([], []); UI.resetPerseveranceUI(); UI.resetWeeklyChart(); UI.showPanel('authSection');
-    // **MELHORIA APLICADA:** Garante que a UI de conexão seja redefinida no logout
     UI.updateDriveStatusUI('disconnected');
     updateFloatingNavVisibility(state);
 }
@@ -515,7 +551,6 @@ async function handleAddNewTarget(event) {
 
         if (newTargetInState) {
             console.log(`[App] Disparando sincronização IMEDIATA para o novo alvo ID: ${newTargetInState.id}`);
-            // A sincronização de um alvo novo é imediata, não debounced.
             await syncTarget(newTargetInState.id);
         } else {
             console.error("[App] Não foi possível encontrar o alvo recém-criado no estado para iniciar a sincronização.");
@@ -543,7 +578,8 @@ async function handlePray(targetId) {
     } else {
         state.dailyTargets.completed.push(targetToPray);
     }
-    UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+    // Renderiza com filtros aplicados para não quebrar a view atual
+    applyDailyFiltersAndRender();
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     
     showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
@@ -581,7 +617,7 @@ async function handlePray(targetId) {
                  state.dailyTargets.pending.unshift(revertedTarget);
             }
         }
-        UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+        applyDailyFiltersAndRender();
         UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
     }
 }
@@ -591,7 +627,6 @@ async function handleResolveTarget(target) {
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
     
-    // UI Update Otimista
     const [targetToResolve] = state.prayerTargets.splice(index, 1);
     targetToResolve.resolved = true;
     targetToResolve.resolutionDate = new Date();
@@ -602,10 +637,9 @@ async function handleResolveTarget(target) {
     try {
         await Service.markAsResolved(state.user.uid, targetToResolve);
         showToast("Alvo marcado como respondido!", "success");
-        requestSync(target.id); // Sincronização com debounce
+        requestSync(target.id);
     } catch (error) {
         showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
-        // Reversão
         state.resolvedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToResolve);
         applyFiltersAndRender('mainPanel');
@@ -618,7 +652,6 @@ async function handleArchiveTarget(target) {
     const index = state.prayerTargets.findIndex(t => t.id === target.id);
     if (index === -1) return;
 
-    // UI Update Otimista
     const [targetToArchive] = state.prayerTargets.splice(index, 1);
     targetToArchive.archived = true;
     targetToArchive.archivedDate = new Date();
@@ -629,10 +662,9 @@ async function handleArchiveTarget(target) {
     try {
         await Service.archiveTarget(state.user.uid, targetToArchive);
         showToast("Alvo arquivado.", "info");
-        requestSync(target.id); // Sincronização com debounce
+        requestSync(target.id);
     } catch (error) {
         showToast("Erro ao salvar a alteração. A ação será desfeita.", "error");
-        // Reversão
         state.archivedTargets.shift();
         state.prayerTargets.splice(index, 0, targetToArchive);
         applyFiltersAndRender('mainPanel');
@@ -651,7 +683,6 @@ async function handleDeleteArchivedTarget(targetId) {
     try {
         await Service.deleteArchivedTarget(state.user.uid, targetId);
         showToast("Alvo excluído permanentemente.", "info");
-        // Não há necessidade de sincronizar com o Drive, já que o doc pode ser deixado órfão ou deletado em outra rotina
     } catch (error) {
         showToast("Erro ao excluir. O item será restaurado.", "error");
         state.archivedTargets.splice(index, 0, deletedTarget);
@@ -670,15 +701,20 @@ async function handleAddObservation(target, isArchived, panelId) {
     target.observations.push(newObservation);
     UI.toggleAddObservationForm(target.id);
     applyFiltersAndRender(panelId);
+    // Se o alvo também estiver no painel diário, atualiza lá também
+    if(state.dailyTargets.pending.find(t => t.id === target.id) || state.dailyTargets.completed.find(t => t.id === target.id)) {
+        applyDailyFiltersAndRender();
+    }
 
     try {
         await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
         showToast("Observação adicionada.", "success");
-        requestSync(target.id); // Sincronização com debounce
+        requestSync(target.id); 
     } catch(error) {
         showToast("Falha ao salvar. A alteração será desfeita.", "error");
         target.observations.pop();
         applyFiltersAndRender(panelId);
+        applyDailyFiltersAndRender();
     }
 }
 
@@ -689,15 +725,17 @@ async function handleSaveCategory(target, isArchived, panelId) {
     target.category = newCategory;
     UI.toggleEditCategoryForm(target.id);
     applyFiltersAndRender(panelId);
+    applyDailyFiltersAndRender(); // Atualiza painel diário se necessário
 
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
         showToast("Categoria atualizada.", "success");
-        requestSync(target.id); // Sincronização com debounce
+        requestSync(target.id);
     } catch(error) {
         showToast("Falha ao salvar. A alteração foi desfeita.", "error");
         target.category = oldCategory;
         applyFiltersAndRender(panelId);
+        applyDailyFiltersAndRender();
     }
 }
 
@@ -712,7 +750,7 @@ async function handleTogglePriority(target) {
     try {
         await Service.updateTargetField(state.user.uid, target.id, false, { isPriority: newStatus });
         showToast(newStatus ? "Alvo marcado como prioritário." : "Alvo removido dos prioritários.", "info");
-        requestSync(target.id); // Sincronização com debounce
+        requestSync(target.id);
     } catch (error) {
         showToast("Erro ao salvar. A alteração foi desfeita.", "error");
         target.isPriority = oldStatus;
@@ -733,20 +771,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 await loadDataForUser(user);
             } catch (error) {
                 console.error("[App] Erro crítico durante o carregamento dos dados. Revertendo para o estado de logout.", error);
-                // O `finally` em `loadDataForUser` já vai esconder a splash screen, mas
-                // o `handleLogoutState` garante que a UI fique limpa.
                 handleLogoutState();
             }
         } else {
             UI.updateAuthUI(null);
             handleLogoutState();
-            // Garante que a splash screen seja escondida se o usuário não estiver logado.
             hideSplashScreen();
         }
     });
 
     // --- Listeners de Ações Gerais ---
-    // **MELHORIA APLICADA:** Listeners para ambos os botões de conexão
     document.getElementById('btnConnectDrive').addEventListener('click', handleGoogleSignIn);
     document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
     document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
@@ -758,12 +792,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('viewResolvedButton').addEventListener('click', () => UI.showPanel('resolvedPanel'));
     document.getElementById('forceDriveSyncButton').addEventListener('click', handleForceSync);
     
-    // --- Listeners da Seção Diária, Relatórios, Modais e Filtros ---
     document.getElementById('refreshDaily').addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
     document.getElementById('copyDaily').addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily').addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     
-    // MODIFICAÇÃO (PRIORIDADE 1): Lógica para exibir sugestões e filtros de categoria ao abrir o modal
+    // NOVO: Listener para busca no painel diário
+    document.getElementById('searchDaily').addEventListener('input', e => {
+        state.filters.dailyPanel.searchTerm = e.target.value;
+        applyDailyFiltersAndRender();
+    });
+
     document.getElementById('addManualTargetButton').addEventListener('click', () => {
         const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
         const availableTargets = state.prayerTargets.filter(target => !dailyTargetIds.has(target.id));
@@ -772,10 +810,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .sort((a, b) => b.date.getTime() - a.date.getTime())
             .slice(0, 3);
         
-        // Extrai as categorias únicas dos alvos disponíveis para criar os filtros
         const categories = [...new Set(availableTargets.map(t => t.category).filter(Boolean))];
         
-        // Passa as categorias e as sugestões para a função de renderização da UI
         UI.renderManualSearchResults([], '', suggestedTargets, categories);
         UI.toggleManualTargetModal(true);
     });
@@ -830,7 +866,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id).addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
     document.getElementById('closeManualTargetModal').addEventListener('click', () => UI.toggleManualTargetModal(false));
     
-    // MODIFICAÇÃO (PRIORIDADE 1): Lógica de debounce para a busca manual com filtro de categoria
     let manualSearchDebounceTimer;
     document.getElementById('manualTargetSearchInput').addEventListener('input', e => {
         clearTimeout(manualSearchDebounceTimer);
@@ -847,7 +882,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     .slice(0, 3);
                 UI.renderManualSearchResults([], searchTerm, suggestedTargets, categories);
             } else {
-                // LÓGICA DE FILTRO CORRIGIDA E AMPLIADA
                 const filtered = availableTargets.filter(t => 
                     t.title.toLowerCase().includes(searchTerm) || 
                     (t.details && t.details.toLowerCase().includes(searchTerm)) ||
@@ -855,16 +889,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
                 UI.renderManualSearchResults(filtered, searchTerm, [], categories);
             }
-        }, 300); // Atraso de 300ms
+        }, 300); 
     });
 
-    // --- Listeners para o Modal de Changelog ---
     document.getElementById('versionInfo').addEventListener('click', () => {
         UI.showChangelogModal(APP_VERSION, CHANGELOG);
     });
     document.getElementById('closeChangelogModal').addEventListener('click', () => UI.toggleChangelogModal(false));
 
-    // Ativa a funcionalidade de auto-crescimento para todos os textareas da aplicação.
     setupAutoGrowTextarea('textarea');
 
     // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
@@ -886,12 +918,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // MODIFICAÇÃO (PRIORIDADE 1): Handler para os filtros de categoria
         if (action === 'filter-manual-by-category') {
             const category = e.target.dataset.category;
             const searchInput = document.getElementById('manualTargetSearchInput');
             searchInput.value = category;
-            // Dispara o evento de input para reusar a lógica de busca existente
             searchInput.dispatchEvent(new Event('input', { bubbles: true }));
             return;
         }
@@ -913,6 +943,23 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFiltersAndRender('mainPanel');
             return;
         }
+
+        // NOVO: Handler para filtros de categoria do painel diário
+        if (action === 'filter-daily-by-category') {
+            const category = e.target.dataset.category;
+            const currentFilter = state.filters.dailyPanel.activeCategory;
+
+            if (category === currentFilter) {
+                state.filters.dailyPanel.activeCategory = null;
+                e.target.classList.remove('active');
+            } else {
+                state.filters.dailyPanel.activeCategory = category;
+                document.querySelectorAll('#dailyCategoryFilters .category-filter-pill').forEach(pill => pill.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+            applyDailyFiltersAndRender();
+            return;
+        }
         
         if (!action || !id) return;
 
@@ -923,7 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'pray':
             case 'pray-priority':
                 await handlePray(id);
-                // VERIFICAÇÃO PÓS-AÇÃO: Recolhe o painel se a oração completou a lista
                 checkAndCollapsePriorityPanel();
                 break;
             case 'resolve':
@@ -984,6 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldTitle = target.title;
                 target.title = newTitle;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { title: newTitle });
                     showToast("Título atualizado!", "success");
@@ -991,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.title = oldTitle;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao atualizar o título.", "error");
                 }
                 break;
@@ -1004,6 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldDetails = target.details;
                 target.details = newDetails;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateTargetField(state.user.uid, id, isArchived, { details: newDetails });
                     showToast("Detalhes atualizados!", "success");
@@ -1011,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.details = oldDetails;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao atualizar os detalhes.", "error");
                 }
                 break;
@@ -1024,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldText = target.observations[obsIndex].text;
                 target.observations[obsIndex].text = newText;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { text: newText });
                     showToast("Observação atualizada!", "success");
@@ -1031,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.observations[obsIndex].text = oldText;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao atualizar a observação.", "error");
                 }
                 break;
@@ -1048,6 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldText = obsToUpdate[fieldToUpdate];
                 obsToUpdate[fieldToUpdate] = newText;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, obsIndex, { [fieldToUpdate]: newText });
                     showToast("Sub-alvo atualizado!", "success");
@@ -1055,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     obsToUpdate[fieldToUpdate] = oldText;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao atualizar sub-alvo.", "error");
                 }
                 break;
@@ -1069,6 +1123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const oldText = subObsToUpdate.text;
                 subObsToUpdate.text = newText;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateSubObservationInTarget(state.user.uid, id, isArchived, obsIndex, subObsIndex, { text: newText });
                     showToast("Observação do sub-alvo atualizada!", "success");
@@ -1076,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     subObsToUpdate.text = oldText;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao atualizar observação.", "error");
                 }
                 break;
@@ -1096,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 target.deadlineDate = newDeadlineDate;
                 target.hasDeadline = true;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: true, deadlineDate: newDeadlineDate });
                     showToast("Prazo atualizado!", "success");
@@ -1104,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao salvar prazo.", "error");
                 }
                 break;
@@ -1116,6 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 target.deadlineDate = null;
                 target.hasDeadline = false;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateTargetField(state.user.uid, target.id, isArchived, { hasDeadline: false, deadlineDate: null });
                     showToast("Prazo removido.", "info");
@@ -1124,6 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     target.deadlineDate = oldDeadlineDate;
                     target.hasDeadline = oldHasDeadline;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao remover prazo.", "error");
                 }
                 break;
@@ -1144,30 +1204,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             case 'select-manual-target':
                 try {
-                    // Passo 1: Encontra o objeto completo do alvo que foi selecionado.
                     const targetToAdd = state.prayerTargets.find(t => t.id === id);
                     if (!targetToAdd) {
                         throw new Error("Alvo selecionado não foi encontrado nos dados locais.");
                     }
 
-                    // Passo 2: Fecha o modal imediatamente para uma melhor experiência.
                     UI.toggleManualTargetModal(false);
                     showToast("Adicionando alvo à lista do dia...", "info");
 
-                    // Passo 3: Atualiza o banco de dados em segundo plano.
                     await Service.addManualTargetToDailyList(state.user.uid, id);
-
-                    // Passo 4: ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL (A MUDANÇA PRINCIPAL)
-                    // Em vez de recarregar tudo, manipulamos o estado local para performance e controle.
                     
-                    // Adiciona o ID à lista de IDs do dia para consistência.
                     state.dailyTargets.targetIds.push(id); 
-                    
-                    // Usa 'unshift' para adicionar o alvo NO INÍCIO do array de pendentes.
                     state.dailyTargets.pending.unshift(targetToAdd);
-
-                    // Passo 5: Renderiza novamente apenas a lista de alvos do dia com o estado atualizado.
-                    UI.renderDailyTargets(state.dailyTargets.pending, state.dailyTargets.completed);
+                    
+                    // Atualiza filtros para incluir nova categoria se necessário e renderiza
+                    const allDailyTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed];
+                    const dailyCategories = [...new Set(allDailyTargets.map(t => t.category).filter(Boolean))];
+                    UI.renderCategoryFilters('dailyCategoryFilters', dailyCategories);
+                    applyDailyFiltersAndRender();
                     
                     showToast(`"${targetToAdd.title}" foi adicionado ao topo da lista!`, "success");
 
@@ -1186,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const originalObservation = { ...target.observations[parseInt(obsIndex)] };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservationData);
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservationData);
                     showToast("Observação promovida a sub-alvo!", "success");
@@ -1193,6 +1248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalObservation;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Falha ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -1236,6 +1292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 delete updatedObservation.subTargetTitle; delete updatedObservation.subTargetStatus; delete updatedObservation.interactionCount; delete updatedObservation.subObservations;
                 target.observations[parseInt(obsIndex)] = updatedObservation;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo revertido para observação.", "info");
@@ -1243,6 +1300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Erro ao reverter. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -1254,6 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const updatedObservation = { subTargetStatus: 'resolved' };
                 Object.assign(target.observations[parseInt(obsIndex)], updatedObservation);
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.updateObservationInTarget(state.user.uid, id, isArchived, parseInt(obsIndex), updatedObservation);
                     showToast("Sub-alvo marcado como respondido!", "success");
@@ -1261,6 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     target.observations[parseInt(obsIndex)] = originalSubTarget;
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
@@ -1274,6 +1334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!Array.isArray(subTarget.subObservations)) subTarget.subObservations = [];
                 subTarget.subObservations.push(newSubObservation);
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
                 try {
                     await Service.addSubObservationToTarget(state.user.uid, id, isArchived, parseInt(obsIndex), newSubObservation);
                     showToast("Observação adicionada ao sub-alvo.", "success");
@@ -1281,6 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     subTarget.subObservations.pop();
                     applyFiltersAndRender(panelId);
+                    applyDailyFiltersAndRender();
                     showToast("Erro ao salvar. A alteração foi desfeita.", "error");
                 }
                 break;
