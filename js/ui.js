@@ -54,19 +54,6 @@ export function showToast(message, type = 'success') {
 }
 
 /**
- * Oculta a splash screen com uma animação de fade-out e a remove do DOM.
- */
-export function hideSplashScreen() {
-    const splash = document.getElementById('splashScreen');
-    if (splash) {
-        splash.classList.add('hidden');
-        // Remove o elemento do DOM após a transição para limpar o HTML
-        splash.addEventListener('transitionend', () => splash.remove(), { once: true });
-    }
-}
-
-
-/**
  * Verifica se uma data de prazo já expirou.
  * @param {Date} date - O objeto Date do prazo.
  * @returns {boolean} - True se a data já passou.
