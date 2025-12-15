@@ -208,6 +208,17 @@
                 <button id="addManualTargetButton" class="btn daily-action-btn">Adicionar Alvo Manualmente</button>
             </div>
         </h2>
+
+        <!-- NOVO BLOCO DE FILTROS DIÁRIOS (IMPLEMENTAÇÃO DA PRIORIDADE 1) -->
+        <hr class="title-separator">
+        <input type="text" id="searchDaily" placeholder="Pesquisar nos alvos de hoje..." class="search-input">
+        
+        <div id="dailyCategoryFilters" class="manual-category-filters" style="justify-content: center; margin-bottom: 15px;">
+            <!-- Os filtros de categoria do dia serão inseridos aqui pelo JavaScript -->
+        </div>
+        <hr class="search-separator">
+        <!-- FIM DO NOVO BLOCO -->
+
         <div id="dailyVerses" class="daily-verses"></div>
         <div id="dailyTargets">
             <p>Carregando alvos do dia...</p>
@@ -228,7 +239,7 @@
     <input type="text" id="searchMain" placeholder="Pesquisar por título, detalhe, categoria ou observação..." class="search-input">
     <hr class="search-separator">
 
-    <!-- NOVO BLOCO DE FILTROS DE CATEGORIA -->
+    <!-- BLOCO DE FILTROS DE CATEGORIA -->
     <div id="mainCategoryFilters" class="manual-category-filters" style="justify-content: center; margin-bottom: 15px;">
         <!-- Os filtros de categoria serão inseridos aqui pelo JavaScript -->
     </div>
