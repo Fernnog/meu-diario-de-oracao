@@ -101,6 +101,7 @@
 }
 
 /* ESTILOS PARA O BADGE DE CONCLUSÃO */
+/* ALTERAÇÃO REALIZADA: Mudança para display: none para corrigir centralização do título */
 .priority-title-badge {
     background-color: #2e7d32; /* Verde escuro, para combinar com a mensagem */
     color: #fff;
@@ -108,18 +109,19 @@
     border-radius: 15px;
     font-size: 0.8em;
     font-weight: bold;
-    opacity: 0; /* Começa invisível */
-    transform: scale(0.8);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-    visibility: hidden;
+    
+    /* Removemos o elemento do fluxo para não ocupar espaço quando invisível */
+    display: none;
+    
     position: relative; /* Necessário para o efeito de brilho */
     overflow: hidden;   /* Garante que o brilho não vaze */
 }
 
 /* REGRA DE VISIBILIDADE: MOSTRA O BADGE QUANDO O PAINEL ESTÁ COMPLETO */
+/* ALTERAÇÃO REALIZADA: Traz o elemento de volta ao fluxo com inline-block */
 .priority-section.completed .priority-title-badge {
-    opacity: 1;
-    transform: scale(1);
+    display: inline-block;
+    animation: fadeInItem 0.5s ease-out forwards;
     visibility: visible;
 }
 
