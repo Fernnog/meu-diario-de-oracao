@@ -18,9 +18,14 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.1.1';
 
 export const CHANGELOG = {
+    '1.1.1': [
+        '✨ Busca Inteligente no Painel Diário: Encontre alvos do dia por nome ou detalhe.',
+        '✨ Filtros de Categoria no Painel Diário: Visualize apenas o que importa no momento.',
+        '🎨 Correção visual: Título do painel de Prioridades agora perfeitamente centralizado.'
+    ],
  '1.1.0': [
     'FUNCIONALIDADE: Adicionados filtros de categoria diretamente na tela "Ver Todos os Alvos". Agora você pode encontrar alvos específicos de forma muito mais rápida, clicando nas categorias desejadas para filtrar a lista instantaneamente.',
     'CORREÇÃO (Layout): O título do painel "Alvos Prioritários" agora permanece perfeitamente centralizado, com ou sem o badge de "Concluído", garantindo uma interface mais consistente e agradável visualmente.',
