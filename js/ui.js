@@ -402,8 +402,18 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
     const container = document.getElementById("dailyTargets");
     container.innerHTML = '';
 
+    // LÓGICA DE MENSAGEM VAZIA INTELIGENTE (Prioridade 2)
+    const searchInput = document.getElementById('searchDaily');
+    const hasSearchTerm = searchInput && searchInput.value.trim().length > 0;
+    const hasActiveCategory = document.querySelector('#dailyCategoryFilters .category-filter-pill.active');
+    const isFiltering = hasSearchTerm || hasActiveCategory;
+
     if (pending.length === 0 && completed.length === 0) {
-        container.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
+        if (isFiltering) {
+             container.innerHTML = "<p>Nenhum alvo encontrado com os filtros atuais.</p>";
+        } else {
+             container.innerHTML = "<p>Nenhum alvo de oração selecionado para hoje.</p>";
+        }
         return;
     }
 
@@ -423,7 +433,10 @@ export function renderDailyTargets(pending, completed, dailyTargetsData) {
         });
     } else if (completed.length > 0) {
         container.innerHTML = "<p>Você já orou por todos os alvos de hoje!</p>";
-        displayCompletionPopup();
+        // Exibir popup apenas se não estivermos filtrando, ou se a filtragem removeu todos os pendentes
+        if (!isFiltering) {
+             displayCompletionPopup();
+        }
     }
 
     if (completed.length > 0) {
@@ -845,10 +858,14 @@ export function renderCategoryFilters(containerId, categories = []) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    // Determina a ação com base no container ID
+    // Se for o container do painel diário, usa a ação de filtro diário
+    const actionName = containerId === 'dailyCategoryFilters' ? 'filter-daily-by-category' : 'filter-main-by-category';
+
     container.innerHTML = ''; // Limpa filtros anteriores
     if (categories.length > 0) {
         container.innerHTML = categories.sort().map(cat => 
-            `<span class="category-filter-pill" data-action="filter-main-by-category" data-category="${cat}">${cat}</span>`
+            `<span class="category-filter-pill" data-action="${actionName}" data-category="${cat}">${cat}</span>`
         ).join('');
     }
 }
