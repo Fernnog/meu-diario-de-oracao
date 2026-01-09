@@ -41,7 +41,14 @@
     <!-- Seção Principal do Relatório (Existente) -->
     <div class="report-container" id="mainReportContainer" style="display: none;">
         <h2>Detalhes dos Alvos</h2> <!-- Título ajustado -->
-        <input type="text" id="searchReport" placeholder="Pesquisar por título, detalhe ou categoria..." class="search-input">
+        
+        <!-- INÍCIO DA ALTERAÇÃO: Wrapper de busca com botão limpar -->
+        <div class="search-input-wrapper">
+            <input type="text" id="searchReport" placeholder="Pesquisar por título, detalhe ou categoria..." class="search-input">
+            <button type="button" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">&times;</button>
+        </div>
+        <!-- FIM DA ALTERAÇÃO -->
+
         <div class="filter-options">
             <label><input type="checkbox" id="filterAtivo" checked>Ativo</label>
             <label><input type="checkbox" id="filterArquivado">Arquivado</label>
