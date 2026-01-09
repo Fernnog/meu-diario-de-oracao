@@ -1143,3 +1143,51 @@ export function showChangelogModal(currentVersion, changelogObject = {}) {
         toggleChangelogModal(true);
     }
 }
+
+/**
+ * Inicializa a funcionalidade de limpar busca para todos os wrappers de pesquisa.
+ * Inclui também o suporte à tecla ESC para limpar o campo.
+ */
+export function setupClearableSearchInputs() {
+    const wrappers = document.querySelectorAll('.search-input-wrapper');
+
+    wrappers.forEach(wrapper => {
+        const input = wrapper.querySelector('input');
+        const clearBtn = wrapper.querySelector('.clear-search-btn');
+
+        if (!input || !clearBtn) return;
+
+        // Função para alternar visibilidade do botão
+        const toggleBtn = () => {
+            clearBtn.style.display = input.value.trim().length > 0 ? 'flex' : 'none';
+        };
+
+        // Função para limpar o campo (usada por clique e ESC)
+        const clearInput = () => {
+            input.value = ''; // Limpa visualmente
+            toggleBtn(); // Esconde o botão
+            input.focus(); // Devolve o foco ao input para nova digitação
+            
+            // Dispara o evento 'input' programaticamente para que o script.js
+            // perceba a mudança e atualize a lista de alvos (filtragem)
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+
+        // Evento ao digitar
+        input.addEventListener('input', toggleBtn);
+
+        // Evento ao clicar no X
+        clearBtn.addEventListener('click', clearInput);
+
+        // Evento ao pressionar tecla (para o ESC)
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault(); // Previne comportamentos padrão do browser se necessário
+                clearInput();
+            }
+        });
+
+        // Verificação inicial (caso o navegador preencha algo automaticamente)
+        toggleBtn();
+    });
+}
