@@ -211,7 +211,12 @@
 
         <!-- NOVO BLOCO DE FILTROS DIÁRIOS (IMPLEMENTAÇÃO DA PRIORIDADE 1) -->
         <hr class="title-separator">
-        <input type="text" id="searchDaily" placeholder="Pesquisar nos alvos de hoje..." class="search-input">
+        
+        <!-- ALTERAÇÃO: Wrapper para o input e botão de limpar -->
+        <div class="search-input-wrapper">
+            <input type="text" id="searchDaily" placeholder="Pesquisar nos alvos de hoje..." class="search-input">
+            <button type="button" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">&times;</button>
+        </div>
         
         <div id="dailyCategoryFilters" class="manual-category-filters" style="justify-content: center; margin-bottom: 15px;">
             <!-- Os filtros de categoria do dia serão inseridos aqui pelo JavaScript -->
@@ -236,7 +241,13 @@
    <div class="targets-section" id="mainPanel" style="display: none;">
     <h2>Alvos de Oração Ativos</h2>
     <hr class="title-separator">
-    <input type="text" id="searchMain" placeholder="Pesquisar por título, detalhe, categoria ou observação..." class="search-input">
+    
+    <!-- ALTERAÇÃO: Wrapper para o input e botão de limpar -->
+    <div class="search-input-wrapper">
+        <input type="text" id="searchMain" placeholder="Pesquisar por título, detalhe, categoria ou observação..." class="search-input">
+        <button type="button" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">&times;</button>
+    </div>
+
     <hr class="search-separator">
 
     <!-- BLOCO DE FILTROS DE CATEGORIA -->
@@ -264,7 +275,13 @@
 <div class="targets-section" id="archivedPanel" style="display: none;">
     <h2>Alvos Arquivados</h2>
     <hr class="title-separator">
-    <input type="text" id="searchArchived" placeholder="Pesquisar nos arquivados (título, detalhe, categoria...)" class="search-input">
+    
+    <!-- ALTERAÇÃO: Wrapper para o input e botão de limpar -->
+    <div class="search-input-wrapper">
+        <input type="text" id="searchArchived" placeholder="Pesquisar nos arquivados (título, detalhe, categoria...)" class="search-input">
+        <button type="button" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">&times;</button>
+    </div>
+
     <hr class="search-separator">
     <div id="archivedList">
          <p>Carregando arquivados...</p>
@@ -275,7 +292,13 @@
 <div class="targets-section" id="resolvedPanel" style="display: none;">
     <h2>Alvos Respondidos</h2>
     <hr class="title-separator">
-    <input type="text" id="searchResolved" placeholder="Pesquisar nos respondidos (título, detalhe, categoria...)" class="search-input">
+    
+    <!-- ALTERAÇÃO: Wrapper para o input e botão de limpar -->
+    <div class="search-input-wrapper">
+        <input type="text" id="searchResolved" placeholder="Pesquisar nos respondidos (título, detalhe, categoria...)" class="search-input">
+        <button type="button" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">&times;</button>
+    </div>
+
     <hr class="search-separator">
     <div id="resolvedList">
          <p>Carregando respondidos...</p>
