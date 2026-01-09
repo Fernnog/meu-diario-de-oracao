@@ -1746,3 +1746,48 @@
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+/* ==== INÍCIO: NOVOS ESTILOS PARA CAMPO DE BUSCA COM LIMPEZA RÁPIDA ==== */
+
+/* Wrapper para posicionamento relativo */
+.search-input-wrapper {
+    position: relative;
+    width: 80%;
+    max-width: 300px; /* Ajuste conforme o max-width original dos seus inputs */
+    margin: 10px auto 15px auto;
+}
+
+/* Ajuste do input para ocupar 100% do wrapper e dar espaço ao botão */
+.search-input-wrapper .search-input {
+    width: 100%; 
+    margin: 0; /* A margem agora é controlada pelo wrapper */
+    padding-right: 35px; /* Espaço para o botão X não cobrir o texto */
+}
+
+/* Estilo do botão de limpar (X) */
+.clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.clear-search-btn:hover {
+    color: #333;
+    background-color: #eee;
+}
+/* ==== FIM: NOVOS ESTILOS PARA CAMPO DE BUSCA COM LIMPEZA RÁPIDA ==== */
