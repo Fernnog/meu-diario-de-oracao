@@ -18,45 +18,49 @@ export const MILESTONES = [
 
 // --- GERENCIAMENTO DE VERSÃO E CHANGELOG ---
 
-export const APP_VERSION = '1.1.1';
+export const APP_VERSION = '1.1.2';
 
 export const CHANGELOG = {
+    '1.1.2': [
+        '✨ Melhoria de UX (Busca Rápida): Adicionado um botão "X" interativo dentro de todos os campos de pesquisa. Agora é possível limpar o termo digitado e restaurar a lista completa com um único clique, eliminando a necessidade de apagar o texto manualmente.',
+        '🎨 Interface: Refinamento visual nos campos de busca para acomodar o novo botão de limpeza, garantindo que textos longos não fiquem sobrepostos.'
+    ],
     '1.1.1': [
         '✨ Busca Inteligente no Painel Diário: Encontre alvos do dia por nome ou detalhe.',
         '✨ Filtros de Categoria no Painel Diário: Visualize apenas o que importa no momento.',
         '🎨 Correção visual: Título do painel de Prioridades agora perfeitamente centralizado.'
     ],
- '1.1.0': [
-    'FUNCIONALIDADE: Adicionados filtros de categoria diretamente na tela "Ver Todos os Alvos". Agora você pode encontrar alvos específicos de forma muito mais rápida, clicando nas categorias desejadas para filtrar a lista instantaneamente.',
-    'CORREÇÃO (Layout): O título do painel "Alvos Prioritários" agora permanece perfeitamente centralizado, com ou sem o badge de "Concluído", garantindo uma interface mais consistente e agradável visualmente.',
-    'MELHORIA (UI/UX): A legibilidade das etiquetas de categoria na janela "Adicionar Alvo Manualmente" foi aprimorada. A cor da fonte agora é branca, proporcionando um contraste ideal e facilitando a leitura.'
-  ],
- '1.0.9': [
-    'FUNCIONALIDADE: O painel "Alvos Prioritários" agora se torna inteligente! Ao concluir a intercessão por todos os alvos prioritários do dia, ele se recolhe automaticamente, exibindo uma mensagem de parabéns e otimizando a interface.',
-    'MELHORIA (UX): Para celebrar sua disciplina, um novo badge "✓ Concluído" com um sutil efeito de brilho agora aparece no título do painel de prioridades concluído, tornando a experiência mais recompensadora.'
-  ],
- '1.0.8': [
-    'MELHORIA (UX): A visualização de observações foi otimizada para uma interface mais limpa. Agora, são exibidas por padrão apenas as 3 mais recentes e os sub-alvos, focando no conteúdo mais relevante.',
-    'FUNCIONALIDADE: Adicionado um sistema "Ver Mais/Ver Menos" nas observações. Um novo botão permite expandir e recolher o histórico de anotações mais antigas, melhorando a navegação em alvos com muitos registros.'
-  ],
- '1.0.7': [
-    'ARQUITETURA: A estrutura dos arquivos de estilo (CSS) foi completamente reorganizada. O código foi dividido em `styles/base.css` (estilos globais) e `styles/components.css` (elementos específicos), melhorando a organização, performance e facilitando futuras manutenções.',
-    'CORREÇÃO (Layout): Corrigido um desalinhamento visual na página principal, garantindo que o painel de "Alvos Prioritários" tenha a mesma largura dos demais painéis, como o de "Alvos do Dia".'
-  ],
- '1.0.6': [
-    'MELHORIA (UX): Os campos de texto longos (como "Observações") agora crescem automaticamente para se ajustar ao conteúdo, facilitando a digitação e a visualização de textos extensos.',
-    'CORREÇÃO (Mobile): A barra de rolagem nos campos de texto foi otimizada para dispositivos móveis, tornando-se mais espessa e fácil de usar com o toque, resolvendo a dificuldade de rolagem em telas pequenas.'
-  ],
- '1.0.5': [
-    'CORREÇÃO (UX): A janela para "Adicionar Alvo Manualmente" foi aprimorada para se adaptar melhor a telas de computador, eliminando a barra de rolagem interna desnecessária e melhorando a visualização da lista de alvos.',
-    'PERFORMANCE: A busca de alvos na janela de adição manual está mais inteligente e rápida. A pesquisa agora aguarda uma breve pausa na digitação, melhorando a fluidez e a performance geral da funcionalidade.'
-  ],
- '1.0.4': [
-    'CORREÇÃO: Resolvido um problema crítico que fazia a tela de carregamento (splash screen) travar indefinidamente em dispositivos móveis, impedindo o acesso ao aplicativo.',
-    'ROBUSTEZ: O processo de inicialização do aplicativo foi aprimorado para lidar com falhas de carregamento. Agora, em caso de erro, a tela de carregamento será sempre finalizada, permitindo que o usuário interaja com a tela de login.'
-  ],
- '1.0.3': [
-    'UX: Alvos adicionados manualmente à lista do dia agora aparecem em primeiro lugar, permitindo um acesso mais rápido e focado.',
-    'ARQUITETURA: O processo de adicionar um alvo manual à lista diária foi otimizado, tornando a ação instantânea e evitando recarregar todos os dados do usuário.'
-  ]
+    '1.1.0': [
+        'FUNCIONALIDADE: Adicionados filtros de categoria diretamente na tela "Ver Todos os Alvos". Agora você pode encontrar alvos específicos de forma muito mais rápida, clicando nas categorias desejadas para filtrar a lista instantaneamente.',
+        'CORREÇÃO (Layout): O título do painel "Alvos Prioritários" agora permanece perfeitamente centralizado, com ou sem o badge de "Concluído", garantindo uma interface mais consistente e agradável visualmente.',
+        'MELHORIA (UI/UX): A legibilidade das etiquetas de categoria na janela "Adicionar Alvo Manualmente" foi aprimorada. A cor da fonte agora é branca, proporcionando um contraste ideal e facilitando a leitura.'
+    ],
+    '1.0.9': [
+        'FUNCIONALIDADE: O painel "Alvos Prioritários" agora se torna inteligente! Ao concluir a intercessão por todos os alvos prioritários do dia, ele se recolhe automaticamente, exibindo uma mensagem de parabéns e otimizando a interface.',
+        'MELHORIA (UX): Para celebrar sua disciplina, um novo badge "✓ Concluído" com um sutil efeito de brilho agora aparece no título do painel de prioridades concluído, tornando a experiência mais recompensadora.'
+    ],
+    '1.0.8': [
+        'MELHORIA (UX): A visualização de observações foi otimizada para uma interface mais limpa. Agora, são exibidas por padrão apenas as 3 mais recentes e os sub-alvos, focando no conteúdo mais relevante.',
+        'FUNCIONALIDADE: Adicionado um sistema "Ver Mais/Ver Menos" nas observações. Um novo botão permite expandir e recolher o histórico de anotações mais antigas, melhorando a navegação em alvos com muitos registros.'
+    ],
+    '1.0.7': [
+        'ARQUITETURA: A estrutura dos arquivos de estilo (CSS) foi completamente reorganizada. O código foi dividido em `styles/base.css` (estilos globais) e `styles/components.css` (elementos específicos), melhorando a organização, performance e facilitando futuras manutenções.',
+        'CORREÇÃO (Layout): Corrigido um desalinhamento visual na página principal, garantindo que o painel de "Alvos Prioritários" tenha a mesma largura dos demais painéis, como o de "Alvos do Dia".'
+    ],
+    '1.0.6': [
+        'MELHORIA (UX): Os campos de texto longos (como "Observações") agora crescem automaticamente para se ajustar ao conteúdo, facilitando a digitação e a visualização de textos extensos.',
+        'CORREÇÃO (Mobile): A barra de rolagem nos campos de texto foi otimizada para dispositivos móveis, tornando-se mais espessa e fácil de usar com o toque, resolvendo a dificuldade de rolagem em telas pequenas.'
+    ],
+    '1.0.5': [
+        'CORREÇÃO (UX): A janela para "Adicionar Alvo Manualmente" foi aprimorada para se adaptar melhor a telas de computador, eliminando a barra de rolagem interna desnecessária e melhorando a visualização da lista de alvos.',
+        'PERFORMANCE: A busca de alvos na janela de adição manual está mais inteligente e rápida. A pesquisa agora aguarda uma breve pausa na digitação, melhorando a fluidez e a performance geral da funcionalidade.'
+    ],
+    '1.0.4': [
+        'CORREÇÃO: Resolvido um problema crítico que fazia a tela de carregamento (splash screen) travar indefinidamente em dispositivos móveis, impedindo o acesso ao aplicativo.',
+        'ROBUSTEZ: O processo de inicialização do aplicativo foi aprimorado para lidar com falhas de carregamento. Agora, em caso de erro, a tela de carregamento será sempre finalizada, permitindo que o usuário interaja com a tela de login.'
+    ],
+    '1.0.3': [
+        'UX: Alvos adicionados manualmente à lista do dia agora aparecem em primeiro lugar, permitindo um acesso mais rápido e focado.',
+        'ARQUITETURA: O processo de adicionar um alvo manual à lista diária foi otimizado, tornando a ação instantânea e evitando recarregar todos os dados do usuário.'
+    ]
 };
