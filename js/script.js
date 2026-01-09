@@ -764,6 +764,9 @@ async function handleTogglePriority(target) {
 // === PONTO DE ENTRADA DA APLICAÇÃO E EVENTOS ===
 // ===============================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializa os inputs de busca com botão limpar
+    UI.setupClearableSearchInputs();
+
     Auth.initializeAuth(async (user) => {
         if (user) {
             UI.updateAuthUI(user);
