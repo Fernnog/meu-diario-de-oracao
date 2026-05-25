@@ -318,9 +318,20 @@ export function renderPriorityTargets(allActiveTargets, dailyTargetsData) {
     
     priorityTargets.forEach(target => {
         const div = document.createElement("div");
-        div.className = "target priority-target-item target-fade-in";
-        div.dataset.targetId = target.id;
-        div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+        
+        // Verificação simplificada e segura O(n) apenas pelo ID primário
+        const isCompleted = dailyTargetsData?.completed?.some(t => t.id === target.id);
+
+        if (isCompleted) {
+            div.className = "target priority-target-item completed-target target-fade-in";
+            div.dataset.targetId = target.id;
+            div.innerHTML = `<h3>✓ ${target.title || 'Alvo concluído'}</h3>`;
+        } else {
+            div.className = "target priority-target-item target-fade-in";
+            div.dataset.targetId = target.id;
+            div.innerHTML = createTargetHTML(target, config, dailyTargetsData);
+        }
+        
         container.appendChild(div);
     });
 }

@@ -569,8 +569,11 @@ async function handleAddNewTarget(event) {
 
 async function handlePray(targetId) {
     const targetToPray = state.prayerTargets.find(t => t.id === targetId);
+    
+    // GUARD SÍNCRONO: Retorna se alvo não existir ou JÁ ESTIVER no array completed
     if (!targetToPray || state.dailyTargets.completed.some(t => t.id === targetId)) return;
 
+    // 1. MUTAÇÃO DE ESTADO SÍNCRONA (Garante integridade antes da UI)
     const targetIndex = state.dailyTargets.pending.findIndex(t => t.id === targetId);
     if (targetIndex > -1) {
         const [movedTarget] = state.dailyTargets.pending.splice(targetIndex, 1);
@@ -578,12 +581,38 @@ async function handlePray(targetId) {
     } else {
         state.dailyTargets.completed.push(targetToPray);
     }
-    // Renderiza com filtros aplicados para não quebrar a view atual
+
+    // 2. ISOLAMENTO DE UI: Prepara elementos para animação e bloqueia cliques fantasmas
+    const targetEls = document.querySelectorAll(`[data-target-id="${targetId}"]`);
+    let willAnimate = false;
+
+    targetEls.forEach(el => {
+        if (!el.classList.contains('completed-target')) {
+            // Trava interações no DOM imediatamente
+            el.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            
+            // Setup de Reflow para Max-Height Transition
+            el.style.maxHeight = el.scrollHeight + 'px'; // Define altura exata inicial
+            void el.offsetHeight; // Força recálculo do navegador
+            
+            // Aplica classe que inicia a transição para 48px e cor cinza
+            el.classList.add('collapsing-state');
+            willAnimate = true;
+        }
+    });
+
+    // 3. SEPARAÇÃO DA RENDERIZAÇÃO: Segura apenas o re-render visual
+    if (willAnimate) {
+        // Aguardamos 400ms para a transição CSS terminar
+        await new Promise(resolve => setTimeout(resolve, 400));
+    }
+
+    // 4. RECONCILIAÇÃO VISUAL: Atualiza o DOM para refletir o estado real
     applyDailyFiltersAndRender();
     UI.renderPriorityTargets(state.prayerTargets, state.dailyTargets);
-    
     showToast(`Oração por "${targetToPray.title}" registrada!`, "success");
 
+    // 5. ATUALIZAÇÃO DO BACKEND (Prossegue assincronamente sem bloquear UX)
     try {
         await Service.updateDailyTargetStatus(state.user.uid, targetId, true);
         const { isNewRecord } = await Service.recordUserInteraction(state.user.uid, state.perseveranceData, state.weeklyPrayerData);
