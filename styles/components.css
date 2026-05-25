@@ -37,6 +37,29 @@
     background-color: #fff;
     border-left: 4px solid #FBC02D;
     text-align: left;
+    
+    /* NOVAS PROPRIEDADES: Isolamento do overflow e transições de UX */
+    overflow: hidden; 
+    transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out, background-color 0.4s ease, padding 0.4s ease;
+}
+
+/* NOVO BLOCO: Classe de estado controlada pelo JS sem !important (Responsabilidade de Estilo) */
+.priority-target-item.collapsing-state {
+    max-height: 48px; /* Altura final baseada no design do .completed-target */
+    padding: 12px 10px;
+    background-color: #f0f0f0;
+    border-left-color: #9cbe4a; /* Verde de sucesso */
+    opacity: 0.8;
+}
+
+.priority-target-item.collapsing-state > *:not(h3) {
+    opacity: 0;
+    transition: opacity 0.2s ease-out; /* Oculta conteúdo interno mais rápido que o encolhimento */
+    pointer-events: none;
+}
+
+.priority-target-item.collapsing-state h3 {
+    color: #777; /* Cor de item concluído */
 }
 
 .priority-target-item h3::before {
