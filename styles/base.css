@@ -322,6 +322,24 @@ textarea::-webkit-scrollbar-thumb:hover {
     background: #aaa;
 }
 
+/* ==== MINIMALIST AUTH UI ==== */
+.minimal-auth {
+    background-color: transparent; border: none; box-shadow: none; padding: 0;
+}
+.login-icon-wrapper {
+    display: inline-flex; justify-content: center; align-items: center;
+    cursor: pointer; padding: 10px; border-radius: 50%;
+    transition: background-color 0.3s, transform 0.2s;
+}
+.login-icon-wrapper:hover {
+    background-color: #e0e0e0; transform: scale(1.1);
+}
+.email-auth-container {
+    background-color: #fff; padding: 15px; border: 1px solid #eee;
+    border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-top: 10px;
+}
+.email-auth-container input { width: 100%; box-sizing: border-box; }
+
 /* ==== RESPONSIVENESS ==== */
 @media (max-width: 768px) {
     body { font-size: 15px; padding: 5px; }

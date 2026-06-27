@@ -24,8 +24,6 @@
     <button id="btnConnectDrive" class="btn drive-connect-btn" style="display: none;">Conectar ao Drive</button>
     <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
     <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
-    <!-- NOVO ELEMENTO DE VERSÃO -->
-    <span id="versionInfo" class="version-info" style="display: none;"></span>
 </div>
 
 <div class="logo-container">
@@ -38,17 +36,18 @@
 
 <!-- No arquivo index.html, substitua toda a div #authSection -->
 
-<div id="authSection" class="auth-section">
-    <!-- O formulário de email/senha foi totalmente removido -->
-    <div id="googleAuthContainer" style="display: block;">
-        <p style="margin-bottom: 15px;">Acesse ou crie sua conta para sincronizar seus alvos de oração com o Google Drive.</p>
-        <button id="btnGoogleSignIn" class="btn auth-btn google-btn">Entrar com Google</button>
+<div id="authSection" class="auth-section minimal-auth">
+    <div id="loginIconWrapper" class="login-icon-wrapper" title="Fazer Login">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#654321" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+        </svg>
     </div>
-
-    <div class="auth-status-container" style="display: none;">
-        <!-- Este container será exibido pela UI.js após o login -->
-        <p id="authStatus" class="auth-status"></p>
-        <button id="btnLogout" class="btn auth-btn" style="display:none;">Sair</button>
+    <div id="emailAuthContainer" style="display: none;" class="email-auth-container">
+        <input type="email" id="loginEmail" placeholder="Seu e-mail">
+        <input type="password" id="loginPassword" placeholder="Sua senha">
+        <button id="btnEmailSignIn" class="btn auth-btn">Entrar</button>
     </div>
 </div>
 
@@ -65,9 +64,6 @@
     <hr class="menu-separator dark">
 
     <div class="main-menu" id="secondaryMenu">
-     <button id="generateViewButton" class="btn generate-view action-btn">Gerar Visualização Atual</button>
-     <button id="generateCategoryViewButton" class="btn generate-view action-btn">Gerar Visualização por Categoria</button>
-     <button id="viewResolvedViewButton" class="btn generate-view action-btn">Visualizar Respondidos (Período)</button>
      <button id="viewPerseveranceReportButton" class="btn action-btn">Relatório Pessoal</button>
      <button id="viewInteractionReportButton" class="btn action-btn">Relatório por Alvo</button>
      <button id="forceDriveSyncButton" class="btn action-btn">Forçar Sincronização com Drive</button>
@@ -306,22 +302,6 @@
     <div id="pagination-resolvedPanel" class="pagination"></div>
 </div>
 
-    <!-- Modal para Seleção de Datas (Visualizar Respondidos) -->
-    <div id="dateRangeModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-button" id="closeDateRangeModal">×</span>
-            <h2>Visualizar Respondidos por Período</h2>
-            <label for="startDate">Data de Início:</label>
-            <input type="date" id="startDate" required>
-            <label for="endDate">Data de Fim:</label>
-            <input type="date" id="endDate" required>
-            <div class="modal-buttons">
-                 <button id="generateResolvedView" class="btn modal-action-btn">Gerar Visualização</button>
-                 <button id="cancelDateRange" class="btn modal-cancel-btn">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal para Adicionar Alvo Manualmente ao Dia -->
     <div id="manualTargetModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -336,33 +316,6 @@
 
             <div id="manualTargetSearchResults" class="manual-search-results">
                 <p>Digite algo para buscar...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal para Seleção de Categorias (Visualização por Categoria) -->
-    <div id="categorySelectionModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-button" id="closeCategoryModal">×</span>
-            <h2>Seleção de Categorias para Visualização</h2>
-            <p>Marque as categorias que deseja incluir na visualização:</p>
-            <div id="categoryCheckboxesContainer" class="category-checkboxes-container">
-                <!-- Checkboxes serão populados pelo script.js -->
-            </div>
-            <div class="modal-buttons">
-                <button id="confirmCategoryView" class="btn modal-action-btn">Gerar Visualização</button>
-                <button id="cancelCategoryView" class="btn modal-cancel-btn">Cancelar</button>
-           </div>
-        </div>
-    </div>
-    
-    <!-- Modal para Changelog -->
-    <div id="changelogModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-button" id="closeChangelogModal">×</span>
-            <h2 id="changelogModalTitle">Novidades da Versão</h2>
-            <div id="changelogModalBody" class="changelog-body">
-                <!-- Conteúdo será inserido via JavaScript -->
             </div>
         </div>
     </div>
@@ -395,8 +348,9 @@
         <button id="closeExpiredToast" class="toast-close-btn">×</button>
     </div>
     
-    <!-- NOVO: Adicionado script da API do Google -->
+    <!-- Scripts da API do Google (Drive) e Identity Services (GIS) -->
     <script async defer src="https://apis.google.com/js/api.js"></script>
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
     <script type="module" src="js/script.js"></script>
 </body>
 </html>

@@ -308,44 +308,7 @@ function checkAndCollapsePriorityPanel() {
 // === LÓGICA DE AUTENTICAÇÃO E FLUXO DE DADOS ===
 // =================================================================
 
-async function handleGoogleSignIn() {
-    try {
-        console.log("[App] Iniciando o fluxo de login com Google...");
-        const { user, accessToken } = await Auth.signInWithGoogle();
-
-        if (accessToken) {
-            console.log('%c[App] Access Token recebido com sucesso.', 'color: green; font-weight: bold;', accessToken);
-        } else {
-            console.error('%c[App] Access Token NÃO foi recebido do Firebase Auth.', 'color: red; font-weight: bold;');
-            return;
-        }
-        
-        if (user && accessToken) {
-            console.log("[App] Login com Google bem-sucedido. Usuário:", user.uid);
-            showToast("Autenticado com Google. Inicializando o serviço do Drive...", "info");
-            
-            console.log("[App] Tentando inicializar o GoogleDriveService...");
-            const initialized = await GoogleDriveService.initializeDriveService(accessToken);
-            
-            if (initialized) {
-                console.log("[App] GoogleDriveService INICIALIZADO com sucesso.");
-                state.isDriveEnabled = true;
-                UI.updateDriveStatusUI('connected');
-                showToast("Conexão com Google Drive estabelecida!", "success");
-                if (state.user) {
-                   await loadDataForUser(state.user);
-                }
-            } else {
-                 console.error("[App] Falha na inicialização do GoogleDriveService, mas sem erro lançado.");
-            }
-        }
-    } catch (error) {
-        console.error("[App] Erro CRÍTICO no fluxo de login com Google ou na inicialização do Drive:", error);
-        showToast(error.message, "error");
-        UI.updateDriveStatusUI('error');
-        state.isDriveEnabled = false;
-    }
-}
+// Fluxos de Autenticação e Drive separados na inicialização (DOM Content Loaded).
 
 // NOVO: Função para filtrar e renderizar o painel diário
 function applyDailyFiltersAndRender() {
@@ -498,7 +461,6 @@ async function loadDataForUser(user) {
         }
         updateFloatingNavVisibility(state);
 
-        UI.updateVersionInfo(APP_VERSION);
         checkAndCollapsePriorityPanel();
 
     } catch (error) {
@@ -813,8 +775,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Listeners de Ações Gerais ---
-    document.getElementById('btnConnectDrive').addEventListener('click', handleGoogleSignIn);
-    document.getElementById('btnGoogleSignIn').addEventListener('click', handleGoogleSignIn);
+    // Fluxo de exibição do login
+    document.getElementById('loginIconWrapper').addEventListener('click', () => {
+        document.getElementById('loginIconWrapper').style.display = 'none';
+        document.getElementById('emailAuthContainer').style.display = 'block';
+    });
+
+    // Fluxo de Identidade (Firebase)
+    document.getElementById('btnEmailSignIn').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        if(!email || !password) return showToast("Preencha e-mail e senha.", "error");
+
+        try {
+            await Auth.signInWithEmailAndPassword(email, password);
+            document.getElementById('loginPassword').value = ''; 
+        } catch (error) {
+            showToast("Credenciais inválidas.", "error");
+        }
+    });
+
+    // Fluxo de Autorização (Google Drive) - Totalmente independente
+    document.getElementById('btnConnectDrive').addEventListener('click', async () => {
+        try {
+            UI.updateDriveStatusUI('syncing', 'Conectando...');
+            await GoogleDriveService.authorizeDrive();
+            state.isDriveEnabled = true;
+            UI.updateDriveStatusUI('connected');
+            showToast("Drive conectado com sucesso!", "success");
+            handleForceSync(); 
+        } catch (error) {
+            console.error("Erro no GIS:", error);
+            UI.updateDriveStatusUI('disconnected');
+            showToast("Erro ao conectar com o Drive.", "error");
+        }
+    });
+
     document.getElementById('btnLogout').addEventListener('click', () => Auth.handleSignOut());
     document.getElementById('prayerForm').addEventListener('submit', handleAddNewTarget);
     document.getElementById('backToMainButton').addEventListener('click', () => UI.showPanel('dailySection'));
@@ -848,10 +844,6 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.toggleManualTargetModal(true);
     });
 
-    document.getElementById('generateViewButton').addEventListener('click', () => { const html = UI.generateViewHTML(state.prayerTargets, "Visualização de Alvos Ativos"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
-    document.getElementById('generateCategoryViewButton').addEventListener('click', () => { const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets]; UI.toggleCategoryModal(true, allTargets); });
-    document.getElementById('viewResolvedViewButton').addEventListener('click', () => { UI.toggleDateRangeModal(true); });
-    
     document.getElementById('viewPerseveranceReportButton').addEventListener('click', () => { 
         const reportData = { 
             ...state.perseveranceData, 
@@ -865,33 +857,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('viewInteractionReportButton').addEventListener('click', () => { window.location.href = 'orei.html'; });
-    document.getElementById('closeDateRangeModal').addEventListener('click', () => UI.toggleDateRangeModal(false));
-    document.getElementById('cancelDateRange').addEventListener('click', () => UI.toggleDateRangeModal(false));
-
-    document.getElementById('generateResolvedView').addEventListener('click', () => { 
-        const startDate = new Date(document.getElementById('startDate').value + 'T00:00:00Z'); 
-        const endDate = new Date(document.getElementById('endDate').value + 'T23:59:59Z'); 
-        const filtered = state.resolvedTargets.filter(t => t.resolutionDate >= startDate && t.resolutionDate <= endDate); 
-        const html = UI.generateViewHTML(filtered, `Alvos Respondidos de ${formatDateForDisplay(startDate)} a ${formatDateForDisplay(endDate)}`);
-        const newWindow = window.open(); 
-        newWindow.document.write(html); 
-        newWindow.document.close(); 
-        UI.toggleDateRangeModal(false); 
-    });
-    
-    document.getElementById('closeCategoryModal').addEventListener('click', () => UI.toggleCategoryModal(false));
-    document.getElementById('cancelCategoryView').addEventListener('click', () => UI.toggleCategoryModal(false));
-    
-    document.getElementById('confirmCategoryView').addEventListener('click', () => {
-        const selectedCategories = Array.from(document.querySelectorAll('#categoryCheckboxesContainer input:checked')).map(cb => cb.value);
-        const allTargets = [...state.prayerTargets, ...state.archivedTargets, ...state.resolvedTargets];
-        const filtered = allTargets.filter(t => selectedCategories.includes(t.category));
-        const html = UI.generateViewHTML(filtered, "Visualização por Categorias Selecionadas", selectedCategories);
-        const newWindow = window.open();
-        newWindow.document.write(html);
-        newWindow.document.close();
-        UI.toggleCategoryModal(false);
-    });
 
     document.getElementById('hasDeadline').addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
     ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id).addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
@@ -924,10 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300); 
     });
 
-    document.getElementById('versionInfo').addEventListener('click', () => {
-        UI.showChangelogModal(APP_VERSION, CHANGELOG);
-    });
-    document.getElementById('closeChangelogModal').addEventListener('click', () => UI.toggleChangelogModal(false));
+    // Modais órfãos limpos.
 
     setupAutoGrowTextarea('textarea');
 

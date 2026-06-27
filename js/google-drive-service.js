@@ -9,46 +9,37 @@ let gapiInitialized = false;
 let appFolderId = null;
 // Nome da pasta que será criada no Google Drive do usuário.
 const FOLDER_NAME = "Meus Alvos de Oração";
+const CLIENT_ID = 'COLOQUE_SEU_CLIENT_ID_DO_GCP_AQUI.apps.googleusercontent.com';
 
 /**
- * Carrega e inicializa a biblioteca cliente da API do Google (GAPI).
- * Esta função deve ser chamada na inicialização da aplicação após o login com Google.
- * @param {string} accessToken - O token de acesso OAuth obtido do Firebase Auth.
- * @returns {Promise<boolean>} - Resolve para 'true' se a inicialização for bem-sucedida.
+ * Solicita autorização OAuth 2.0 via Google Identity Services (GIS).
+ * @returns {Promise<boolean>}
  */
-export async function initializeDriveService(accessToken) {
-    if (gapiInitialized) {
-        // Se já foi inicializado, apenas revalida o token
-        gapi.auth.setToken({ access_token: accessToken });
-        return true;
-    }
-
+export function authorizeDrive() {
     return new Promise((resolve, reject) => {
-        // Cria um elemento <script> para carregar a biblioteca GAPI
-        const script = document.createElement("script");
-        script.src = "https://apis.google.com/js/api.js";
-        document.body.appendChild(script);
-
-        script.onload = () => {
-            // Após carregar o script, carrega o módulo 'client' do GAPI
-            gapi.load('client', async () => {
-                try {
-                    // Inicializa o cliente com a API do Drive v3
+        try {
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata',
+                callback: async (response) => {
+                    if (response.error) {
+                        reject(new Error(response.error));
+                        return;
+                    }
+                    // Inicializa a GAPI com o novo token
                     await gapi.client.init({
-                        'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+                        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
                     });
-                    // Define o token de acesso para autorizar as chamadas
-                    gapi.auth.setToken({ access_token: accessToken });
+                    gapi.auth.setToken({ access_token: response.access_token });
                     gapiInitialized = true;
                     resolve(true);
-                } catch (error) {
-                    // LOG 2: Verificar falha na inicialização do GAPI
-                    console.error("%c[Drive Service] Erro ao inicializar o cliente GAPI. Verifique as configurações no Google Console.", 'color: red; font-weight: bold;', error);
-                    reject(error);
-                }
+                },
             });
-        };
-        script.onerror = () => reject(new Error("Falha ao carregar o script da API do Google."));
+            // Acionamento síncrono previne bloqueios de pop-up no mobile
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

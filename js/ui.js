@@ -1020,34 +1020,27 @@ export function displayCompletionPopup() {
 }
 
 /**
- * MODIFICADO: Atualiza a UI de autenticação e o novo status do Drive.
+ * ATUALIZADO: Atualiza a UI de autenticação minimalista.
  * @param {object|null} user - O objeto do usuário do Firebase ou nulo.
- * @param {string} message - Mensagem opcional para exibir (ex: erro, reset de senha).
- * @param {boolean} isError - Se a mensagem é um erro.
  */
-export function updateAuthUI(user, message = '', isError = false) {
+export function updateAuthUI(user) {
+    const loginIconWrapper = document.getElementById('loginIconWrapper');
+    const emailAuthContainer = document.getElementById('emailAuthContainer');
     const authSection = document.getElementById('authSection');
-    if (!authSection) return;
-
-    const googleAuthContainer = document.getElementById('googleAuthContainer');
-    const authStatusContainer = authSection.querySelector('.auth-status-container');
-    const authStatusP = document.getElementById('authStatus');
-    const btnLogout = document.getElementById('btnLogout');
     const userStatusTop = document.getElementById('userStatusTop');
     
     if (user) {
-        // Oculta a seção inteira, pois a informação principal estará na barra superior
-        authSection.classList.add('hidden');
+        // Logado: Esconde o fluxo inteiro de login local
+        if (authSection) authSection.classList.add('hidden');
         if (userStatusTop) {
-            userStatusTop.textContent = `Logado: ${user.email}`;
+            userStatusTop.textContent = `Logado`;
             userStatusTop.style.display = 'inline-block';
         }
-
     } else {
-        // Garante que o estado de logout esteja correto
-        authSection.classList.remove('hidden');
-        if (googleAuthContainer) googleAuthContainer.style.display = 'block';
-        if (authStatusContainer) authStatusContainer.style.display = 'none'; // Garante que status de logout esteja oculto
+        // Deslogado: Restaura estado minimalista
+        if (authSection) authSection.classList.remove('hidden');
+        if (loginIconWrapper) loginIconWrapper.style.display = 'inline-flex';
+        if (emailAuthContainer) emailAuthContainer.style.display = 'none';
         if (userStatusTop) userStatusTop.style.display = 'none';
     }
 }
