@@ -764,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await loadDataForUser(user);
             } catch (error) {
-                console.error("[App] Erro crítico durante o carregamento dos dados. Revertendo para o estado de logout.", error);
+                console.error("[App] Erro crítico durante o carregamento dos dados.", error);
                 handleLogoutState();
             }
         } else {
@@ -774,14 +774,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Listeners de Ações Gerais (Refatorados) ---
-    // Eventos de Autenticação e Configuração Inicial Protegidos
+    // --- Listeners de Ações Gerais (Refatorados com Optional Chaining) ---
     document.getElementById('loginIconWrapper')?.addEventListener('click', () => {
         document.getElementById('loginIconWrapper').style.display = 'none';
         document.getElementById('emailAuthContainer').style.display = 'block';
     });
 
-    // Fluxo de Identidade (Firebase)
     document.getElementById('btnEmailSignIn')?.addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
@@ -796,7 +794,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Fluxo de Autorização (Google Drive) - Totalmente independente
     document.getElementById('btnConnectDrive')?.addEventListener('click', async () => {
         try {
             UI.updateDriveStatusUI('syncing', 'Conectando...');
@@ -812,19 +809,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Formulários e botões utilitários blindados com Optional Chaining
+    // Listeners essenciais e de utilitários mantidos e blindados
     document.getElementById('prayerForm')?.addEventListener('submit', handleAddNewTarget);
     
     document.getElementById('refreshDaily')?.addEventListener('click', async () => { if(confirm("Deseja gerar uma nova lista de alvos para hoje? A lista atual será substituída.")) { await Service.forceGenerateDailyTargets(state.user.uid, state.prayerTargets); await loadDataForUser(state.user); showToast("Nova lista gerada!", "success"); } });
     document.getElementById('copyDaily')?.addEventListener('click', () => { const text = state.dailyTargets.pending.map(t => `- ${t.title}`).join('\n'); navigator.clipboard.writeText(text); showToast("Alvos pendentes copiados!", "success"); });
     document.getElementById('viewDaily')?.addEventListener('click', () => { const allTargets = [...state.dailyTargets.pending, ...state.dailyTargets.completed]; const html = UI.generateViewHTML(allTargets, "Alvos do Dia"); const newWindow = window.open(); newWindow.document.write(html); newWindow.document.close(); });
     
-    // NOVO: Listener para busca no painel diário
     document.getElementById('searchDaily')?.addEventListener('input', e => {
         state.filters.dailyPanel.searchTerm = e.target.value;
         applyDailyFiltersAndRender();
     });
 
+    // RESTAURADO E BLINDADO: Modal de Adicionar Alvo Manualmente
     document.getElementById('addManualTargetButton')?.addEventListener('click', () => {
         const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
         const availableTargets = state.prayerTargets.filter(target => !dailyTargetIds.has(target.id));
@@ -839,17 +836,31 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.toggleManualTargetModal(true);
     });
 
-    // Botões de relatório removidos daqui (agora gerenciados via Event Delegation)
-
     document.getElementById('hasDeadline')?.addEventListener('change', e => { document.getElementById('deadlineContainer').style.display = e.target.checked ? 'block' : 'none'; });
-    ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { document.getElementById(id)?.addEventListener('input', e => { const panelId = id.replace('search', '').toLowerCase() + 'Panel'; state.filters[panelId].searchTerm = e.target.value; state.pagination[panelId].currentPage = 1; applyFiltersAndRender(panelId); }); });
-    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { document.getElementById(id)?.addEventListener('change', e => { const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; state.filters.mainPanel[filterName] = e.target.checked; state.pagination.mainPanel.currentPage = 1; applyFiltersAndRender('mainPanel'); }); });
+    
+    ['searchMain', 'searchArchived', 'searchResolved'].forEach(id => { 
+        document.getElementById(id)?.addEventListener('input', e => { 
+            const panelId = id.replace('search', '').toLowerCase() + 'Panel'; 
+            state.filters[panelId].searchTerm = e.target.value; 
+            state.pagination[panelId].currentPage = 1; 
+            applyFiltersAndRender(panelId); 
+        }); 
+    });
+    
+    ['showDeadlineOnly', 'showExpiredOnlyMain'].forEach(id => { 
+        document.getElementById(id)?.addEventListener('change', e => { 
+            const filterName = id === 'showDeadlineOnly' ? 'showDeadlineOnly' : 'showExpiredOnly'; 
+            state.filters.mainPanel[filterName] = e.target.checked; 
+            state.pagination.mainPanel.currentPage = 1; 
+            applyFiltersAndRender('mainPanel'); 
+        }); 
+    });
+    
     document.getElementById('closeManualTargetModal')?.addEventListener('click', () => UI.toggleManualTargetModal(false));
     
     let manualSearchDebounceTimer;
-    document.getElementById('manualTargetSearchInput').addEventListener('input', e => {
+    document.getElementById('manualTargetSearchInput')?.addEventListener('input', e => {
         clearTimeout(manualSearchDebounceTimer);
-
         manualSearchDebounceTimer = setTimeout(() => {
             const searchTerm = e.target.value.toLowerCase();
             const dailyTargetIds = new Set(state.dailyTargets.targetIds || []);
@@ -871,8 +882,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 300); 
     });
-
-    // Modais órfãos limpos.
 
     setupAutoGrowTextarea('textarea');
 
