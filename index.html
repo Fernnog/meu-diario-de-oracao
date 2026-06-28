@@ -24,6 +24,8 @@
     <button id="btnConnectDrive" class="btn drive-connect-btn" style="display: none;">Conectar ao Drive</button>
     <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
     <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
+    <!-- NOVO: Ícone/Botão de Logout via delegação -->
+    <button data-action="logout" class="btn btn-small" style="margin-left: 10px; background-color: #654321; color: white;">Sair</button>
 </div>
 
 <div class="logo-container">
@@ -53,20 +55,22 @@
 
     <hr class="menu-separator">
 
+    <!-- REFATORADO: Uso de data-action e data-panel -->
     <div class="main-menu" id="mainMenu">
-       <button id="backToMainButton" class="btn">Página Inicial</button>
-       <button id="addNewTargetButton" class="btn">Novo Alvo</button>
-       <button id="viewAllTargetsButton" class="btn">Ver Todos os Alvos</button>
-       <button id="viewArchivedButton" class="btn archived-resolved">Ver Arquivados</button>
-       <button id="viewResolvedButton" class="btn archived-resolved">Ver Respondidos</button>
+       <button data-action="show-panel" data-panel="dailySection" class="btn">Página Inicial</button>
+       <button data-action="show-panel" data-panel="appContent" class="btn">Novo Alvo</button>
+       <button data-action="show-panel" data-panel="mainPanel" class="btn">Ver Todos os Alvos</button>
+       <button data-action="show-panel" data-panel="archivedPanel" class="btn archived-resolved">Ver Arquivados</button>
+       <button data-action="show-panel" data-panel="resolvedPanel" class="btn archived-resolved">Ver Respondidos</button>
     </div>
 
     <hr class="menu-separator dark">
 
+    <!-- REFATORADO: Uso de data-action para ações do sistema -->
     <div class="main-menu" id="secondaryMenu">
-     <button id="viewPerseveranceReportButton" class="btn action-btn">Relatório Pessoal</button>
-     <button id="viewInteractionReportButton" class="btn action-btn">Relatório por Alvo</button>
-     <button id="forceDriveSyncButton" class="btn action-btn">Forçar Sincronização com Drive</button>
+     <button data-action="view-perseverance-report" class="btn action-btn">Relatório Pessoal</button>
+     <button data-action="view-interaction-report" class="btn action-btn">Relatório por Alvo</button>
+     <button data-action="force-sync" class="btn action-btn">Forçar Sincronização com Drive</button>
     </div>
 
     <hr class="menu-separator">
