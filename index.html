@@ -20,12 +20,13 @@
 </div>
 
 <!-- Na parte superior do body -->
+<!-- 1. Refatoração da Top Bar (Flexbox) -->
 <div class="top-bar">
-    <button id="btnConnectDrive" class="btn drive-connect-btn" style="display: none;">Conectar ao Drive</button>
-    <span id="driveStatusTop" class="drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
-    <span id="userStatusTop" class="user-status-top" style="display: none;"></span>
-    <!-- NOVO: Ícone/Botão de Logout via delegação -->
-    <button data-action="logout" class="btn btn-small" style="margin-left: 10px; background-color: #654321; color: white;">Sair</button>
+    <button id="btnConnectDrive" class="btn top-pill-btn drive-connect-btn" style="display: none;">Conectar ao Drive</button>
+    <span id="driveStatusTop" class="top-pill-btn drive-status-top" style="display: none;">Conectado ao Drive ✓</span>
+    <span id="userStatusTop" class="top-pill-btn user-status-top" style="display: none;"></span>
+    <!-- Botão de Sair com classe unificada -->
+    <button id="btnLogoutTop" data-action="logout" class="top-pill-btn logout-btn-top" style="display: none;">Sair</button>
 </div>
 
 <div class="logo-container">
@@ -184,6 +185,7 @@
 
     <hr class="section-separator" id="sectionSeparator" style="display: none;">
 
+    <!-- 2. Limpeza no Painel Prioritário -->
     <div class="priority-section" id="prioritySection" style="display: none;">
         <h2 class="priority-title-header">
             <span>Alvos Prioritários</span>
@@ -192,10 +194,7 @@
         <div id="priorityTargetsList">
             <p>Carregando alvos prioritários...</p>
         </div>
-        <div id="priorityCompletionMessage" class="priority-completion-message" style="display: none;">
-            <h3>Parabéns!</h3>
-            <p>Você intercedeu por todos os seus alvos prioritários de hoje.</p>
-        </div>
+        <!-- REMOVIDO: A div #priorityCompletionMessage foi totalmente apagada para evitar código morto -->
     </div>
 
     <div class="daily-section" id="dailySection" style="display: none;">

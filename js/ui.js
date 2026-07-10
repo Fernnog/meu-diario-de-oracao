@@ -1028,20 +1028,23 @@ export function updateAuthUI(user) {
     const emailAuthContainer = document.getElementById('emailAuthContainer');
     const authSection = document.getElementById('authSection');
     const userStatusTop = document.getElementById('userStatusTop');
+    const btnLogoutTop = document.getElementById('btnLogoutTop');
     
     if (user) {
-        // Logado: Esconde o fluxo inteiro de login local
         if (authSection) authSection.classList.add('hidden');
         if (userStatusTop) {
             userStatusTop.textContent = `Logado`;
             userStatusTop.style.display = 'inline-block';
         }
+        // Exibe o botão Sair apenas se houver usuário
+        if (btnLogoutTop) btnLogoutTop.style.display = 'inline-block';
     } else {
-        // Deslogado: Restaura estado minimalista
         if (authSection) authSection.classList.remove('hidden');
         if (loginIconWrapper) loginIconWrapper.style.display = 'inline-flex';
         if (emailAuthContainer) emailAuthContainer.style.display = 'none';
         if (userStatusTop) userStatusTop.style.display = 'none';
+        // Oculta o botão Sair se deslogado (Melhoria de UX)
+        if (btnLogoutTop) btnLogoutTop.style.display = 'none';
     }
 }
 

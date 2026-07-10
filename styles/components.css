@@ -85,36 +85,6 @@
 
 /* ==== INÍCIO: NOVOS ESTILOS PARA PAINEL DE PRIORIDADES CONCLUÍDO ==== */
 
-/* ESTILOS PARA A MENSAGEM DE CONCLUSÃO */
-.priority-completion-message {
-    padding: 20px;
-    background-color: #e8f5e9; /* Verde claro sutil */
-    border: 1px dashed #a5d6a7;
-    border-radius: 5px;
-    text-align: center;
-    margin-top: 15px;
-    animation: fadeInItem 0.5s ease-out forwards;
-}
-
-.priority-completion-message h3 {
-    margin-top: 0;
-    color: #2e7d32; /* Verde escuro */
-}
-
-.priority-completion-message p {
-    color: #388e3c;
-    margin-bottom: 0;
-}
-
-/* CLASSE DE ESTADO PARA O PAINEL CONCLUÍDO (RECOLHIMENTO) */
-.priority-section.completed #priorityTargetsList {
-    display: none; /* Esconde a lista de alvos */
-}
-
-.priority-section.completed #priorityCompletionMessage {
-    display: block; /* Mostra a mensagem de conclusão */
-}
-
 /* ESTILOS PARA O CABEÇALHO DO PAINEL */
 .priority-title-header {
     display: flex;
@@ -123,57 +93,24 @@
     gap: 15px; /* Espaço entre o título e o badge */
 }
 
-/* ESTILOS PARA O BADGE DE CONCLUSÃO */
-/* ALTERAÇÃO REALIZADA: Mudança para display: none para corrigir centralização do título */
+/* ESTILOS PARA O BADGE DE CONCLUSÃO (Delicado e Pastel) */
 .priority-title-badge {
-    background-color: #2e7d32; /* Verde escuro, para combinar com a mensagem */
-    color: #fff;
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 0.8em;
-    font-weight: bold;
-    
-    /* Removemos o elemento do fluxo para não ocupar espaço quando invisível */
-    display: none;
-    
-    position: relative; /* Necessário para o efeito de brilho */
-    overflow: hidden;   /* Garante que o brilho não vaze */
+    background-color: #f4f6e6; /* Pastel suave */
+    color: #6b8e23; /* Verde oliva delicado */
+    border: 1px solid #dce2b8;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 0.75em;
+    font-weight: normal;
+    display: none; /* Oculto por padrão */
 }
 
-/* REGRA DE VISIBILIDADE: MOSTRA O BADGE QUANDO O PAINEL ESTÁ COMPLETO */
-/* ALTERAÇÃO REALIZADA: Traz o elemento de volta ao fluxo com inline-block */
+/* Exibe o badge quando a section ganha a classe .completed via JS */
 .priority-section.completed .priority-title-badge {
     display: inline-block;
-    animation: fadeInItem 0.5s ease-out forwards;
-    visibility: visible;
+    animation: fadeInItem 0.6s ease-out forwards;
 }
 
-/* EFEITO DE BRILHO (SHINE EFFECT) */
-.priority-title-badge::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -60%;
-    width: 20%;
-    height: 200%;
-    background: rgba(255, 255, 255, 0.4);
-    transform: rotate(35deg);
-    animation: shine-badge 2.5s infinite linear;
-    animation-delay: 1s; /* Um pequeno atraso para começar após o fade-in */
-}
-
-/* ANIMAÇÃO KEYFRAMES PARA O BRILHO */
-@keyframes shine-badge {
-    0% {
-        left: -60%;
-    }
-    40% {
-        left: 140%;
-    }
-    100% {
-        left: 140%;
-    }
-}
 /* ==== FIM: NOVOS ESTILOS PARA PAINEL DE PRIORIDADES CONCLUÍDO ==== */
 
 

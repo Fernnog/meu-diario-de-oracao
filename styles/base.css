@@ -3,35 +3,31 @@
 /* ==== GOOGLE FONTS ==== */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
 
-/* ==== TOP BAR (Optional Backup Info) ==== */
+/* ==== TOP BAR (Flexbox Refactoring) ==== */
 .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     padding: 10px 20px;
-    text-align: right;
-    overflow: auto;
 }
 
-/* ==== USER AND DRIVE STATUS (Barra Superior) - REVISED ==== */
-.top-bar .user-status-top,
-.top-bar .drive-status-top,
-.top-bar .version-info,
-.top-bar .drive-connect-btn {
-    float: right;
-    padding: 5px 15px;
-    font-size: 0.9em;
-    border: 1px solid transparent;
-    border-radius: 15px;
-    margin-left: 10px;
-    display: none; /* Visibilidade controlada via JS */
+/* ==== GEOMETRIA UNIFICADA DOS BOTÕES TOPO (PÍLULA) ==== */
+.top-bar .top-pill-btn {
+    float: none; /* Anula o comportamento antigo */
+    margin: 0;   /* O gap do flexbox assume o controle */
+    padding: 6px 16px;
+    font-size: 0.85em;
+    border: 2px solid transparent; /* Essencial para os estados do Drive (Sync/Error) */
+    border-radius: 20px; /* Formato pílula */
     font-family: 'Playfair Display', serif;
-    line-height: normal; /* Reseta o line-height para alinhamento vertical */
-    box-sizing: border-box; /* Garante que padding não afete a largura total */
-    /* Remove a margem vertical herdada da classe .btn */
-    margin-top: 0;
-    margin-bottom: 0;
+    line-height: normal;
+    box-sizing: border-box;
+    display: none; /* Controle exclusivo do JS */
 }
 
-/* REGRAS ESPECÍFICAS DE COR E ESTILO */
-
+/* Cores Específicas */
 .top-bar .user-status-top {
     color: #555;
     background-color: #f5f5f5;
@@ -41,7 +37,7 @@
 .top-bar .drive-status-top {
     color: #fff;
     background-color: #0f9d58;
-    border-color: #0a8f4c;
+    /* border-color preservado em scripts futuros se necessário */
 }
 
 .top-bar .drive-status-top.error {
@@ -54,27 +50,27 @@
     border-color: #f1a900;
 }
 
-.top-bar .version-info {
-    color: #607D8B;
-    background-color: #ECEFF1;
-    border-color: #CFD8DC;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.top-bar .version-info:hover {
-    background-color: #CFD8DC;
-}
-
-/* Regra específica e corrigida para o botão de conexão */
 .top-bar .drive-connect-btn {
     background-color: #4285F4;
     color: white;
-    border-color: #357ae8;
     cursor: pointer;
     transition: background-color 0.3s;
 }
+
 .top-bar .drive-connect-btn:hover {
     background-color: #357ae8;
+}
+
+/* Novo estilo do botão Sair */
+.top-bar .logout-btn-top {
+    background-color: #d9534f;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.top-bar .logout-btn-top:hover {
+    background-color: #c9302c;
 }
 
 .ultimo-backup {
