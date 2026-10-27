@@ -1294,21 +1294,44 @@
     animation: fadeInItem 0.5s ease-out forwards;
 }
 
-/* ==== INLINE EDITING STYLES ==== */
+/* ==== INLINE EDITING STYLES (ATUALIZADO E BLINDADO) ==== */
 .edit-icon {
-    display: inline-block;
-    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.8em;
-    opacity: 0.5;
-    transition: opacity 0.2s;
+    font-size: 0.85em;
+    opacity: 0.65;
+    user-select: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
     vertical-align: middle;
 }
 
 .target h3:hover .edit-icon,
 .target-details:hover .edit-icon,
-.observation-item:hover .edit-icon {
+.observation-item:hover .edit-icon,
+.edit-icon:hover {
     opacity: 1;
+}
+
+.edit-icon:hover {
+    background-color: rgba(101, 67, 33, 0.12);
+    transform: scale(1.1);
+}
+
+.edit-icon:active {
+    transform: scale(0.95);
+}
+
+/* Garante que ícones gráficos (SVG) dentro de botões de ação não roubem o target do clique */
+.btn svg,
+.nav-btn svg,
+.nav-btn span {
+    pointer-events: none;
+    user-select: none;
 }
 
 .inline-edit-form {
