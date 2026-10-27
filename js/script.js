@@ -681,19 +681,24 @@ async function handleDeleteArchivedTarget(targetId) {
     }
 }
 
-async function handleAddObservation(target, isArchived, panelId) {
-    const text = document.getElementById(`observationText-${target.id}`).value.trim();
-    const dateStr = document.getElementById(`observationDate-${target.id}`).value;
+async function handleAddObservation(target, isArchived, panelId, targetCard) {
+    if (!targetCard) return;
+    const textInput = targetCard.querySelector('.obs-text-input');
+    const dateInput = targetCard.querySelector('.obs-date-input');
+
+    const text = textInput ? textInput.value.trim() : '';
+    const dateStr = dateInput ? dateInput.value : '';
     if (!text || !dateStr) return showToast("Preencha o texto e a data.", "error");
     
     const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false };
     
     if (!target.observations) target.observations = [];
     target.observations.push(newObservation);
-    UI.toggleAddObservationForm(target.id);
+    
+    UI.toggleAddObservationForm(target.id, targetCard);
     applyFiltersAndRender(panelId);
-    // Se o alvo também estiver no painel diário, atualiza lá também
-    if(state.dailyTargets.pending.find(t => t.id === target.id) || state.dailyTargets.completed.find(t => t.id === target.id)) {
+    
+    if (state.dailyTargets.pending.find(t => t.id === target.id) || state.dailyTargets.completed.find(t => t.id === target.id)) {
         applyDailyFiltersAndRender();
     }
 
@@ -709,14 +714,16 @@ async function handleAddObservation(target, isArchived, panelId) {
     }
 }
 
-async function handleSaveCategory(target, isArchived, panelId) {
-    const newCategory = document.getElementById(`categorySelect-${target.id}`).value;
+async function handleSaveCategory(target, isArchived, panelId, targetCard) {
+    if (!targetCard) return;
+    const selectEl = targetCard.querySelector('.cat-select-input');
+    const newCategory = selectEl ? selectEl.value : '';
     const oldCategory = target.category;
     
     target.category = newCategory;
-    UI.toggleEditCategoryForm(target.id);
+    UI.toggleEditCategoryForm(target.id, '', targetCard);
     applyFiltersAndRender(panelId);
-    applyDailyFiltersAndRender(); // Atualiza painel diário se necessário
+    applyDailyFiltersAndRender();
 
     try {
         await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
@@ -885,12 +892,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupAutoGrowTextarea('textarea');
 
-    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA ---
+    // --- DELEGAÇÃO DE EVENTOS CENTRALIZADA E RESILIENTE ---
     document.body.addEventListener('click', async e => {
-        const { action, id, page, panel, obsIndex, subObsIndex } = e.target.dataset;
+        const actionElement = e.target.closest('[data-action], [data-page]');
+        if (!actionElement) return;
+
+        const { action, id, page, panel, obsIndex, subObsIndex } = actionElement.dataset;
         if (!state.user && action && action !== 'logout') return;
 
-        // --- NOVAS AÇÕES DE NAVEGAÇÃO E SISTEMA REFATORADAS ---
+        // --- AÇÕES DE NAVEGAÇÃO E SISTEMA ---
         if (action === 'logout') {
             Auth.handleSignOut();
             return;
@@ -898,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (action === 'show-panel') {
             e.preventDefault();
-            UI.showPanel(e.target.dataset.panel);
+            UI.showPanel(actionElement.dataset.panel);
             return;
         }
 
@@ -927,24 +937,32 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'orei.html';
             return;
         }
-        // --- FINAL DAS NOVAS AÇÕES ---
 
         if (page && panel) {
             e.preventDefault();
-            if (e.target.classList.contains('disabled')) return;
+            if (actionElement.classList.contains('disabled')) return;
             state.pagination[panel].currentPage = parseInt(page);
             applyFiltersAndRender(panel);
             return;
         }
         
         if (action === 'cancel-edit') {
-            const form = e.target.closest('.inline-edit-form');
+            const form = actionElement.closest('.inline-edit-form');
             if (form) form.remove();
             return;
         }
 
+        if (action === 'cancel-inline-form') {
+            const formDiv = actionElement.closest('.add-observation-form, .edit-category-form');
+            if (formDiv) {
+                formDiv.style.display = 'none';
+                formDiv.innerHTML = '';
+            }
+            return;
+        }
+
         if (action === 'filter-manual-by-category') {
-            const category = e.target.dataset.category;
+            const category = actionElement.dataset.category;
             const searchInput = document.getElementById('manualTargetSearchInput');
             searchInput.value = category;
             searchInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -952,16 +970,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (action === 'filter-main-by-category') {
-            const category = e.target.dataset.category;
+            const category = actionElement.dataset.category;
             const currentFilter = state.filters.mainPanel.activeCategory;
 
             if (category === currentFilter) {
                 state.filters.mainPanel.activeCategory = null;
-                e.target.classList.remove('active');
+                actionElement.classList.remove('active');
             } else {
                 state.filters.mainPanel.activeCategory = category;
                 document.querySelectorAll('#mainCategoryFilters .category-filter-pill').forEach(pill => pill.classList.remove('active'));
-                e.target.classList.add('active');
+                actionElement.classList.add('active');
             }
             
             state.pagination.mainPanel.currentPage = 1;
@@ -969,18 +987,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // NOVO: Handler para filtros de categoria do painel diário
         if (action === 'filter-daily-by-category') {
-            const category = e.target.dataset.category;
+            const category = actionElement.dataset.category;
             const currentFilter = state.filters.dailyPanel.activeCategory;
 
             if (category === currentFilter) {
                 state.filters.dailyPanel.activeCategory = null;
-                e.target.classList.remove('active');
+                actionElement.classList.remove('active');
             } else {
                 state.filters.dailyPanel.activeCategory = category;
                 document.querySelectorAll('#dailyCategoryFilters .category-filter-pill').forEach(pill => pill.classList.remove('active'));
-                e.target.classList.add('active');
+                actionElement.classList.add('active');
             }
             applyDailyFiltersAndRender();
             return;
@@ -990,6 +1007,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { target, isArchived, panelId } = findTargetInState(id);
         if (!target && !['select-manual-target', 'add-new-observation'].includes(action)) return;
+
+        // Isola a fronteira do componente (cartão onde o clique ocorreu)
+        const targetCard = actionElement.closest('.target');
 
         switch(action) {
             case 'pray':
@@ -1007,48 +1027,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 await handleDeleteArchivedTarget(id);
                 break;
             case 'toggle-observation':
-                UI.toggleAddObservationForm(id);
+                UI.toggleAddObservationForm(id, targetCard);
                 break;
             case 'toggle-observations': {
-                const button = e.target;
-                const hiddenContainer = document.getElementById(`hidden-obs-${id}`);
-                
+                const hiddenContainer = targetCard ? targetCard.querySelector('.hidden-observations') : null;
                 if (hiddenContainer) {
                     const isVisible = hiddenContainer.classList.toggle('visible');
                     if (isVisible) {
-                        button.textContent = 'Ver menos';
+                        actionElement.textContent = 'Ver menos';
                     } else {
                         const count = hiddenContainer.children.length;
-                        button.textContent = `Ver mais ${count} antigas`;
+                        actionElement.textContent = `Ver mais ${count} antigas`;
                     }
                 }
                 break;
             }
             case 'add-new-observation':
-                if (target) await handleAddObservation(target, isArchived, panelId);
+                if (target) await handleAddObservation(target, isArchived, panelId, targetCard);
                 break;
             case 'edit-title':
-                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: e.target });
+                if (target) UI.toggleEditForm('Title', id, { currentValue: target.title, saveAction: 'save-title', eventTarget: actionElement });
                 break;
             case 'edit-details':
-                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details', eventTarget: e.target });
+                if (target) UI.toggleEditForm('Details', id, { currentValue: target.details, saveAction: 'save-details', eventTarget: actionElement });
                 break;
             case 'edit-observation':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-observation', eventTarget: e.target });
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('Observation', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-observation', eventTarget: actionElement });
                 break;
             case 'edit-sub-target-title':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetTitle', id, { currentValue: target.observations[obsIndex].subTargetTitle, obsIndex, saveAction: 'save-sub-target-title', eventTarget: e.target });
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetTitle', id, { currentValue: target.observations[obsIndex].subTargetTitle, obsIndex, saveAction: 'save-sub-target-title', eventTarget: actionElement });
                 break;
             case 'edit-sub-target-details':
-                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetDetails', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-sub-target-details', eventTarget: e.target });
+                if (target && target.observations[obsIndex]) UI.toggleEditForm('SubTargetDetails', id, { currentValue: target.observations[obsIndex].text, obsIndex, saveAction: 'save-sub-target-details', eventTarget: actionElement });
                 break;
-            case 'edit-sub-observation':
+            case 'edit-sub-observation': {
                 const subObs = target?.observations[obsIndex]?.subObservations?.[subObsIndex];
-                if (subObs) UI.toggleEditForm('SubObservation', id, { currentValue: subObs.text, obsIndex, subObsIndex, saveAction: 'save-sub-observation', eventTarget: e.target });
+                if (subObs) UI.toggleEditForm('SubObservation', id, { currentValue: subObs.text, obsIndex, subObsIndex, saveAction: 'save-sub-observation', eventTarget: actionElement });
                 break;
-
+            }
             case 'save-title': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newTitle = form.querySelector('input').value.trim();
                 if (newTitle === '' || newTitle === target.title) { form.remove(); break; }
@@ -1068,9 +1086,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-
             case 'save-details': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newDetails = form.querySelector('textarea').value.trim();
                 if (newDetails === target.details) { form.remove(); break; }
@@ -1090,9 +1107,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-            
             case 'save-observation': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('textarea').value.trim();
                 if (newText === '' || newText === target.observations[obsIndex].text) { form.remove(); break; }
@@ -1112,10 +1128,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-
             case 'save-sub-target-title':
             case 'save-sub-target-details': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('input, textarea').value.trim();
                 const obsToUpdate = target.observations[obsIndex];
@@ -1138,9 +1153,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-
             case 'save-sub-observation': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newText = form.querySelector('textarea').value.trim();
                 const subObsToUpdate = target.observations[obsIndex].subObservations[subObsIndex];
@@ -1161,13 +1175,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-            
             case 'edit-deadline':
-                if (target) UI.toggleEditForm('Deadline', id, { currentValue: target.deadlineDate, saveAction: 'save-deadline', eventTarget: e.target });
+                if (target) UI.toggleEditForm('Deadline', id, { currentValue: target.deadlineDate, saveAction: 'save-deadline', eventTarget: actionElement });
                 break;
-
             case 'save-deadline': {
-                const form = e.target.closest('.inline-edit-form');
+                const form = actionElement.closest('.inline-edit-form');
                 if (!form || !target) break;
                 const newDeadlineStr = form.querySelector('input[type="date"]').value;
                 if (!newDeadlineStr) break;
@@ -1191,7 +1203,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-
             case 'remove-deadline': {
                 if (!target || !confirm("Tem certeza que deseja remover o prazo deste alvo?")) break;
                 const oldDeadlineDate = target.deadlineDate;
@@ -1213,12 +1224,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             }
-
             case 'edit-category':
-                UI.toggleEditCategoryForm(id, target?.category);
+                UI.toggleEditCategoryForm(id, target?.category, targetCard);
                 break;
             case 'save-category':
-                await handleSaveCategory(target, isArchived, panelId);
+                await handleSaveCategory(target, isArchived, panelId, targetCard);
                 break;
             case 'toggle-priority':
                 await handleTogglePriority(target);
@@ -1281,9 +1291,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             case 'pray-sub-target': {
                 try {
-                    e.target.disabled = true;
-                    e.target.textContent = '✓ Orado!';
-                    e.target.classList.add('prayed');
+                    actionElement.disabled = true;
+                    actionElement.textContent = '✓ Orado!';
+                    actionElement.classList.add('prayed');
                     
                     const subTargetId = `${id}_${obsIndex}`;
                     
@@ -1303,9 +1313,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast("Interação com sub-alvo registrada!", "success");
                 } catch (error) {
                     showToast("Falha ao registrar interação. Tente novamente.", "error");
-                    e.target.disabled = false;
-                    e.target.textContent = 'Orei!';
-                    e.target.classList.remove('prayed');
+                    actionElement.disabled = false;
+                    actionElement.textContent = 'Orei!';
+                    actionElement.classList.remove('prayed');
                 }
                 break;
             }

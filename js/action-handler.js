@@ -36,8 +36,10 @@ function findTargetInState(state, targetId) {
  * @param {Function} options.requestSync - A função para solicitar a sincronização com o Drive.
  */
 export async function handleAction(options) {
-    const { action, id, eventTarget, state, applyFiltersAndRender, requestSync } = options;
-    const { obsIndex, subObsIndex } = eventTarget.dataset;
+    const { action, id, eventTarget, state, applyFiltersAndRender, applyDailyFiltersAndRender = () => {}, requestSync } = options;
+    const actionElement = eventTarget.closest('[data-action]') || eventTarget;
+    const { obsIndex, subObsIndex } = actionElement.dataset;
+    const targetCard = actionElement.closest('.target');
 
     if (!state.user) {
         UI.showToast("Sessão expirada. Faça login novamente.", "error");
@@ -45,8 +47,17 @@ export async function handleAction(options) {
     }
 
     if (action === 'cancel-edit') {
-        const form = eventTarget.closest('.inline-edit-form');
+        const form = actionElement.closest('.inline-edit-form');
         if (form) form.remove();
+        return;
+    }
+
+    if (action === 'cancel-inline-form') {
+        const formDiv = actionElement.closest('.add-observation-form, .edit-category-form');
+        if (formDiv) {
+            formDiv.style.display = 'none';
+            formDiv.innerHTML = '';
+        }
         return;
     }
     
@@ -126,29 +137,31 @@ export async function handleAction(options) {
             break;
 
         case 'toggle-observation':
-            UI.toggleAddObservationForm(id);
+            UI.toggleAddObservationForm(id, targetCard);
             break;
             
-        case 'toggle-observations':
-            const button = eventTarget;
-            const hiddenContainer = document.getElementById(`hidden-obs-${id}`);
+        case 'toggle-observations': {
+            const hiddenContainer = targetCard ? targetCard.querySelector('.hidden-observations') : null;
             if (hiddenContainer) {
                 const isVisible = hiddenContainer.classList.toggle('visible');
-                button.textContent = isVisible ? 'Ver menos' : `Ver mais ${hiddenContainer.children.length} antigas`;
+                actionElement.textContent = isVisible ? 'Ver menos' : `Ver mais ${hiddenContainer.children.length} antigas`;
             }
             break;
+        }
 
-        case 'add-new-observation':
-            const text = document.getElementById(`observationText-${target.id}`).value.trim();
-            const dateStr = document.getElementById(`observationDate-${target.id}`).value;
+        case 'add-new-observation': {
+            if (!targetCard) break;
+            const text = targetCard.querySelector('.obs-text-input')?.value.trim();
+            const dateStr = targetCard.querySelector('.obs-date-input')?.value;
             if (!text || !dateStr) return UI.showToast("Preencha o texto e a data.", "error");
             
             const newObservation = { text, date: new Date(dateStr + 'T12:00:00Z'), isSubTarget: false };
             
             if (!target.observations) target.observations = [];
             target.observations.push(newObservation);
-            UI.toggleAddObservationForm(target.id);
+            UI.toggleAddObservationForm(target.id, targetCard);
             applyFiltersAndRender(panelId);
+            applyDailyFiltersAndRender();
 
             try {
                 await Service.addObservationToTarget(state.user.uid, target.id, isArchived, newObservation);
@@ -158,8 +171,10 @@ export async function handleAction(options) {
                 UI.showToast("Falha ao salvar. Desfazendo.", "error");
                 target.observations.pop();
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
             }
             break;
+        }
 
         case 'edit-title':
         case 'edit-details':
@@ -274,16 +289,18 @@ export async function handleAction(options) {
             break;
 
         case 'edit-category':
-            UI.toggleEditCategoryForm(id, target?.category);
+            UI.toggleEditCategoryForm(id, target?.category, targetCard);
             break;
 
-        case 'save-category':
-            const newCategory = document.getElementById(`categorySelect-${target.id}`).value;
+        case 'save-category': {
+            if (!targetCard) break;
+            const newCategory = targetCard.querySelector('.cat-select-input')?.value || '';
             const oldCategory = target.category;
             
             target.category = newCategory;
-            UI.toggleEditCategoryForm(target.id);
+            UI.toggleEditCategoryForm(target.id, '', targetCard);
             applyFiltersAndRender(panelId);
+            applyDailyFiltersAndRender();
 
             try {
                 await Service.updateTargetField(state.user.uid, target.id, isArchived, { category: newCategory });
@@ -293,8 +310,10 @@ export async function handleAction(options) {
                 UI.showToast("Falha ao salvar. Desfazendo.", "error");
                 target.category = oldCategory;
                 applyFiltersAndRender(panelId);
+                applyDailyFiltersAndRender();
             }
             break;
+        }
 
         case 'toggle-priority':
             const newStatus = !target.isPriority;

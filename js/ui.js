@@ -159,9 +159,9 @@ function createObservationsHTML(observations, parentTargetId, dailyTargetsData =
     // Renderiza sub-alvos e as 3 observações mais recentes
     [...alwaysVisibleItems, ...recentVisibleItems].forEach(obs => html += renderObservation(obs));
     
-    // Se houver observações mais antigas, cria o contêiner recolhido e o botão
+    // Se houver observações mais antigas, cria o contêiner recolhido usando CLASSE (sem ID duplicado)
     if (olderHiddenItems.length > 0) {
-        html += `<div id="hidden-obs-${parentTargetId}" class="hidden-observations">`;
+        html += `<div class="hidden-observations">`;
         olderHiddenItems.forEach(obs => html += renderObservation(obs));
         html += `</div>`;
         html += `<button class="toggle-observations-btn" data-action="toggle-observations" data-id="${parentTargetId}">Ver mais ${olderHiddenItems.length} antigas</button>`;
@@ -273,9 +273,11 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
     }
 
     const observationsHTML = config.showObservations ? createObservationsHTML(target.observations, target.id, dailyTargetsData, isEditingEnabled) : '';
+    
+    // CORREÇÃO ARQUITETURAL W3C: Containers usam apenas classes semânticas (sem IDs duplicados no DOM)
     const formsHTML = config.showForms ? `
-        <div id="observationForm-${target.id}" class="add-observation-form" style="display:none;"></div>
-        <div id="editCategoryForm-${target.id}" class="edit-category-form" style="display:none;"></div>` : '';
+        <div class="add-observation-form" style="display:none;"></div>
+        <div class="edit-category-form" style="display:none;"></div>` : '';
 
     return `
         <h3>${driveStatusHTML}${subTargetIndicatorIcon}${creationTag}${categoryTag}${deadlineTag}${resolvedTag} ${target.title || 'Sem Título'}${editTitleIcon}</h3>
@@ -284,7 +286,7 @@ function createTargetHTML(target, config = {}, dailyTargetsData = {}) {
         ${elapsedTimePara}
         ${archivedDatePara}
         ${timeToResolutionPara}
-        <div id="inlineEditContainer-${target.id}"></div>
+        <div class="inline-edit-container"></div>
         ${observationsHTML}
         ${actionsHTML}
         ${formsHTML}
@@ -632,35 +634,63 @@ export function updatePriorityPanelState(isCompleted) {
     }
 }
 
-export function toggleAddObservationForm(targetId) {
-    const formDiv = document.getElementById(`observationForm-${targetId}`);
+/**
+ * Abre ou fecha o formulário de nova observação escopado exatamente ao cartão clicado.
+ * @param {string} targetId - ID do alvo.
+ * @param {HTMLElement} targetCard - O elemento .target pai onde a ação foi disparada.
+ */
+export function toggleAddObservationForm(targetId, targetCard) {
+    const card = targetCard || document.querySelector(`[data-target-id="${targetId}"]`);
+    if (!card) return;
+
+    const formDiv = card.querySelector('.add-observation-form');
     if (!formDiv) return;
+
     const isVisible = formDiv.style.display === 'block';
 
-    document.getElementById(`editCategoryForm-${targetId}`).style.display = 'none';
+    // Fecha o formulário de categoria irmão (se estiver aberto neste mesmo cartão)
+    const catForm = card.querySelector('.edit-category-form');
+    if (catForm) {
+        catForm.style.display = 'none';
+        catForm.innerHTML = '';
+    }
 
     if (isVisible) {
         formDiv.style.display = 'none';
         formDiv.innerHTML = '';
     } else {
         formDiv.innerHTML = `
-            <textarea id="observationText-${targetId}" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
-            <input type="date" id="observationDate-${targetId}" style="width: 95%;">
-            <button class="btn" data-action="add-new-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
-            <button type="button" class="btn cancel-btn" onclick="document.getElementById('observationForm-${targetId}').style.display='none';" style="background-color: #f44336;">Cancelar</button>
+            <textarea class="obs-text-input" placeholder="Nova observação..." rows="3" style="width: 95%;"></textarea>
+            <input type="date" class="obs-date-input" style="width: 95%;" value="${formatDateToISO(new Date())}">
+            <button type="button" class="btn" data-action="add-new-observation" data-id="${targetId}" style="background-color: #7cb17c;">Salvar Observação</button>
+            <button type="button" class="btn cancel-btn" data-action="cancel-inline-form" style="background-color: #f44336;">Cancelar</button>
         `;
-        document.getElementById(`observationDate-${targetId}`).value = formatDateToISO(new Date());
         formDiv.style.display = 'block';
-        formDiv.querySelector('textarea')?.focus();
+        formDiv.querySelector('.obs-text-input')?.focus();
     }
 }
 
-export function toggleEditCategoryForm(targetId, currentCategory) {
-    const formDiv = document.getElementById(`editCategoryForm-${targetId}`);
+/**
+ * Abre ou fecha o formulário de edição de categoria escopado ao cartão clicado.
+ * @param {string} targetId - ID do alvo.
+ * @param {string} currentCategory - Categoria atual do alvo.
+ * @param {HTMLElement} targetCard - O elemento .target pai onde a ação foi disparada.
+ */
+export function toggleEditCategoryForm(targetId, currentCategory = '', targetCard) {
+    const card = targetCard || document.querySelector(`[data-target-id="${targetId}"]`);
+    if (!card) return;
+
+    const formDiv = card.querySelector('.edit-category-form');
     if (!formDiv) return;
+
     const isVisible = formDiv.style.display === 'block';
 
-    document.getElementById(`observationForm-${targetId}`).style.display = 'none';
+    // Fecha o formulário de observação irmão (se estiver aberto neste mesmo cartão)
+    const obsForm = card.querySelector('.add-observation-form');
+    if (obsForm) {
+        obsForm.style.display = 'none';
+        obsForm.innerHTML = '';
+    }
     
     if (isVisible) {
         formDiv.style.display = 'none';
@@ -672,35 +702,52 @@ export function toggleEditCategoryForm(targetId, currentCategory) {
         ).join('');
 
         formDiv.innerHTML = `
-            <label for="categorySelect-${targetId}">Nova Categoria:</label>
-            <select id="categorySelect-${targetId}" style="width: 95%;">
-                <option value="">-- Nenhuma --</option>
-                ${optionsHTML}
-            </select>
-            <button class="btn save-category-btn" data-action="save-category" data-id="${targetId}">Salvar Categoria</button>
-            <button type="button" class="btn cancel-category-btn" onclick="document.getElementById('editCategoryForm-${targetId}').style.display='none';">Cancelar</button>
+            <label>Nova Categoria:
+                <select class="cat-select-input" style="width: 95%; margin-top: 5px;">
+                    <option value="">-- Nenhuma --</option>
+                    ${optionsHTML}
+                </select>
+            </label>
+            <button type="button" class="btn save-category-btn" data-action="save-category" data-id="${targetId}">Salvar Categoria</button>
+            <button type="button" class="btn cancel-category-btn" data-action="cancel-inline-form">Cancelar</button>
         `;
         formDiv.style.display = 'block';
-        formDiv.querySelector('select')?.focus();
+        formDiv.querySelector('.cat-select-input')?.focus();
     }
 }
 
+/**
+ * Renderiza um formulário de edição inline (Título, Detalhes, Observação, Sub-alvo ou Prazo)
+ * ancorado exatamente ao elemento que disparou a ação.
+ */
 export function toggleEditForm(type, targetId, options = {}) {
     const { currentValue = '', obsIndex = -1, subObsIndex = -1, saveAction, eventTarget } = options;
+    
+    // Remove qualquer outro formulário de edição inline aberto na página
     document.querySelectorAll('.inline-edit-form').forEach(form => form.remove());
     
-    let targetNode;
-    let insertionPoint = 'appendChild';
+    const targetCard = eventTarget ? eventTarget.closest('.target') : document.querySelector(`[data-target-id="${targetId}"]`);
+    if (!targetCard) return;
+
+    let targetNode = null;
+    let insertionPoint = 'afterend';
 
     if (type === 'Deadline' || type === 'Category') {
-        targetNode = eventTarget.closest('.target-actions');
-        insertionPoint = 'afterend';
-    } else if (type === 'Title' || type === 'Details') {
-        targetNode = document.querySelector(`[data-target-id="${targetId}"]`);
+        targetNode = eventTarget ? eventTarget.closest('.target-actions') : targetCard.querySelector('.target-actions');
+    } else if (type === 'Title') {
+        targetNode = eventTarget ? eventTarget.closest('h3') : targetCard.querySelector('h3');
+    } else if (type === 'Details') {
+        targetNode = eventTarget ? eventTarget.closest('.target-details') : targetCard.querySelector('.target-details');
     } else if (type === 'Observation' || type === 'SubTargetTitle' || type === 'SubTargetDetails') {
-        targetNode = document.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"]`).closest('.observation-item');
+        targetNode = eventTarget 
+            ? eventTarget.closest('.observation-item') 
+            : targetCard.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"]`)?.closest('.observation-item');
+        insertionPoint = 'appendChild';
     } else if (type === 'SubObservation') {
-        targetNode = document.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"][data-sub-obs-index="${subObsIndex}"]`).closest('.sub-observation-item');
+        targetNode = eventTarget 
+            ? eventTarget.closest('.sub-observation-item') 
+            : targetCard.querySelector(`[data-id="${targetId}"][data-obs-index="${obsIndex}"][data-sub-obs-index="${subObsIndex}"]`)?.closest('.sub-observation-item');
+        insertionPoint = 'appendChild';
     }
 
     if (!targetNode) {
@@ -710,17 +757,19 @@ export function toggleEditForm(type, targetId, options = {}) {
 
     const formDiv = document.createElement('div');
     formDiv.className = 'inline-edit-form';
-    let inputElement, removeButtonHTML = '';
+    let inputElement = '';
+    let removeButtonHTML = '';
 
     if (type === 'Deadline') {
         const currentDateValue = currentValue ? formatDateToISO(currentValue) : '';
-        inputElement = `<label for="inline-deadline-${targetId}">Novo Prazo:</label><input type="date" id="inline-deadline-${targetId}" class="inline-edit-input" value="${currentDateValue}">`;
+        inputElement = `<label>Novo Prazo:<input type="date" class="inline-edit-input" value="${currentDateValue}"></label>`;
         removeButtonHTML = `<button type="button" class="btn-small remove-btn" data-action="remove-deadline" data-id="${targetId}">Remover Prazo</button>`;
     } else {
         const isTextarea = type.includes('Details') || type.includes('Observation');
+        const safeValue = String(currentValue ?? '').replace(/"/g, '&quot;');
         inputElement = isTextarea
-            ? `<textarea class="inline-edit-textarea" placeholder="Digite aqui...">${currentValue}</textarea>`
-            : `<input type="text" class="inline-edit-input" value="${currentValue}" placeholder="Digite o novo valor">`;
+            ? `<textarea class="inline-edit-textarea" rows="3" placeholder="Digite aqui...">${currentValue ?? ''}</textarea>`
+            : `<input type="text" class="inline-edit-input" value="${safeValue}" placeholder="Digite o novo valor">`;
     }
     
     const finalSaveAction = saveAction || `save-${type.toLowerCase().replace(' ', '-')}`;
@@ -733,7 +782,7 @@ export function toggleEditForm(type, targetId, options = {}) {
             ${removeButtonHTML}
             <div style="margin-left: auto;">
                 <button type="button" class="btn-small cancel-btn" data-action="cancel-edit">Cancelar</button>
-                <button class="btn-small save-btn" data-action="${finalSaveAction}" data-id="${targetId}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
+                <button type="button" class="btn-small save-btn" data-action="${finalSaveAction}" data-id="${targetId}" ${obsIndexAttr} ${subObsIndexAttr}>Salvar</button>
             </div>
         </div>
     `;
@@ -747,7 +796,7 @@ export function toggleEditForm(type, targetId, options = {}) {
     const inputField = formDiv.querySelector('input, textarea');
     if (inputField) {
         inputField.focus();
-        if(inputField.select) inputField.select();
+        if (inputField.select && inputField.type === 'text') inputField.select();
     }
 }
 
